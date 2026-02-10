@@ -3,6 +3,8 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/ai-logo.png";
 
+const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || 'http://localhost:4200';
+
 const Navbar = () => {
   const [open, setOpen] = useState(false);
 
@@ -36,8 +38,14 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" className="text-hero-muted hover:text-hero-foreground hover:bg-white/5">
-            Login
+          <Button 
+            variant="ghost" 
+            className="text-hero-muted hover:text-hero-foreground hover:bg-white/5"
+            asChild
+          >
+            <a href={`${DASHBOARD_URL}/pages/login`} target="_blank" rel="noopener noreferrer">
+              Login
+            </a>
           </Button>
           <Button variant="accent">Solicitar Demo</Button>
         </div>
@@ -62,6 +70,11 @@ const Navbar = () => {
               {l.label}
             </a>
           ))}
+          <Button variant="ghost" className="w-full mt-3" asChild>
+            <a href={`${DASHBOARD_URL}/pages/login`} target="_blank" rel="noopener noreferrer">
+              Login
+            </a>
+          </Button>
           <Button variant="accent" className="w-full mt-3">Solicitar Demo</Button>
         </div>
       )}
