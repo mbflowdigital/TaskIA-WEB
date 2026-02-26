@@ -18,6 +18,12 @@
     "dev:dashboard": "pnpm exec turbo run dev --filter=@taskia/dashboard",
     "build:landing": "pnpm exec turbo run build --filter=@taskia/landing",
     "build:dashboard": "pnpm exec turbo run build --filter=@taskia/dashboard",
+    "build:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/build-prod.ps1",
+    "build:prod:landing": "powershell -ExecutionPolicy Bypass -File ./scripts/build-prod.ps1 -Landing",
+    "build:prod:dashboard": "powershell -ExecutionPolicy Bypass -File ./scripts/build-prod.ps1 -Dashboard",
+    "pack:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/pack-prod.ps1",
+    "preview:landing": "cd apps/landing && pnpm run preview",
+    "preview:dashboard": "cd apps/dashboard && pnpm run preview",
     "graph": "pnpm exec turbo run build --graph=dependency-graph.html"
   },
   "devDependencies": {
