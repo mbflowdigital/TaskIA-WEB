@@ -1,0 +1,19 @@
+:host {
+  display: block;
+}
+
+.content-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.content-sub-header {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.actions-menu {
+  right: 0;
+  left: auto;
+  top: calc(100% + 0.25rem);
+}

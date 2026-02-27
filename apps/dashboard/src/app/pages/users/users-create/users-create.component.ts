@@ -1,0 +1,184 @@
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ReactiveFormsModule, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
+
+import { UsersApiService } from '../../../shared/api/users-api.service';
+
+@Component({
+  selector: 'app-users-create',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  templateUrl: './users-create.component.html',
+  styleUrls: ['./users-create.component.scss']
+})
+export class UsersCreateComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+
+  isEditMode = false;
+  editingUserId?: string;
+  isLoading = false;
+  loadError?: string;
+
+  isSubmitting = false;
+  submitError?: string;
+  submitErrors: string[] = [];
+  submitSuccess?: string;
+
+  formSubmitted = false;
+
+  form = new UntypedFormGroup({
+    name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
+    email: new UntypedFormControl('', [Validators.required, Validators.email]),
+    phone: new UntypedFormControl('')
+  });
+
+  constructor(
+    private readonly usersApi: UsersApiService,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router
+  ) {}
+
+  ngOnInit(): void {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) return;
+
+    this.isEditMode = true;
+    this.editingUserId = id;
+
+    // Email não é editável pelo endpoint atual.
+    this.form.controls['email'].disable();
+
+    this.isLoading = true;
+    this.loadError = undefined;
+
+    this.usersApi
+      .getById(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.isLoading = false;
+
+          if (!result?.isSuccess || !result.data) {
+            this.loadError = result?.message ?? 'Não foi possível carregar o usuário.';
+            return;
+          }
+
+          this.form.patchValue({
+            name: result.data.name,
+            email: result.data.email,
+            phone: result.data.phone ?? ''
+          });
+        },
+        error: (err: unknown) => {
+          this.isLoading = false;
+          this.loadError =
+            typeof err === 'object' && err && 'message' in err
+              ? String((err as { message?: unknown }).message)
+              : 'Erro inesperado ao carregar o usuário.';
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  get f() {
+    return this.form.controls;
+  }
+
+  onSubmit(): void {
+    this.formSubmitted = true;
+    this.submitError = undefined;
+    this.submitErrors = [];
+    this.submitSuccess = undefined;
+
+    if (this.form.invalid || this.isSubmitting) return;
+
+    this.isSubmitting = true;
+
+    const name = String(this.form.getRawValue().name ?? '').trim();
+    const phone = String(this.form.getRawValue().phone ?? '').trim() || undefined;
+
+    if (this.isEditMode) {
+      const id = this.editingUserId;
+      if (!id) {
+        this.isSubmitting = false;
+        this.submitError = 'Id do usuário não encontrado.';
+        return;
+      }
+
+      this.usersApi
+        .update(id, { id, name, phone })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (result) => {
+            this.isSubmitting = false;
+
+            if (!result?.isSuccess) {
+              this.submitError = result?.message ?? 'Não foi possível atualizar o usuário';
+              this.submitErrors = result?.errors ?? [];
+              return;
+            }
+
+            this.submitSuccess = result?.message ?? 'Usuário atualizado com sucesso';
+            this.router.navigate(['/users']);
+          },
+          error: (err: unknown) => {
+            this.isSubmitting = false;
+            this.submitError =
+              typeof err === 'object' && err && 'message' in err
+                ? String((err as { message?: unknown }).message)
+                : 'Erro inesperado ao atualizar o usuário';
+          }
+        });
+
+      return;
+    }
+
+    const email = String(this.form.getRawValue().email ?? '').trim();
+
+    this.usersApi
+      .create({ name, email, phone })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.isSubmitting = false;
+
+          if (!result?.isSuccess) {
+            this.submitError = result?.message ?? 'Não foi possível criar o usuário';
+            this.submitErrors = result?.errors ?? [];
+            return;
+          }
+
+          this.submitSuccess = result?.message ?? 'Usuário criado com sucesso';
+
+          // Volta para a listagem; mantém o UX simples.
+          this.router.navigate(['/users']);
+        },
+        error: (err: unknown) => {
+          this.isSubmitting = false;
+          this.submitError =
+            typeof err === 'object' && err && 'message' in err
+              ? String((err as { message?: unknown }).message)
+              : 'Erro inesperado ao criar o usuário';
+        }
+      });
+  }
+
+  onReset(): void {
+    this.formSubmitted = false;
+    this.submitError = undefined;
+    this.submitErrors = [];
+    this.submitSuccess = undefined;
+    this.loadError = undefined;
+    this.form.reset({ name: '', email: '', phone: '' });
+
+    if (this.isEditMode) {
+      this.form.controls['email'].disable();
+    }
+  }
+}

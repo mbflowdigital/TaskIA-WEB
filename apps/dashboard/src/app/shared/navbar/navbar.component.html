@@ -62,20 +62,22 @@
         <ul class="navbar-nav">
           <li class="i18n-dropdown dropdown nav-item mr-2" display="dynamic" ngbDropdown >
             <a class="nav-link d-flex align-items-center dropdown-toggle dropdown-language" id="dropdown-flag"
-              href="javascript:;" data-toggle="dropdown" ngbDropdownToggle><img class="langimg selected-flag"
-                [src]="selectedLanguageFlag" alt="flag" /><span
-                class="selected-language d-md-flex d-none">{{selectedLanguageText}}</span></a>
+              href="javascript:;" data-toggle="dropdown" ngbDropdownToggle>
+              <span class="selected-language d-md-flex d-none">{{selectedLanguageText}}</span>
+            </a>
             <div ngbDropdownMenu class="dropdown-menu dropdown-menu-right text-left" aria-labelledby="dropdown-flag">
-              <a class="dropdown-item" href="javascript:;" data-language="en" (click)="ChangeLanguage('en')"><img
-                  class="langimg mr-2" src="./assets/img/flags/us.png" alt="flag" /><span
-                  class="font-small-3">English</span></a><a class="dropdown-item" href="javascript:;" data-language="es"
-                (click)="ChangeLanguage('es')"><img class="langimg mr-2" src="./assets/img/flags/es.png"
-                  alt="flag" /><span class="font-small-3">Spanish</span></a><a class="dropdown-item" href="javascript:;"
-                data-language="pt" (click)="ChangeLanguage('pt')"><img class="langimg mr-2"
-                  src="./assets/img/flags/pt.png" alt="flag" /><span class="font-small-3">Portuguese</span></a>
-              <a class="dropdown-item" href="javascript:;" data-language="de" (click)="ChangeLanguage('de')"><img
-                  class="langimg mr-2" src="./assets/img/flags/de.png" alt="flag" /><span
-                  class="font-small-3">German</span></a>
+                <a class="dropdown-item" href="javascript:;" data-language="pt-BR" (click)="ChangeLanguage('pt-BR')">
+                  <span class="font-small-3">Português (Brasil)</span>
+                </a>
+                <a class="dropdown-item" href="javascript:;" data-language="en" (click)="ChangeLanguage('en')">
+                  <span class="font-small-3">Inglês</span>
+                </a>
+                <a class="dropdown-item" href="javascript:;" data-language="es" (click)="ChangeLanguage('es')">
+                  <span class="font-small-3">Espanhol</span>
+                </a>
+                <a class="dropdown-item" href="javascript:;" data-language="de" (click)="ChangeLanguage('de')">
+                  <span class="font-small-3">Alemão</span>
+                </a>
             </div>
           </li>
           <li class="dropdown nav-item" placement="bottom-left" display="static" ngbDropdown >
