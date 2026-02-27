@@ -38,3 +38,26 @@ export type ApiResponse<T> = {
   error: string;
   code?: string;
 };
+
+// Shape compatível com Domain.Common.Result / Result<T> do backend
+export type TaskiaResult = {
+  isSuccess: boolean;
+  message: string;
+  errors: string[];
+};
+
+export type TaskiaResultWithData<T> = TaskiaResult & {
+  data: T | null;
+};
+
+// Model compatível com Application.Core.DTOs.Users.UserDto
+export type UserDto = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+};

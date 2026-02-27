@@ -15,9 +15,8 @@ import { Router } from '@angular/router';
   styleUrls: ["./navbar.component.scss"]
 })
 export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
-  currentLang = "en";
-  selectedLanguageText = "English";
-  selectedLanguageFlag = "./assets/img/flags/us.png";
+  currentLang = "pt-BR";
+  selectedLanguageText = "Português";
   toggleClass = "ft-maximize";
   placement = "bottom-right";
   logoUrl = 'assets/img/logo.png';
@@ -50,8 +49,9 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
     private router: Router,
     private configService: ConfigService, private cdr: ChangeDetectorRef) {
 
-    const browserLang: string = translate.getBrowserLang();
-    translate.use(browserLang.match(/en|es|pt|de/) ? browserLang : "en");
+    const initialLang = this.translate.currentLang || this.translate.getDefaultLang() || 'pt-BR';
+    this.currentLang = initialLang;
+    this.setLanguageUi(initialLang);
     this.config = this.configService.templateConf;
     this.innerWidth = window.innerWidth;
 
@@ -171,24 +171,30 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   ChangeLanguage(language: string) {
+    this.currentLang = language;
     this.translate.use(language);
+    this.setLanguageUi(language);
+  }
 
+  private setLanguageUi(language: string): void {
+    if (language === 'pt-BR' || language === 'pt') {
+      this.selectedLanguageText = 'Português (Brasil)';
+      return;
+    }
     if (language === 'en') {
-      this.selectedLanguageText = "English";
-      this.selectedLanguageFlag = "./assets/img/flags/us.png";
+      this.selectedLanguageText = 'Inglês';
+      return;
     }
-    else if (language === 'es') {
-      this.selectedLanguageText = "Spanish";
-      this.selectedLanguageFlag = "./assets/img/flags/es.png";
+    if (language === 'es') {
+      this.selectedLanguageText = 'Espanhol';
+      return;
     }
-    else if (language === 'pt') {
-      this.selectedLanguageText = "Portuguese";
-      this.selectedLanguageFlag = "./assets/img/flags/pt.png";
+    if (language === 'de') {
+      this.selectedLanguageText = 'Alemão';
+      return;
     }
-    else if (language === 'de') {
-      this.selectedLanguageText = "German";
-      this.selectedLanguageFlag = "./assets/img/flags/de.png";
-    }
+
+    this.selectedLanguageText = 'Português (Brasil)';
   }
 
   ToggleClass() {

@@ -1,0 +1,117 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section class="users-edit">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-content">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h4 class="mb-0">{{ isEditMode ? 'Editar usuário' : 'Criar usuário' }}</h4>
+                    <small class="text-muted">
+                      {{ isEditMode ? 'Atualize os dados do usuário' : 'Crie um novo usuário usando a API' }}
+                    </small>
+                  </div>
+                  <a class="btn btn-sm btn-outline-secondary" routerLink="/users">Voltar</a>
+                </div>
+
+                <hr />
+
+                <div *ngIf="isLoading" class="mt-1">Carregando usuário...</div>
+
+                <div *ngIf="loadError" class="alert alert-danger mt-1">
+                  {{ loadError }}
+                </div>
+
+                <div *ngIf="submitError" class="alert alert-danger">
+                  <div>{{ submitError }}</div>
+                  <ul *ngIf="submitErrors.length" class="mb-0 mt-1">
+                    <li *ngFor="let e of submitErrors">{{ e }}</li>
+                  </ul>
+                </div>
+
+                <div *ngIf="submitSuccess" class="alert alert-success">
+                  {{ submitSuccess }}
+                </div>
+
+                <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!isLoading && !loadError">
+                  <div class="row">
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="users-create-name">Nome</label>
+                          <input
+                            id="users-create-name"
+                            type="text"
+                            class="form-control"
+                            placeholder="Nome"
+                            formControlName="name"
+                            [class.is-invalid]="formSubmitted && f.name.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.name.invalid">
+                            Nome é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="users-create-email">E-mail</label>
+                          <input
+                            id="users-create-email"
+                            type="email"
+                            class="form-control"
+                            placeholder="Email"
+                            formControlName="email"
+                            [class.is-invalid]="formSubmitted && f.email.invalid"
+                            [attr.disabled]="isEditMode ? true : null"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.email.invalid">
+                            Email válido é obrigatório.
+                          </div>
+                          <small *ngIf="isEditMode" class="text-muted">
+                            O email não pode ser alterado.
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="users-create-phone">Telefone</label>
+                          <input
+                            id="users-create-phone"
+                            type="text"
+                            class="form-control"
+                            placeholder="Telefone"
+                            formControlName="phone"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-sm-row flex-column justify-content-end mt-2">
+                    <button
+                      type="button"
+                      class="btn bg-light-secondary mb-1 mb-sm-0 mr-sm-2"
+                      (click)="onReset()"
+                      [disabled]="isSubmitting"
+                    >
+                      Limpar
+                    </button>
+                    <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+                      {{ isSubmitting ? 'Salvando...' : (isEditMode ? 'Salvar alterações' : 'Criar usuário') }}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
