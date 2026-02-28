@@ -38,7 +38,7 @@ jobs:
 
       # ─── Build Dashboard (Angular) ───────────────────────────────────────── 
       - name: Build Dashboard
-        run: pnpm --filter dashboard build -- --configuration production
+        run: pnpm --filter dashboard build:prod
         # baseHref /dashboard/ ja esta configurado no angular.json (producao)
 
       # ─── Organizar arquivos para deploy ─────────────────────────────────────
