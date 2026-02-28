@@ -3,9 +3,12 @@ export interface ProjectDto {
   name: string;
   description?: string;
   objective?: string;
+  status: string;
   isActive: boolean;
   startDate?: string;
   endDate?: string;
+  userId?: string;
+  userName?: string;
   createdAt: string;
   updatedAt?: string;
 }

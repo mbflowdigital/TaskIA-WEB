@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
+import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ProjectDto } from 'app/shared/api/projects/projects.types';
 
 @Component({
@@ -20,7 +21,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   isLoading = false;
   loadError?: string;
 
-  statusFilter: '' | 'Active' | 'Inactive' = '';
+  statusFilter: '' | 'Active' | 'Inactive' | 'Draft' = '';
   searchValue = '';
   limit = 10;
 
@@ -28,11 +29,13 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   filteredProjects: ProjectDto[] = [];
 
   openActionsForId?: string;
+  dropdownPos: { top: number; left: number } | null = null;
   deletingProjectId?: string;
   actionError?: string;
 
   constructor(
     private readonly projectsApi: ProjectsApiService,
+    private readonly authSession: AuthSessionService,
     private readonly router: Router
   ) {}
 
@@ -80,8 +83,23 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     this.applyFilter();
   }
 
-  toggleActions(projectId: string): void {
-    this.openActionsForId = this.openActionsForId === projectId ? undefined : projectId;
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  closeDropdown(): void {
+    this.openActionsForId = undefined;
+    this.dropdownPos = null;
+  }
+
+  toggleActions(projectId: string, event: MouseEvent): void {
+    if (this.openActionsForId === projectId) {
+      this.openActionsForId = undefined;
+      this.dropdownPos = null;
+    } else {
+      this.openActionsForId = projectId;
+      const btn = event.currentTarget as HTMLElement;
+      const rect = btn.getBoundingClientRect();
+      this.dropdownPos = { top: rect.bottom + window.scrollY, left: rect.right - 140 + window.scrollX };
+    }
     this.actionError = undefined;
   }
 
@@ -91,7 +109,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   }
 
   deleteProject(project: ProjectDto): void {
-    const confirmed = window.confirm(`Tem certeza que deseja apagar o projeto "${project.name}"?`);
+    const confirmed = window.confirm(`Tem certeza que deseja cancelar o projeto "${project.name}"?`);
     if (!confirmed) return;
 
     this.deletingProjectId = project.id;
@@ -104,7 +122,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (result) => {
           if (!result?.isSuccess) {
-            this.actionError = result?.message ?? 'Não foi possível apagar o projeto.';
+            this.actionError = result?.message ?? 'Não foi possível cancelar o projeto.';
             this.deletingProjectId = undefined;
             return;
           }
@@ -113,8 +131,36 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
           this.deletingProjectId = undefined;
         },
         error: () => {
-          this.actionError = 'Erro inesperado ao apagar o projeto.';
+          this.actionError = 'Erro inesperado ao cancelar o projeto.';
           this.deletingProjectId = undefined;
+        }
+      });
+  }
+
+  togglingStatusId?: string;
+
+  toggleProjectStatus(project: ProjectDto): void {
+    this.togglingStatusId = project.id;
+    this.actionError = undefined;
+    this.openActionsForId = undefined;
+
+    this.projectsApi
+      .toggleStatus(project.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.togglingStatusId = undefined;
+          if (!result?.isSuccess || !result.data) {
+            this.actionError = result?.message ?? 'Não foi possível alterar o status do projeto.';
+            return;
+          }
+          const idx = this.projects.findIndex(p => p.id === project.id);
+          if (idx !== -1) this.projects[idx] = result.data;
+          this.applyFilter();
+        },
+        error: () => {
+          this.togglingStatusId = undefined;
+          this.actionError = 'Erro inesperado ao alterar o status do projeto.';
         }
       });
   }
@@ -124,7 +170,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     this.loadError = undefined;
 
     this.projectsApi
-      .getAll()
+      .getAll(this.authSession.getUserId() ?? undefined)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -153,7 +199,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
 
     this.filteredProjects = this.projects.filter((p) => {
       if (this.statusFilter) {
-        const status = p.isActive ? 'Active' : 'Inactive';
+        const status = p.status ?? (p.isActive ? 'Active' : 'Inactive');
         if (status !== this.statusFilter) return false;
       }
       if (!term) return true;

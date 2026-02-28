@@ -49,7 +49,8 @@
         <ul appSidebarDropdown class="menu-content" *ngIf="menuItem.submenu.length > 0 ">
           <li appSidebarlink *ngFor="let menuSubItem of menuItem.submenu" [parent]="menuItem.title" [hasSub]="menuSubItem.class.includes('has-sub') ? true: false"
           [path]="menuSubItem.path" level="{{level + 2}}" [ngClass]="{'has-sub': menuSubItem.class.includes('has-sub') ? true: false}"
-            [routerLinkActive]="menuSubItem.submenu.length != 0 ? 'open' : 'active'">
+            [routerLinkActive]="menuSubItem.submenu.length != 0 ? 'open' : 'active'"
+            [routerLinkActiveOptions]="{exact: menuSubItem.submenu.length === 0}">
             <a appSidebarAnchorToggle *ngIf="menuSubItem.submenu.length > 0 && !menuSubItem.isExternalLink">
               <i [ngClass]="[menuSubItem.icon]"></i>
               <span class="menu-title">{{menuSubItem.title | translate }}</span>

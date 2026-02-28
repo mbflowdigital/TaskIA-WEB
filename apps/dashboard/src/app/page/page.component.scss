@@ -166,12 +166,12 @@ $border-radius: 16px;
   }
 
   &__recent-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: nowrap;
     gap: .75rem;
 
     @media (max-width: 540px) {
-      grid-template-columns: 1fr;
+      flex-wrap: wrap;
     }
   }
 
@@ -180,10 +180,11 @@ $border-radius: 16px;
     background: #fff;
     border: 1.5px solid #e5e7eb;
     border-radius: 12px;
-    padding: 1rem 1.1rem;
+    padding: .75rem .9rem;
     cursor: pointer;
     transition: border-color .2s, box-shadow .2s, transform .15s;
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
 
     &:hover {
       border-color: $green;
@@ -221,6 +222,11 @@ $border-radius: 16px;
     &--inactive {
       background: rgba(#6b7280, .1);
       color: #6b7280;
+    }
+
+    &--draft {
+      background: rgba(#f59e0b, .1);
+      color: #d97706;
     }
   }
 

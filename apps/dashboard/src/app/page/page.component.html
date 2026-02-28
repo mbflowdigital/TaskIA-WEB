@@ -44,14 +44,16 @@
       <button
         class="ia-home__recent-card"
         *ngFor="let p of recentProjects"
-        (click)="openProject(p.id)"
+        (click)="openProject(p)"
       >
         <div class="ia-home__recent-card-header">
           <div class="ia-home__recent-icon">
             <i class="ft-folder"></i>
           </div>
-          <span class="ia-home__recent-status" [class.ia-home__recent-status--inactive]="!p.isActive">
-            {{ p.isActive ? 'Ativo' : 'Inativo' }}
+          <span class="ia-home__recent-status"
+            [class.ia-home__recent-status--inactive]="p.status === 'Inactive'"
+            [class.ia-home__recent-status--draft]="p.status === 'Draft'">
+            {{ p.status === 'Active' ? 'Ativo' : p.status === 'Inactive' ? 'Inativo' : 'Rascunho' }}
           </span>
         </div>
         <p class="ia-home__recent-name">{{ p.name }}</p>

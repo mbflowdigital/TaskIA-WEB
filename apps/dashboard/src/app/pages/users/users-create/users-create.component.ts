@@ -31,6 +31,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
     email: new UntypedFormControl('', [Validators.required, Validators.email]),
+    cpf: new UntypedFormControl(''),
     phone: new UntypedFormControl('')
   });
 
@@ -68,7 +69,8 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
           this.form.patchValue({
             name: result.data.name,
             email: result.data.email,
-            phone: result.data.phone ?? ''
+            phone: result.data.phone ?? '',
+            cpf: result.data.cpf ?? ''
           });
         },
         error: (err: unknown) => {
@@ -102,6 +104,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
 
     const name = String(this.form.getRawValue().name ?? '').trim();
     const phone = String(this.form.getRawValue().phone ?? '').trim() || undefined;
+    const cpf = String(this.form.getRawValue().cpf ?? '').trim() || undefined;
 
     if (this.isEditMode) {
       const id = this.editingUserId;
@@ -112,7 +115,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
       }
 
       this.usersApi
-        .update(id, { id, name, phone })
+        .update(id, { id, name, phone, cpf })
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (result) => {
@@ -142,7 +145,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     const email = String(this.form.getRawValue().email ?? '').trim();
 
     this.usersApi
-      .create({ name, email, phone })
+      .create({ name, email, phone, cpf })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -175,7 +178,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     this.submitErrors = [];
     this.submitSuccess = undefined;
     this.loadError = undefined;
-    this.form.reset({ name: '', email: '', phone: '' });
+    this.form.reset({ name: '', email: '', phone: '', cpf: '' });
 
     if (this.isEditMode) {
       this.form.controls['email'].disable();

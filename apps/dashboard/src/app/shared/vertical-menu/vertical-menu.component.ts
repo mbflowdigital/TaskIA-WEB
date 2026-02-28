@@ -14,6 +14,7 @@ import { ConfigService } from '../services/config.service';
 import { Subscription } from 'rxjs';
 import { LayoutService } from '../services/layout.service';
 import { ProjectsApiService } from 'app/shared/api/projects-api.service';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Component({
   selector: "app-sidebar",
@@ -42,7 +43,8 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
     private configService: ConfigService,
     private cdr: ChangeDetectorRef,
     private deviceService: DeviceDetectorService,
-    private projectsApiService: ProjectsApiService
+    private projectsApiService: ProjectsApiService,
+    private authSession: AuthSessionService
   ) {
     this.config = this.configService.templateConf;
     this.innerWidth = window.innerWidth;
@@ -56,18 +58,20 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadProjects() {
-    this.projectsApiService.getAll().subscribe(result => {
+    this.projectsApiService.getAll(this.authSession.getUserId() ?? undefined).subscribe(result => {
       if (result?.data?.length) {
-        this.projectsSubmenu = result.data.map(p => ({
-          path: `/projects/${p.id}`,
-          title: p.name,
-          icon: 'ft-folder submenu-icon',
-          class: 'project-sub-item',
-          badge: '',
-          badgeClass: '',
-          isExternalLink: false,
-          submenu: []
-        }));
+        this.projectsSubmenu = result.data
+          .filter(p => p.status === 'Active')
+          .map(p => ({
+            path: p.status === 'Draft' ? `/projects/${p.id}/edit` : `/projects/${p.id}`,
+            title: p.name,
+            icon: 'ft-folder submenu-icon',
+            class: 'project-sub-item',
+            badge: '',
+            badgeClass: '',
+            isExternalLink: false,
+            submenu: []
+          }));
       } else {
         this.projectsSubmenu = [];
       }

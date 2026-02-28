@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
+import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-projects-create',
@@ -29,7 +30,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   formSubmitted = false;
 
   // TODO: replace with auth service when ready
-  private readonly CURRENT_USER_ID = '67aecf6f-1f1a-49a2-8ba4-65fbb04f8531';
+  private get CURRENT_USER_ID(): string {
+    return this.authSession.getUserId() ?? '';
+  }
 
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]),
@@ -43,6 +46,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly projectsApi: ProjectsApiService,
+    private readonly authSession: AuthSessionService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}

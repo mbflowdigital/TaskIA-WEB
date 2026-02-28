@@ -1,64 +1,165 @@
-import { Component, ViewChild } from '@angular/core';
-import { NgForm, UntypedFormGroup, UntypedFormControl, Validators } from '@angular/forms';
-import { Router, ActivatedRoute } from "@angular/router";
-import { AuthService } from 'app/shared/auth/auth.service';
-import { NgxSpinnerService } from "ngx-spinner";
-
+import { Component, ChangeDetectorRef, NgZone } from '@angular/core';
+import { UntypedFormGroup, UntypedFormControl, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { finalize } from 'rxjs/operators';
+import { AuthApiService } from 'app/shared/api/auth-api.service';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
+import { LoginData } from 'app/shared/api/auth/auth.types';
 
 @Component({
   selector: 'app-login-page',
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.scss']
 })
-
 export class LoginPageComponent {
 
+  // ── Login form ──────────────────────────────────────────────────────────
   loginFormSubmitted = false;
   isLoginFailed = false;
+  loginError = '';
+  isSubmitting = false;
 
   loginForm = new UntypedFormGroup({
-    username: new UntypedFormControl('guest@apex.com', [Validators.required]),
-    password: new UntypedFormControl('Password', [Validators.required]),
-    rememberMe: new UntypedFormControl(true)
+    cpf:      new UntypedFormControl('', [Validators.required]),
+    password: new UntypedFormControl('', [Validators.required])
   });
 
+  // ── First-access modal ───────────────────────────────────────────────────
+  showFirstAccessModal = false;
+  firstAccessSubmitted = false;
+  firstAccessError = '';
+  firstAccessSuccess = false;
+  isChangingPassword = false;
 
-  constructor(private router: Router, private authService: AuthService,
-    private spinner: NgxSpinnerService,
-    private route: ActivatedRoute) {
-  }
+  private firstAccessCpf = '';
+  private firstAccessCurrentPassword = '';
 
-  get lf() {
-    return this.loginForm.controls;
-  }
+  firstAccessForm = new UntypedFormGroup({
+    newPassword:     new UntypedFormControl('', [Validators.required, Validators.minLength(6)]),
+    confirmPassword: new UntypedFormControl('', [Validators.required])
+  });
 
-  // On submit button click
-  onSubmit() {
+  constructor(
+    private readonly router: Router,
+    private readonly authApi: AuthApiService,
+    private readonly authSession: AuthSessionService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly zone: NgZone
+  ) {}
+
+  get lf() { return this.loginForm.controls; }
+  get faf() { return this.firstAccessForm.controls; }
+
+  // ── Submit login ─────────────────────────────────────────────────────────
+  onSubmit(): void {
     this.loginFormSubmitted = true;
-    if (this.loginForm.invalid) {
+    this.isLoginFailed = false;
+    this.loginError = '';
+
+    if (this.loginForm.invalid || this.isSubmitting) return;
+
+    this.isSubmitting = true;
+
+    const cpf      = String(this.loginForm.value.cpf ?? '').trim().replace(/\D/g, '');
+    const password = String(this.loginForm.value.password ?? '');
+
+    this.authApi.login({ cpf, password })
+      .pipe(finalize(() => { this.isSubmitting = false; this.cdr.detectChanges(); }))
+      .subscribe({
+      next: (result) => {
+        this.zone.run(() => {
+        if (!result?.isSuccess || !result.data) {
+          this.isLoginFailed = true;
+          this.loginError = result?.message ?? 'Credenciais inválidas.';
+          return;
+        }
+
+        const data: LoginData = result.data;
+
+        if (data.isFirstAccess) {
+          this.firstAccessCpf = cpf;
+          this.firstAccessCurrentPassword = password;
+          this.showFirstAccessModal = true;
+          this.cdr.detectChanges();
+          return;
+        }
+
+        // Token salvo e redireciona
+        if (data.token) {
+          localStorage.setItem('auth_token', data.token);
+        }
+        this.authSession.setUser({
+          userId: data.userId,
+          name: data.name,
+          email: data.email,
+          cpf: data.cpf,
+          phone: data.phone
+        });
+        this.router.navigate(['/page']);
+        });
+      },
+      error: () => {
+        this.zone.run(() => {
+        this.isLoginFailed = true;
+        this.loginError = 'Erro inesperado. Tente novamente.';
+        });
+      }
+    });
+  }
+
+  // ── Submit change-password (first access) ─────────────────────────────────
+  onChangePasswordSubmit(): void {
+    this.firstAccessSubmitted = true;
+    this.firstAccessError = '';
+
+    if (this.firstAccessForm.invalid || this.isChangingPassword) return;
+
+    const newPassword     = String(this.faf['newPassword'].value ?? '');
+    const confirmPassword = String(this.faf['confirmPassword'].value ?? '');
+
+    if (newPassword !== confirmPassword) {
+      this.firstAccessError = 'As senhas não coincidem.';
       return;
     }
 
-    this.spinner.show(undefined,
-      {
-        type: 'ball-triangle-path',
-        size: 'medium',
-        bdColor: 'rgba(0, 0, 0, 0.8)',
-        color: '#fff',
-        fullScreen: true
-      });
+    this.isChangingPassword = true;
 
-    this.authService.signinUser(this.loginForm.value.username, this.loginForm.value.password)
-      .then((res) => {
-        this.spinner.hide();
-        this.router.navigate(['/page']);
-      })
-      .catch((err) => {
-        this.isLoginFailed = true;
-        this.spinner.hide();
-        console.log('error: ' + err)
+    this.authApi.changePasswordFirstAccess({
+      cpf: this.firstAccessCpf,
+      currentPassword: this.firstAccessCurrentPassword,
+      newPassword,
+      confirmPassword
+    }).pipe(finalize(() => { this.isChangingPassword = false; }))
+      .subscribe({
+      next: (result) => {
+        if (!result?.isSuccess) {
+          this.firstAccessError = result?.message ?? 'Não foi possível alterar a senha.';
+          return;
+        }
+
+        this.firstAccessSuccess = true;
+
+        // Re-faz login com a nova senha automaticamente após 2s
+        setTimeout(() => {
+          this.showFirstAccessModal = false;
+          this.firstAccessSuccess = false;
+          this.firstAccessForm.reset();
+          this.firstAccessSubmitted = false;
+          this.loginForm.patchValue({ password: newPassword });
+          this.onSubmit();
+        }, 2000);
+      },
+      error: () => {
+        this.firstAccessError = 'Erro inesperado ao alterar a senha.';
       }
-      );
+    });
   }
 
+  closeFirstAccessModal(): void {
+    this.showFirstAccessModal = false;
+    this.firstAccessForm.reset();
+    this.firstAccessSubmitted = false;
+    this.firstAccessError = '';
+    this.firstAccessSuccess = false;
+  }
 }

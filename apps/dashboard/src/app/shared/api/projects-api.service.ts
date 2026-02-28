@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { ApiResult } from 'app/shared/api/shared/api-result.types';
@@ -15,10 +15,18 @@ export class ProjectsApiService {
 
   constructor(private readonly http: HttpClient) {}
 
-  getAll(): Observable<ApiResult<ProjectDto[]>> {
+  getAll(userId?: string): Observable<ApiResult<ProjectDto[]>> {
     return this.http
       .get<ApiResult<ProjectDto[]>>(`${this.baseUrl}/api/projects`)
-      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<ProjectDto[]>)));
+      .pipe(
+        map(result => {
+          if (userId && result?.data?.length) {
+            return { ...result, data: result.data.filter(p => p.userId === userId) };
+          }
+          return result;
+        }),
+        catchError((err: HttpErrorResponse) => of(err.error as ApiResult<ProjectDto[]>))
+      );
   }
 
   getById(id: string): Observable<ApiResult<ProjectDto>> {
@@ -43,5 +51,11 @@ export class ProjectsApiService {
     return this.http
       .delete<ApiResult>(`${this.baseUrl}/api/projects/${id}`)
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult)));
+  }
+
+  toggleStatus(id: string): Observable<ApiResult<ProjectDto>> {
+    return this.http
+      .patch<ApiResult<ProjectDto>>(`${this.baseUrl}/api/projects/${id}/status`, {})
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<ProjectDto>)));
   }
 }

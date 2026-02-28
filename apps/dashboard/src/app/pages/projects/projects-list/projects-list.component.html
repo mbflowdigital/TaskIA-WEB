@@ -31,6 +31,7 @@
                           <option value="">Qualquer</option>
                           <option value="Active">Ativo</option>
                           <option value="Inactive">Inativo</option>
+                          <option value="Draft">Rascunho</option>
                         </select>
                       </div>
                     </div>
@@ -150,8 +151,12 @@
                         </td>
                         <td>{{ project.createdAt | date: 'short' }}</td>
                         <td>
-                          <span class="badge" [ngClass]="project.isActive ? 'bg-light-success' : 'bg-light-warning'">
-                            {{ project.isActive ? 'Ativo' : 'Inativo' }}
+                          <span class="badge" [ngClass]="{
+                            'bg-light-success': project.status === 'Active',
+                            'bg-light-warning': project.status === 'Inactive',
+                            'bg-light-secondary': project.status === 'Draft'
+                          }">
+                            {{ project.status === 'Active' ? 'Ativo' : project.status === 'Inactive' ? 'Inativo' : 'Rascunho' }}
                           </span>
                         </td>
                         <td class="text-right" style="white-space: nowrap;">
@@ -159,20 +164,31 @@
                             <button
                               type="button"
                               class="btn btn-outline-secondary btn-sm"
-                              (click)="toggleActions(project.id)"
+                              (click)="toggleActions(project.id, $event)"
                               [disabled]="deletingProjectId === project.id"
                             >
                               Ações
                             </button>
-                            <div *ngIf="openActionsForId === project.id" class="dropdown-menu show actions-menu">
+                            <div *ngIf="openActionsForId === project.id" class="dropdown-menu show actions-menu"
+                              [style.top.px]="dropdownPos?.top"
+                              [style.left.px]="dropdownPos?.left">
                               <button type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
+                              <button
+                                type="button"
+                                class="dropdown-item"
+                                (click)="toggleProjectStatus(project)"
+                                [disabled]="togglingStatusId === project.id"
+                              >
+                                {{ togglingStatusId === project.id ? 'Aguarde...' : (project.status === 'Active' ? 'Inativar' : 'Ativar') }}
+                              </button>
+                              <div class="dropdown-divider"></div>
                               <button
                                 type="button"
                                 class="dropdown-item text-danger"
                                 (click)="deleteProject(project)"
                                 [disabled]="deletingProjectId === project.id"
                               >
-                                {{ deletingProjectId === project.id ? 'Apagando...' : 'Apagar' }}
+                                {{ deletingProjectId === project.id ? 'Cancelando...' : 'Cancelar' }}
                               </button>
                             </div>
                           </div>

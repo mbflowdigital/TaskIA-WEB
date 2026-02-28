@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProjectDto } from '../shared/api/projects/projects.types';
 import { ProjectsApiService } from '../shared/api/projects-api.service';
+import { AuthSessionService } from '../shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-page',
@@ -17,15 +18,17 @@ export class PageComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private projectsApi: ProjectsApiService
+    private projectsApi: ProjectsApiService,
+    private authSession: AuthSessionService
   ) {}
 
   ngOnInit(): void {
-    this.projectsApi.getAll().subscribe({
+    this.projectsApi.getAll(this.authSession.getUserId() ?? undefined).subscribe({
       next: (result) => {
         this.loadingProjects = false;
         if (result?.isSuccess && result.data?.length) {
           this.recentProjects = result.data
+            .filter(p => p.status !== 'Inactive')
             .slice()
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .slice(0, 4);
@@ -49,8 +52,12 @@ export class PageComponent implements OnInit {
     }
   }
 
-  openProject(id: string): void {
-    this.router.navigate(['/projects', id]);
+  openProject(project: ProjectDto): void {
+    if (project.status === 'Draft') {
+      this.router.navigate(['/projects', project.id, 'edit']);
+    } else {
+      this.router.navigate(['/projects', project.id]);
+    }
   }
 
   formatDate(dateStr: string): string {
