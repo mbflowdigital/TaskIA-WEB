@@ -5,5 +5,5 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'https://localhost:44310'
+  apiUrl: 'https://tasking.ia.br/api-proxy.php'
 };

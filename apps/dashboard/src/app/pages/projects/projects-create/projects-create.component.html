@@ -1,0 +1,125 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section class="projects-edit">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-content">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h4 class="mb-0">{{ isEditMode ? 'Editar projeto' : 'Criar projeto' }}</h4>
+                    <small class="text-muted">
+                      {{ isEditMode ? 'Atualize os dados do projeto' : 'Cadastre um novo projeto' }}
+                    </small>
+                  </div>
+                  <a class="btn btn-sm btn-outline-secondary" routerLink="/projects">Voltar</a>
+                </div>
+
+                <hr />
+
+                <div *ngIf="isLoading" class="mt-1">Carregando projeto...</div>
+
+                <div *ngIf="loadError" class="alert alert-danger mt-1">{{ loadError }}</div>
+
+                <div *ngIf="submitError" class="alert alert-danger">
+                  <div>{{ submitError }}</div>
+                  <ul *ngIf="submitErrors.length" class="mb-0 mt-1">
+                    <li *ngFor="let e of submitErrors">{{ e }}</li>
+                  </ul>
+                </div>
+
+                <div *ngIf="submitSuccess" class="alert alert-success">{{ submitSuccess }}</div>
+
+                <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!isLoading && !loadError">
+                  <div class="row">
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <label for="projects-create-name">Nome *</label>
+                        <input
+                          id="projects-create-name"
+                          type="text"
+                          class="form-control"
+                          placeholder="Nome do projeto"
+                          formControlName="name"
+                          [class.is-invalid]="formSubmitted && f.name.invalid"
+                        />
+                        <div class="invalid-feedback" *ngIf="formSubmitted && f.name.invalid">
+                          Nome é obrigatório (mínimo 2 caracteres).
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <label for="projects-create-description">Descrição</label>
+                        <textarea
+                          id="projects-create-description"
+                          class="form-control"
+                          placeholder="Descrição do projeto"
+                          formControlName="description"
+                          rows="3"
+                        ></textarea>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <label for="projects-create-objective">Objetivo final</label>
+                        <textarea
+                          id="projects-create-objective"
+                          class="form-control"
+                          placeholder="Qual é o objetivo final deste projeto?"
+                          formControlName="objective"
+                          rows="3"
+                        ></textarea>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <label for="projects-create-start">Data de início</label>
+                        <input
+                          id="projects-create-start"
+                          type="date"
+                          class="form-control"
+                          formControlName="startDate"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <label for="projects-create-end">Data de término</label>
+                        <input
+                          id="projects-create-end"
+                          type="date"
+                          class="form-control"
+                          formControlName="endDate"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-sm-row flex-column justify-content-end mt-2">
+                    <button
+                      type="button"
+                      class="btn bg-light-secondary mb-1 mb-sm-0 mr-sm-2"
+                      (click)="onReset()"
+                      [disabled]="isSubmitting"
+                    >
+                      Limpar
+                    </button>
+                    <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+                      {{ isSubmitting ? 'Salvando...' : (isEditMode ? 'Salvar alterações' : 'Criar projeto') }}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

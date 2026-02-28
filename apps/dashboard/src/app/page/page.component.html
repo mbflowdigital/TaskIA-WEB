@@ -1,49 +1,64 @@
-<div class="row">
-  <div class="col-12">
-    <div class="content-header">Page</div>
-    <p class="content-sub-header mb-1">You can define your sub-header here</p>
-  </div>
-</div>
+<div class="ia-home">
 
-<div class="row">
-  <div class="col-12">
-    <!-- Kick start -->
-    <div id="kick-start" class="card">
-      <div class="card-header">
-        <h4 class="card-title">Kick start your project development !</h4>
-      </div>
-      <div class="card-content">
-        <div class="card-body">
-          <div class="card-text">
-            <p>Getting start with your project custom requirements using a ready template which is quite difficult and
-              time taking process, Apex Admin provides useful features to kick start your project development with no
-              efforts !</p>
-            <h6 class="text-bold-600">Newcomer</h6>
-            <p>If you're new to Angular you may feel overwhelmed by the quantity of new concepts to apprehend, so before
-              digging in this project you may want to start with <a href="https://angular.io/tutorial">this progressive
-                tutorial</a> that will guide you step by step into building a complete Angular application.</p>
-            <h6 class="text-bold-600">AngularJS veteran</h6>
-            <p>If you come from AngularJS and want to dig straight in the new version, you may want to take a look at
-              the <a href="https://angular.io/guide/ajs-quick-reference">AngularJS quick reference</a> </p>
-            <h6 class="text-bold-600">Cheatsheet</h6>
-            <p>Until you know the full Angular API by heart, you may want to keep this <a
-                href="https://angular.io/guide/cheatsheet">cheatsheet</a> that resumes the syntax and features on a
-              single page at hand.</p>
-            <h6 class="text-bold-600">Style guide</h6>
-            <p>This project follows the standard <a href="https://angular.io/styleguide">Angular style guide</a>.</p>
-            <p>More than just coding rules, this style guide also gives advices and best practices for a good
-              application architecture and is an **essential reading** for starters. Reading deeper, you can even find
-              many explanations for some design choices of the framework.</p>
-            <h6 class="text-bold-600">Going deeper</h6>
-            <p>Even though they are not mandatory, Angular was designed for the use of design patterns you may not be
-              accustomed to, like reactive programming, unidirectional data flow and centralized state management.</p>
-            <p>These concepts are difficult to resume in a few words, and despite being tightly related to each other
-              they concern specific parts of an application flow, each being quite deep to learn on its own.</p>
-            <p>You will essentially find here a list of good starting points to learn more on these subjects.</p>
-          </div>
-        </div>
-      </div>
+  <!-- Hero -->
+  <div class="ia-home__hero">
+    <div class="ia-home__avatar">
+      <i class="ft-cpu"></i>
     </div>
-    <!--/ Kick start -->
+    <h1 class="ia-home__title">Olá! Sou a IA do TaskIA</h1>
+    <p class="ia-home__subtitle">Posso ajudar você a criar e gerenciar projetos.<br>O que vamos construir hoje?</p>
   </div>
+
+  <!-- Chat input -->
+  <div class="ia-home__input-wrap">
+    <div class="ia-home__input-box" [class.ia-home__input-box--active]="projectName.length > 0">
+      <textarea
+        class="ia-home__textarea"
+        [(ngModel)]="projectName"
+        (keydown)="onKeydown($event)"
+        placeholder="Deseja criar um novo projeto? Digite o nome e começamos"
+        rows="1"
+        [disabled]="isLoading"
+        autofocus
+      ></textarea>
+      <button
+        class="ia-home__send-btn"
+        [class.ia-home__send-btn--active]="projectName.trim().length > 0"
+        [disabled]="isLoading || !projectName.trim()"
+        (click)="onSubmit()"
+        title="Criar projeto"
+      >
+        <i *ngIf="!isLoading" class="ft-arrow-right"></i>
+        <span *ngIf="isLoading" class="spinner"></span>
+      </button>
+    </div>
+    <p class="ia-home__hint">Pressione <kbd>Enter</kbd> para enviar</p>
+  </div>
+
+  <!-- Recent projects -->
+  <div class="ia-home__recent" *ngIf="!loadingProjects && recentProjects.length > 0">
+    <h6 class="ia-home__recent-title">
+      <i class="ft-clock"></i> Projetos recentes
+    </h6>
+    <div class="ia-home__recent-grid">
+      <button
+        class="ia-home__recent-card"
+        *ngFor="let p of recentProjects"
+        (click)="openProject(p.id)"
+      >
+        <div class="ia-home__recent-card-header">
+          <div class="ia-home__recent-icon">
+            <i class="ft-folder"></i>
+          </div>
+          <span class="ia-home__recent-status" [class.ia-home__recent-status--inactive]="!p.isActive">
+            {{ p.isActive ? 'Ativo' : 'Inativo' }}
+          </span>
+        </div>
+        <p class="ia-home__recent-name">{{ p.name }}</p>
+        <p class="ia-home__recent-desc" *ngIf="p.description">{{ p.description }}</p>
+        <span class="ia-home__recent-date"><i class="ft-calendar"></i> {{ formatDate(p.createdAt) }}</span>
+      </button>
+    </div>
+  </div>
+
 </div>
