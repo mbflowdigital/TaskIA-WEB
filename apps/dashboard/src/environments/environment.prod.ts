@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://localhost:44310'
+  apiUrl: 'http://brotherdigital-001-site2.atempurl.com'
 };
