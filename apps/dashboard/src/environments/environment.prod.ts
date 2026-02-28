@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://brotherdigital-001-site2.atempurl.com'
+  apiUrl: 'https://tasking.ia.br/api-proxy.php'
 };
