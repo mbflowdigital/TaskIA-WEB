@@ -101,8 +101,51 @@ jobs:
           </IfModule>
           EOF
 
-          # Copiar proxy PHP para a raiz do deploy
-          cp deploy/api-proxy.php deploy-output/api-proxy.php
+          # Gerar proxy PHP na raiz do deploy (evita mixed-content HTTPS->HTTP)
+          cat > deploy-output/api-proxy.php << 'PHPEOF'
+          <?php
+          define('API_BASE', 'http://brotherdigital-001-site2.atempurl.com');
+          $allowedOrigins = ['https://tasking.ia.br','http://localhost:4200','http://localhost:4201'];
+          $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+          if (in_array($origin, $allowedOrigins)) header("Access-Control-Allow-Origin: $origin");
+          header('Access-Control-Allow-Credentials: true');
+          header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
+          header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+          if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+          $path = '';
+          if (isset($_SERVER['PATH_INFO'])) {
+              $path = $_SERVER['PATH_INFO'];
+          } elseif (isset($_SERVER['REQUEST_URI'])) {
+              $scriptName = $_SERVER['SCRIPT_NAME'];
+              $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+              if (strpos($uri, $scriptName) === 0) $path = substr($uri, strlen($scriptName));
+          }
+          $queryString = $_SERVER['QUERY_STRING'] ?? '';
+          $targetUrl = API_BASE . $path . ($queryString ? "?$queryString" : '');
+          $ch = curl_init($targetUrl);
+          $method = strtoupper($_SERVER['REQUEST_METHOD']);
+          curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+          $body = file_get_contents('php://input');
+          if ($body !== '' && in_array($method, ['POST','PUT','PATCH'])) curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+          $fwd = [];
+          foreach (getallheaders() as $n => $v) {
+              if (in_array(strtolower($n), ['authorization','content-type','accept','x-requested-with'])) $fwd[] = "$n: $v";
+          }
+          curl_setopt($ch, CURLOPT_HTTPHEADER, $fwd);
+          curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+          curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+          curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+          curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+          $responseBody = curl_exec($ch);
+          $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+          $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+          $error = curl_error($ch);
+          curl_close($ch);
+          if ($error) { http_response_code(502); header('Content-Type: application/json'); echo json_encode(['error'=>'Proxy error: '.$error]); exit; }
+          http_response_code($httpCode ?: 500);
+          if ($contentType) header('Content-Type: ' . $contentType);
+          echo $responseBody;
+          PHPEOF
 
       # ─── Preview da estrutura gerada ────────────────────────────────────────
       - name: Verificar estrutura de deploy
