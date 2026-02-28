@@ -4,6 +4,7 @@ export interface UserDto {
   email: string;
   phone?: string;
   cpf?: string;
+  birthDate?: string;
   isEmailVerified: boolean;
   isActive: boolean;
   createdAt: string;
@@ -15,6 +16,7 @@ export interface CreateUserRequest {
   email: string;
   phone?: string;
   cpf?: string;
+  birthDate?: string | null;
 }
 
 export interface UpdateUserRequest {
@@ -22,6 +24,7 @@ export interface UpdateUserRequest {
   name: string;
   phone?: string;
   cpf?: string;
+  birthDate?: string | null;
 }
 
 export interface CheckEmailResponse {
