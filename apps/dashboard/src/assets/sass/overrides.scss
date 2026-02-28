@@ -1,5 +1,192 @@
 // Global Overrides Template Level Only
 
+// ============================================================
+// TaskIA Brand - Color Overrides
+// Navy: hsl(220, 60%, 18%) = #122549
+// Navy Dark: hsl(220, 35%, 10%) = #0F1E35
+// Accent Green: hsl(152, 55%, 42%) = #30A66F
+// ============================================================
+
+$taskia-navy:        #122549;
+$taskia-navy-dark:   #0F1E35;
+$taskia-navy-light:  #1B3461;
+$taskia-accent:      #30A66F;
+$taskia-accent-hover:#268F5C;
+$taskia-text-light:  rgba(255, 255, 255, 0.85);
+$taskia-text-muted:  rgba(255, 255, 255, 0.55);
+
+// ─── Sidebar ──────────────────────────────────────────────
+// Use attribute selector for higher specificity than _sidebar-content.scss rules
+.main-menu[data-background-color],
+.main-menu {
+  background: linear-gradient(180deg, $taskia-navy-dark 0%, $taskia-navy 100%) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
+
+  // Hide perfect-scrollbar scrollbar completely
+  .ps__rail-y,
+  .ps__rail-x,
+  .ps__thumb-y,
+  .ps__thumb-x {
+    display: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+  }
+
+  // Also hide native scrollbar on menu content
+  .main-menu-content {
+    overflow-x: hidden !important;
+    &::-webkit-scrollbar { display: none !important; }
+    scrollbar-width: none !important;
+  }
+
+  .navigation {
+    background: transparent !important;
+
+    // Seção de título (header)
+    .navigation-header span {
+      color: $taskia-text-muted !important;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    // Ícone separador
+    .navigation-header .feather {
+      color: $taskia-text-muted !important;
+    }
+
+    // Links do menu
+    li > a {
+      color: $taskia-text-light !important;
+      transition: all 0.2s ease !important;
+
+      i, .feather {
+        color: $taskia-text-muted !important;
+        transition: color 0.2s ease !important;
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.07) !important;
+        color: #fff !important;
+
+        i, .feather {
+          color: $taskia-accent !important;
+        }
+      }
+    }
+
+    // Item ativo
+    li.active > a,
+    li.open > a {
+      background: rgba($taskia-accent, 0.15) !important;
+      color: #fff !important;
+      border-right: 3px solid $taskia-accent !important;
+
+      i, .feather {
+        color: $taskia-accent !important;
+      }
+    }
+
+    // Submenu
+    .menu-content {
+      background: rgba(0, 0, 0, 0.15) !important;
+
+      li > a {
+        color: $taskia-text-muted !important;
+
+        &:hover, &.active {
+          color: #fff !important;
+          background: rgba(255,255,255,0.05) !important;
+        }
+      }
+
+      li.active > a {
+        color: $taskia-accent !important;
+      }
+    }
+  }
+
+  // Brand / Logo no topo do menu
+  .navbar-header {
+    background: $taskia-navy-dark !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+    .navbar-brand .brand-text {
+      color: #fff !important;
+      font-weight: 700 !important;
+    }
+  }
+}
+
+// ─── Navbar (top bar) ──────────────────────────────────────
+.header-navbar {
+  background: #fff !important;
+  box-shadow: 0 2px 12px rgba($taskia-navy, 0.08) !important;
+
+  .navbar-wrapper .navbar-container {
+    .nav-item {
+      > a, .nav-link {
+        color: $taskia-navy !important;
+
+        i, .feather {
+          color: $taskia-navy !important;
+        }
+
+        &:hover {
+          color: $taskia-accent !important;
+          i, .feather { color: $taskia-accent !important; }
+        }
+      }
+    }
+  }
+}
+
+// ─── Botões primários ──────────────────────────────────────
+.btn-primary {
+  background: $taskia-navy !important;
+  border-color: $taskia-navy !important;
+  color: #fff !important;
+
+  &:hover, &:focus {
+    background: $taskia-navy-light !important;
+    border-color: $taskia-navy-light !important;
+    box-shadow: 0 4px 14px rgba($taskia-navy, 0.35) !important;
+  }
+}
+
+.btn-success {
+  background: $taskia-accent !important;
+  border-color: $taskia-accent !important;
+  color: #fff !important;
+
+  &:hover, &:focus {
+    background: $taskia-accent-hover !important;
+    border-color: $taskia-accent-hover !important;
+  }
+}
+
+// ─── Links e badges ────────────────────────────────────────
+a:not(.btn):not(.nav-link):not(.dropdown-item) {
+  color: $taskia-navy;
+  &:hover { color: $taskia-accent; }
+}
+
+.badge-primary  { background-color: $taskia-navy  !important; }
+.badge-success  { background-color: $taskia-accent !important; }
+
+// ─── Card headers ──────────────────────────────────────────
+.card-header {
+  border-bottom: 2px solid rgba($taskia-navy, 0.06);
+}
+
+// ─── Breadcrumb ────────────────────────────────────────────
+.breadcrumb-item.active { color: $taskia-accent; }
+
+// ─── Pagination ────────────────────────────────────────────
+.page-item.active .page-link {
+  background-color: $taskia-navy !important;
+  border-color: $taskia-navy !important;
+}
 
 //------- ng-accordion -------
 .accordion {

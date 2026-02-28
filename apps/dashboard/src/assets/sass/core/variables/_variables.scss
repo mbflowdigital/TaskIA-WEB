@@ -27,11 +27,13 @@ $grays: map-merge(
   $grays
 );
 
-$primary: #975AFF !default;
-$success: #40C057 !default;
-$info: #2F8BE6 !default;
-$warning: #F77E17 !default;
-$danger: #F55252 !default;
+// TaskIA Brand Colors (matching landing page)
+$primary:   #122549 !default; // Navy hsl(220, 60%, 18%)
+$accent:    #30A66F !default; // Green hsl(152, 55%, 42%)
+$success:   #30A66F !default; // Green = accent
+$info:      #2F8BE6 !default;
+$warning:   #F77E17 !default;
+$danger:    #F55252 !default;
 $secondary: #616D89 !default;
 $light: #DBDEE5 !default;
 $dark: #1A051D !default;

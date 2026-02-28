@@ -19,7 +19,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedLanguageText = "Português";
   toggleClass = "ft-maximize";
   placement = "bottom-right";
-  logoUrl = 'assets/img/logo.png';
+  logoUrl = 'assets/img/ai-logo.png';
   menuPosition = 'Side';
   isSmallScreen = false;
   protected innerWidth: any;
@@ -111,12 +111,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
       this.menuPosition = this.config.layout.menuPosition;
     }
 
-    if (this.config.layout.variant === "Light") {
-      this.logoUrl = 'assets/img/logo-dark.png';
-    }
-    else {
-      this.logoUrl = 'assets/img/logo.png';
-    }
+    this.logoUrl = 'assets/img/ai-logo.png';
 
     if (this.config.layout.variant === "Transparent") {
       this.transparentBGClass = this.config.layout.sidebar.backgroundColor;

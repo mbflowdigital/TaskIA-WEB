@@ -54,9 +54,9 @@ export class ConfigService {
         sidebar: {
           collapsed: false,
           size: "sidebar-md",
-          backgroundColor: "man-of-steel",
-          backgroundImage: true,
-          backgroundImageURL: "assets/img/sidebar-bg/01.jpg"
+          backgroundColor: "primary",
+          backgroundImage: false,
+          backgroundImageURL: ""
         }
       }
     };
