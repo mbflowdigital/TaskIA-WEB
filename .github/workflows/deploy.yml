@@ -17,8 +17,7 @@ jobs:
       # ─── pnpm ───────────────────────────────────────────────────────────────
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        # versao lida automaticamente do campo "packageManager" no package.json
 
       # ─── Node ───────────────────────────────────────────────────────────────
       - name: Setup Node.js
