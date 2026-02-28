@@ -272,3 +272,99 @@ $bg-light: hsl(220, 20%, 98%);
   z-index: 9999;
 }
 
+// ══ First-access modal ════════════════════════════════════════════════════
+.fa-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1.5rem;
+}
+
+.fa-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .25);
+
+  &__header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  &__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba($accent, .12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto .75rem;
+
+    i {
+      font-size: 1.4rem;
+      color: $accent;
+    }
+  }
+
+  &__title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: $navy;
+    margin-bottom: .25rem;
+  }
+
+  &__subtitle {
+    font-size: .875rem;
+    color: $text-muted;
+    margin: 0;
+  }
+
+  &__success,
+  &__error {
+    font-size: .875rem;
+    margin-bottom: 1rem;
+  }
+
+  &__actions {
+    display: flex;
+    gap: .75rem;
+    margin-top: 1.5rem;
+  }
+
+  &__cancel {
+    flex: 1;
+    padding: .6rem 1rem;
+    border: 1.5px solid $border;
+    border-radius: 8px;
+    background: #fff;
+    color: $text-muted;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .2s;
+
+    &:hover:not(:disabled) { border-color: $navy; color: $navy; }
+    &:disabled { opacity: .5; cursor: not-allowed; }
+  }
+
+  &__confirm {
+    flex: 1;
+    padding: .6rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: $accent;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+
+    &:hover:not(:disabled) { background: $accent-hover; }
+    &:disabled { opacity: .6; cursor: not-allowed; }
+  }
+}

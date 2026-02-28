@@ -3,6 +3,8 @@ export interface UserDto {
   name: string;
   email: string;
   phone?: string;
+  cpf?: string;
+  birthDate?: string;
   isEmailVerified: boolean;
   isActive: boolean;
   createdAt: string;
@@ -13,12 +15,16 @@ export interface CreateUserRequest {
   name: string;
   email: string;
   phone?: string;
+  cpf?: string;
+  birthDate?: string | null;
 }
 
 export interface UpdateUserRequest {
   id: string;
   name: string;
   phone?: string;
+  cpf?: string;
+  birthDate?: string | null;
 }
 
 export interface CheckEmailResponse {

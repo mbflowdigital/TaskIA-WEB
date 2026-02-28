@@ -18,5 +18,21 @@ export const Full_ROUTES: Routes = [
   {
     path: 'users/:id/edit',
     loadComponent: () => import('../../pages/users/users-create/users-create.component').then(m => m.UsersCreateComponent)
+  },
+  {
+    path: 'projects',
+    loadComponent: () => import('../../pages/projects/projects-list/projects-list.component').then(m => m.ProjectsListComponent)
+  },
+  {
+    path: 'projects/create',
+    loadComponent: () => import('../../pages/projects/projects-create/projects-create.component').then(m => m.ProjectsCreateComponent)
+  },
+  {
+    path: 'projects/:id/edit',
+    loadComponent: () => import('../../pages/projects/projects-create/projects-create.component').then(m => m.ProjectsCreateComponent)
+  },
+  {
+    path: 'projects/:id',
+    loadComponent: () => import('../../pages/projects/project-detail/project-detail.component').then(m => m.ProjectDetailComponent)
   }
 ];

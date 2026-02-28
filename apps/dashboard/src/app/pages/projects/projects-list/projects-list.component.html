@@ -1,0 +1,211 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section id="projects-list">
+      <div class="row">
+        <div class="col-12">
+          <p class="content-sub-header mb-1">Gerencie e revise os projetos cadastrados</p>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="card-title mb-0">Filtros</h4>
+            </div>
+            <div class="card-content">
+              <div class="card-body">
+                <form (submit)="$event.preventDefault()">
+                  <div class="row">
+                    <div class="col-12 col-sm-6 col-lg-3">
+                      <div class="form-group">
+                        <label for="projects-list-status">Status</label>
+                        <select
+                          id="projects-list-status"
+                          class="form-control form-control-sm"
+                          [(ngModel)]="statusFilter"
+                          (ngModelChange)="onFilterChange()"
+                          name="statusFilter"
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="Active">Ativo</option>
+                          <option value="Inactive">Inativo</option>
+                          <option value="Draft">Rascunho</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-3">
+                      <div class="form-group mb-0">
+                        <label class="invisible">Ações</label>
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm btn-block"
+                          (click)="clearFilters()"
+                          [disabled]="isLoading"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <div class="w-100">
+                <div class="d-flex align-items-start justify-content-between flex-column flex-md-row">
+                  <div>
+                    <h4 class="card-title mb-0">Projetos</h4>
+                    <small class="text-muted">{{ filteredProjects.length }} resultado(s)</small>
+                  </div>
+                  <div class="d-flex align-items-center mt-1 mt-md-0">
+                    <a class="btn btn-primary btn-sm mr-1" routerLink="/projects/create">Criar projeto</a>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="reload()" [disabled]="isLoading">
+                      Atualizar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between flex-column flex-md-row mt-2">
+                  <label class="mb-0 text-muted">
+                    Mostrar
+                    <select
+                      name="projects-list-select"
+                      class="form-control form-control-sm d-inline-block width-100 p-right-25 pl-4 mx-1"
+                      [ngModel]="limit"
+                      (change)="updateLimit($event)"
+                    >
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                    registros
+                  </label>
+                  <div class="d-flex align-items-center mt-1 mt-md-0">
+                    <span class="text-muted mr-1">Buscar:</span>
+                    <input
+                      class="form-control form-control-sm width-200"
+                      type="text"
+                      [value]="searchValue"
+                      (keyup)="filterUpdate($event)"
+                      placeholder="Buscar por id, nome..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-content">
+              <div class="card-body">
+                <div *ngIf="isLoading" class="mt-1">Carregando projetos...</div>
+
+                <div *ngIf="loadError" class="alert alert-danger mt-1">
+                  {{ loadError }}
+                </div>
+
+                <div *ngIf="actionError" class="alert alert-danger mt-1">
+                  {{ actionError }}
+                </div>
+
+                <div class="table-responsive" *ngIf="!isLoading && !loadError">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th style="min-width: 220px;">Projeto</th>
+                        <th>Descrição</th>
+                        <th>Criado em</th>
+                        <th>Status</th>
+                        <th style="width: 1%; white-space: nowrap;">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let project of visibleRows; trackBy: trackById">
+                        <td>
+                          <div class="d-flex align-items-center">
+                            <span class="avatar-icon mr-1">
+                              <i class="ft-briefcase font-medium-3"></i>
+                            </span>
+                            <div class="cell-line-height" style="min-width: 0;">
+                              <div class="line-height-1 mb-0 font-weight-bold text-truncate" style="max-width: 260px;">
+                                {{ project.name }}
+                              </div>
+                              <small class="text-muted text-truncate d-block" style="max-width: 260px;">
+                                {{ project.id }}
+                              </small>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="text-truncate" style="max-width: 300px;">
+                          {{ project.description || '—' }}
+                        </td>
+                        <td>{{ project.createdAt | date: 'short' }}</td>
+                        <td>
+                          <span class="badge" [ngClass]="{
+                            'bg-light-success': project.status === 'Active',
+                            'bg-light-warning': project.status === 'Inactive',
+                            'bg-light-secondary': project.status === 'Draft'
+                          }">
+                            {{ project.status === 'Active' ? 'Ativo' : project.status === 'Inactive' ? 'Inativo' : 'Rascunho' }}
+                          </span>
+                        </td>
+                        <td class="text-right" style="white-space: nowrap;">
+                          <div class="position-relative d-inline-block">
+                            <button
+                              type="button"
+                              class="btn btn-outline-secondary btn-sm"
+                              (click)="toggleActions(project.id, $event)"
+                              [disabled]="deletingProjectId === project.id"
+                            >
+                              Ações
+                            </button>
+                            <div *ngIf="openActionsForId === project.id" class="dropdown-menu show actions-menu"
+                              [style.top.px]="dropdownPos?.top"
+                              [style.left.px]="dropdownPos?.left">
+                              <button type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
+                              <button
+                                type="button"
+                                class="dropdown-item"
+                                (click)="toggleProjectStatus(project)"
+                                [disabled]="togglingStatusId === project.id"
+                              >
+                                {{ togglingStatusId === project.id ? 'Aguarde...' : (project.status === 'Active' ? 'Inativar' : 'Ativar') }}
+                              </button>
+                              <div class="dropdown-divider"></div>
+                              <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                (click)="deleteProject(project)"
+                                [disabled]="deletingProjectId === project.id"
+                              >
+                                {{ deletingProjectId === project.id ? 'Cancelando...' : 'Cancelar' }}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr *ngIf="visibleRows.length === 0">
+                        <td colspan="5" class="text-center text-muted py-2">Nenhum projeto encontrado</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

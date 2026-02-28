@@ -272,3 +272,8 @@ html body.layout-dark {
     border: 0;
   }
 }
+
+// ─── Projetos dinâmicos: recuo extra em relação a Listagem ────────────────
+.main-menu .navigation li.project-sub-item > a {
+  padding-left: 3.8rem !important;
+}

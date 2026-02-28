@@ -31,7 +31,9 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
     email: new UntypedFormControl('', [Validators.required, Validators.email]),
-    phone: new UntypedFormControl('')
+    cpf: new UntypedFormControl(''),
+    phone: new UntypedFormControl(''),
+    birthDate: new UntypedFormControl('')
   });
 
   constructor(
@@ -65,11 +67,19 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
             return;
           }
 
+          const isoMin = '0001-01-01';
+          const rawBirth = result.data.birthDate ?? '';
+          const birthVal = rawBirth && !rawBirth.startsWith(isoMin)
+            ? rawBirth.substring(0, 10)
+            : '';
+
           this.form.patchValue({
             name: result.data.name,
             email: result.data.email,
-            phone: result.data.phone ?? ''
-          });
+            phone: result.data.phone ?? '',
+            cpf: result.data.cpf ?? '',
+            birthDate: birthVal
+          }, { emitEvent: false });
         },
         error: (err: unknown) => {
           this.isLoading = false;
@@ -102,6 +112,12 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
 
     const name = String(this.form.getRawValue().name ?? '').trim();
     const phone = String(this.form.getRawValue().phone ?? '').trim() || undefined;
+    const cpf = String(this.form.getRawValue().cpf ?? '').trim();
+    const birthDateRaw = String(this.form.getRawValue().birthDate ?? '').trim();
+    // Send date as-is (yyyy-MM-dd) to avoid UTC timezone shifting
+    const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : null;
+
+    console.debug('[users-create] submit payload →', { name, phone, cpf, birthDate });
 
     if (this.isEditMode) {
       const id = this.editingUserId;
@@ -112,7 +128,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
       }
 
       this.usersApi
-        .update(id, { id, name, phone })
+        .update(id, { id, name, phone, cpf, birthDate })
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (result) => {
@@ -142,7 +158,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     const email = String(this.form.getRawValue().email ?? '').trim();
 
     this.usersApi
-      .create({ name, email, phone })
+      .create({ name, email, phone, cpf, birthDate })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -175,7 +191,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     this.submitErrors = [];
     this.submitSuccess = undefined;
     this.loadError = undefined;
-    this.form.reset({ name: '', email: '', phone: '' });
+    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '' });
 
     if (this.isEditMode) {
       this.form.controls['email'].disable();
