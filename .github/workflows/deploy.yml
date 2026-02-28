@@ -1,0 +1,140 @@
+name: Build & Deploy - tasking.ia.br
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─── Checkout ───────────────────────────────────────────────────────────
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      # ─── pnpm ───────────────────────────────────────────────────────────────
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # versao lida automaticamente do campo "packageManager" no package.json
+
+      # ─── Node ───────────────────────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          # cache gerenciado pelo pnpm/action-setup automaticamente
+
+      # ─── Dependencias ───────────────────────────────────────────────────────
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      # ─── Build Landing (Vite/React) ──────────────────────────────────────── 
+      - name: Build Landing Page
+        run: pnpm --filter landing build
+        env:
+          VITE_DASHBOARD_URL: https://tasking.ia.br/dashboard
+
+      # ─── Build Dashboard (Angular) ───────────────────────────────────────── 
+      - name: Build Dashboard
+        run: pnpm --filter dashboard build:prod
+        # baseHref /dashboard/ ja esta configurado no angular.json (producao)
+
+      # ─── Organizar arquivos para deploy ─────────────────────────────────────
+      - name: Organizar estrutura de deploy
+        run: |
+          mkdir -p deploy-output/dashboard
+
+          # Copiar landing para raiz
+          cp -r apps/landing/dist/. deploy-output/
+
+          # Copiar dashboard para /dashboard/
+          cp -r apps/dashboard/dist/. deploy-output/dashboard/
+
+          # Criar .htaccess para raiz
+          cat > deploy-output/.htaccess << 'EOF'
+          RewriteEngine On
+
+          # Redirecionar HTTP para HTTPS
+          RewriteCond %{HTTPS} off
+          RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+          # Nao redirecionar rotas da pasta /dashboard/
+          RewriteCond %{REQUEST_URI} ^/dashboard/
+          RewriteRule ^ - [L]
+
+          # SPA Landing - redirecionar para index.html
+          RewriteRule ^index\.html$ - [L]
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteCond %{REQUEST_URI} !^/dashboard/
+          RewriteRule . /index.html [L]
+
+          <IfModule mod_deflate.c>
+            AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+          </IfModule>
+
+          <IfModule mod_expires.c>
+            ExpiresActive On
+            ExpiresByType image/png "access plus 1 year"
+            ExpiresByType image/jpeg "access plus 1 year"
+            ExpiresByType image/webp "access plus 1 year"
+            ExpiresByType text/css "access plus 1 month"
+            ExpiresByType application/javascript "access plus 1 month"
+          </IfModule>
+          EOF
+
+          # Criar .htaccess para /dashboard/
+          cat > deploy-output/dashboard/.htaccess << 'EOF'
+          RewriteEngine On
+          RewriteBase /dashboard/
+
+          # SPA Dashboard - redirecionar para index.html
+          RewriteRule ^index\.html$ - [L]
+          RewriteCond %{REQUEST_FILENAME} !-f
+          RewriteCond %{REQUEST_FILENAME} !-d
+          RewriteRule . /dashboard/index.html [L]
+
+          <IfModule mod_deflate.c>
+            AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+          </IfModule>
+          EOF
+
+          # Copiar proxy PHP para a raiz do deploy
+          cp deploy/api-proxy.php deploy-output/api-proxy.php
+
+      # ─── Preview da estrutura gerada ────────────────────────────────────────
+      - name: Verificar estrutura de deploy
+        run: |
+          echo "=== Estrutura deploy-output/ ==="
+          find deploy-output -maxdepth 2 | head -40
+          echo ""
+          echo "=== .htaccess raiz ==="
+          cat deploy-output/.htaccess
+
+      # ─── Deploy Landing via FTP ──────────────────────────────────────────────
+      - name: Deploy Landing (raiz)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy-output/
+          server-dir: /public_html/
+          exclude: |
+            **/dashboard/**
+          dangerous-clean-slate: false
+          log-level: minimal
+
+      # ─── Deploy Dashboard via FTP ────────────────────────────────────────────
+      - name: Deploy Dashboard (/dashboard/)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy-output/dashboard/
+          server-dir: /public_html/dashboard/
+          dangerous-clean-slate: false
+          log-level: minimal
