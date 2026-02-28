@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
+          # cache gerenciado pelo pnpm/action-setup automaticamente
 
       # ─── Dependencias ───────────────────────────────────────────────────────
       - name: Instalar dependencias
