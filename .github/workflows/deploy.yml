@@ -101,9 +101,6 @@ jobs:
           </IfModule>
           EOF
 
-          # Copiar proxy PHP para a raiz do deploy
-          cp deploy/api-proxy.php deploy-output/api-proxy.php
-
       # ─── Preview da estrutura gerada ────────────────────────────────────────
       - name: Verificar estrutura de deploy
         run: |
