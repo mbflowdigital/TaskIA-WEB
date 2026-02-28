@@ -43,4 +43,4 @@ out/
 
 # Misc
 *.lock
-pnpm-lock.yaml
+# pnpm-lock.yaml deve ser commitado para CI/CD funcionar
