@@ -1,0 +1,245 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section id="users-list">
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex align-items-start justify-content-between flex-column flex-md-row">
+            <div>
+
+              <p class="content-sub-header mb-1">Gerencie e revise contas de usuários</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="card-title mb-0">Filtros</h4>
+            </div>
+            <div class="card-content">
+              <div class="card-body">
+                <form (submit)="$event.preventDefault()">
+                  <div class="row">
+                    <div class="col-12 col-sm-6 col-lg-3">
+                      <div class="form-group">
+                        <label for="users-list-verified">Verificado</label>
+                        <select
+                          id="users-list-verified"
+                          class="form-control form-control-sm"
+                          [(ngModel)]="verifiedFilter"
+                          (ngModelChange)="onFilterChange()"
+                          name="verifiedFilter"
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="Yes">Sim</option>
+                          <option value="No">Não</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-3">
+                      <div class="form-group">
+                        <label for="users-list-role">Perfil</label>
+                        <select
+                          id="users-list-role"
+                          class="form-control form-control-sm"
+                          [(ngModel)]="roleFilter"
+                          (ngModelChange)="onFilterChange()"
+                          name="roleFilter"
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="User">Usuário</option>
+                          <option value="Staff">Equipe</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-3">
+                      <div class="form-group">
+                        <label for="users-list-status">Status</label>
+                        <select
+                          id="users-list-status"
+                          class="form-control form-control-sm"
+                          [(ngModel)]="statusFilter"
+                          (ngModelChange)="onFilterChange()"
+                          name="statusFilter"
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="Active">Ativo</option>
+                          <option value="Close">Inativo</option>
+                          <option value="Banned">Banido</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-3">
+                      <div class="form-group mb-0">
+                        <label class="invisible">Ações</label>
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm btn-block"
+                          (click)="clearFilters()"
+                          [disabled]="isLoading"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <div class="w-100">
+                <div class="d-flex align-items-start justify-content-between flex-column flex-md-row">
+                  <div>
+                    <h4 class="card-title mb-0">Usuários</h4>
+                    <small class="text-muted">{{ filteredUsers.length }} resultado(s)</small>
+                  </div>
+
+                  <div class="d-flex align-items-center mt-1 mt-md-0">
+                    <a class="btn btn-primary btn-sm mr-1" routerLink="/users/create">Criar usuário</a>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="reload()" [disabled]="isLoading">
+                      Atualizar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between flex-column flex-md-row mt-2">
+                  <label class="mb-0 text-muted">
+                    Mostrar
+                    <select
+                      name="users-list-select"
+                      class="form-control form-control-sm d-inline-block width-100 p-right-25 pl-4 mx-1"
+                      [ngModel]="limit"
+                      (change)="updateLimit($event)"
+                    >
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                    registros
+                  </label>
+
+                  <div class="d-flex align-items-center mt-1 mt-md-0">
+                    <span class="text-muted mr-1">Buscar:</span>
+                    <input
+                      class="form-control form-control-sm width-200"
+                      type="text"
+                      [value]="searchValue"
+                      (keyup)="filterUpdate($event)"
+                      placeholder="Buscar por id, nome, email..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-content">
+              <div class="card-body">
+                <div *ngIf="isLoading" class="mt-1">Carregando usuários...</div>
+
+                <div *ngIf="loadError" class="alert alert-danger mt-1">
+                  {{ loadError }}
+                </div>
+
+                <div class="table-responsive" *ngIf="!isLoading && !loadError">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th style="min-width: 220px;">Usuário</th>
+                        <th style="min-width: 220px;">Email</th>
+                        <th>Última atividade</th>
+                        <th>Verificado</th>
+                        <th>Perfil</th>
+                        <th>Status</th>
+                        <th style="width: 1%; white-space: nowrap;">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let user of visibleRows; let i = index; trackBy: trackById">
+                        <td>
+                          <div class="d-flex align-items-center">
+                            <img
+                              class="rounded-circle mr-1"
+                              [src]="getAvatarSrc(i)"
+                              height="32"
+                              width="32"
+                              alt="user avatar"
+                            />
+                            <div class="cell-line-height" style="min-width: 0;">
+                              <div class="line-height-1 mb-0 text-truncate" style="max-width: 260px;">
+                                {{ user.name }}
+                              </div>
+                              <small class="text-muted text-truncate d-block" style="max-width: 260px;">
+                                {{ user.id }}
+                              </small>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="text-truncate" style="max-width: 260px;">{{ user.email }}</td>
+                        <td>{{ (user.updatedAt || user.createdAt) | date : 'short' }}</td>
+                        <td>
+                          <span class="badge" [ngClass]="user.isEmailVerified ? 'bg-light-success' : 'bg-light-warning'">
+                            {{ user.isEmailVerified ? 'Sim' : 'Não' }}
+                          </span>
+                        </td>
+                        <td><span class="badge bg-light-secondary">Usuário</span></td>
+                        <td>
+                          <span
+                            class="badge"
+                            [ngClass]="{ 'bg-light-success': user.isActive, 'bg-light-warning': !user.isActive }"
+                          >
+                            {{ user.isActive ? 'Ativo' : 'Inativo' }}
+                          </span>
+                        </td>
+                        <td class="text-right" style="white-space: nowrap;">
+                          <div class="position-relative d-inline-block">
+                            <button
+                              type="button"
+                              class="btn btn-outline-secondary btn-sm"
+                              (click)="toggleActions(user.id)"
+                              [disabled]="deletingUserId === user.id"
+                            >
+                              Ações
+                            </button>
+
+                            <div *ngIf="openActionsForId === user.id" class="dropdown-menu show actions-menu">
+                              <button type="button" class="dropdown-item" (click)="editUser(user)">Editar</button>
+                              <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                (click)="deleteUser(user)"
+                                [disabled]="deletingUserId === user.id"
+                              >
+                                {{ deletingUserId === user.id ? 'Apagando...' : 'Apagar' }}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr *ngIf="visibleRows.length === 0">
+                        <td colspan="7" class="text-center text-muted">Nenhum usuário encontrado</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

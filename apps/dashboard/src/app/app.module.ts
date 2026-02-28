@@ -1,5 +1,7 @@
-import { NgModule } from "@angular/core";
+import { LOCALE_ID, NgModule } from "@angular/core";
 import { BrowserAnimationsModule } from "@angular/platform-browser/animations";
+import { registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
 
 // Firebase imports comentados - API mudou no Angular Fire 17+
 // import { AngularFireModule } from "@angular/fire";
@@ -26,6 +28,8 @@ import { FullLayoutComponent } from "./layouts/full/full-layout.component";
 import { AuthService } from "./shared/auth/auth.service";
 import { AuthGuard } from "./shared/auth/auth-guard.service";
 import { WINDOW_PROVIDERS } from './shared/services/window.service';
+
+registerLocaleData(localePt, 'pt-BR');
 
 var firebaseConfig = {
   apiKey: "YOUR_API_KEY", //YOUR_API_KEY
@@ -72,6 +76,7 @@ export function createTranslateLoader(http: HttpClient) {
   providers: [
     AuthService,
     AuthGuard,
+    { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: PERFECT_SCROLLBAR_CONFIG, useValue: DEFAULT_PERFECT_SCROLLBAR_CONFIG },
     WINDOW_PROVIDERS
   ],
