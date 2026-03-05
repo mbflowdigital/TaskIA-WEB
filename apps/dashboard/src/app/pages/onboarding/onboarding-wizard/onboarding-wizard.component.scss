@@ -1,0 +1,384 @@
+﻿/* ═══════════════════════════════════════════════════════════
+   Onboarding Wizard — TaskIA Design System
+   Mesmas variáveis do login-page.component.scss
+═══════════════════════════════════════════════════════════ */
+$navy:        hsl(220, 60%, 18%);
+$navy-dark:   hsl(220, 35%, 10%);
+$accent:      hsl(152, 55%, 42%);
+$accent-hover:hsl(152, 60%, 35%);
+$text:        hsl(220, 30%, 12%);
+$text-muted:  hsl(220, 10%, 50%);
+$border:      hsl(220, 15%, 90%);
+$error:       hsl(0, 70%, 55%);
+$bg-light:    hsl(220, 20%, 98%);
+
+/* ── Wrapper ──────────────────────────────────────────────── */
+.taskia-onboarding {
+  min-height: 100vh;
+  background: linear-gradient(135deg, $navy-dark 0%, hsl(220, 38%, 14%) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.onboarding-card {
+  display: grid;
+  grid-template-columns: 38% 62%;
+  width: 100%;
+  max-width: 900px;
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  min-height: 560px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+}
+
+/* ── Left: Brand ──────────────────────────────────────────── */
+.onboarding-brand {
+  background: linear-gradient(160deg, $navy-dark 0%, $navy 100%);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  @media (max-width: 768px) { display: none; }
+}
+
+.brand-top {
+  .brand-logo {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 12px rgba(63, 156, 118, 0.3));
+  }
+
+  .brand-title {
+    font-size: 1.625rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-subtitle {
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.5;
+  }
+}
+
+.brand-steps {
+  .steps-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 1rem;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.4);
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+
+      &.active {
+        background: $accent;
+        border-color: $accent;
+        color: white;
+        box-shadow: 0 0 12px rgba(63, 156, 118, 0.4);
+      }
+
+      &.done {
+        background: rgba($accent, 0.15);
+        border-color: $accent;
+        color: $accent;
+      }
+    }
+
+    .step-name {
+      font-size: 0.8125rem;
+      color: rgba(255, 255, 255, 0.45);
+      transition: color 0.3s ease;
+
+      &.active { color: white; font-weight: 600; }
+      &.done   { color: rgba(255, 255, 255, 0.7); }
+    }
+  }
+}
+
+/* ── Right: Content ───────────────────────────────────────── */
+.onboarding-content {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.progress-bar-wrap {
+  padding: 1.5rem 2.5rem 0;
+
+  .progress {
+    height: 4px;
+    background: $border;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: $accent;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+}
+
+.step-body {
+  flex: 1;
+  padding: 1.75rem 2.5rem 2rem;
+  transition: opacity 0.2s ease;
+
+  &.animating { opacity: 0; }
+
+  @media (max-width: 576px) { padding: 1.5rem; }
+}
+
+.step-heading {
+  margin-bottom: 1.5rem;
+
+  h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: $text;
+    margin-bottom: 0.25rem;
+  }
+
+  p {
+    font-size: 0.8125rem;
+    color: $text-muted;
+    margin: 0;
+  }
+}
+
+/* ── Welcome ──────────────────────────────────────────────── */
+.welcome-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 0.5rem;
+
+  .welcome-icon-wrap {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba($accent, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+
+    i { font-size: 1.6rem; color: $accent; }
+  }
+
+  h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: $text;
+    margin-bottom: 0.4rem;
+  }
+
+  p {
+    font-size: 0.875rem;
+    color: $text-muted;
+    max-width: 320px;
+    line-height: 1.6;
+    margin: 0 auto 1.5rem;
+  }
+
+  .check-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2rem;
+    text-align: left;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.35rem 0;
+      font-size: 0.8125rem;
+      color: $text;
+
+      i { color: $accent; font-size: 0.875rem; }
+    }
+  }
+}
+
+/* ── Inputs ───────────────────────────────────────────────── */
+.form-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: $text;
+  margin-bottom: 0.4rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.72rem 1rem;
+  border: 1px solid $border;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  color: $text;
+  transition: all 0.2s ease;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: $navy;
+    box-shadow: 0 0 0 3px rgba(28, 45, 71, 0.08);
+  }
+
+  &::placeholder { color: $text-muted; }
+
+  &.input-error {
+    border-color: $error;
+    &:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1); }
+  }
+}
+
+.input-error-message {
+  color: $error;
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+}
+
+.form-group { margin-bottom: 1rem; }
+
+/* ── Preview ──────────────────────────────────────────────── */
+.preview-block {
+  background: $bg-light;
+  border: 1px solid $border;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+
+  .preview-block-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: $text-muted;
+    margin-bottom: 0.6rem;
+  }
+
+  .preview-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid $border;
+    font-size: 0.8125rem;
+
+    &:last-child { border-bottom: none; }
+
+    .p-label { color: $text-muted; white-space: nowrap; }
+    .p-value { color: $text; font-weight: 500; text-align: right; }
+  }
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+.step-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid $border;
+}
+
+.btn-back {
+  padding: 0.65rem 1.25rem;
+  border: 1px solid $border;
+  border-radius: 8px;
+  background: white;
+  color: $text-muted;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) { border-color: $navy; color: $navy; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-next {
+  padding: 0.72rem 1.75rem;
+  background: $navy;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(28, 45, 71, 0.2);
+
+  &:hover:not(:disabled) {
+    background: $navy-dark;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(28, 45, 71, 0.3);
+  }
+
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  &.btn-finish {
+    background: $accent;
+    box-shadow: 0 2px 8px rgba(63, 156, 118, 0.25);
+
+    &:hover:not(:disabled) {
+      background: $accent-hover;
+      box-shadow: 0 4px 16px rgba(63, 156, 118, 0.35);
+    }
+  }
+}
+
+/* ── Alert ────────────────────────────────────────────────── */
+.alert-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: hsl(0, 70%, 96%);
+  border: 1px solid hsl(0, 70%, 90%);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: $error;
+  font-size: 0.8125rem;
+  margin-top: 1rem;
+
+  i { font-size: 0.9rem; }
+}

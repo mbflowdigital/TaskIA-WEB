@@ -96,8 +96,15 @@ export class LoginPageComponent {
           email: data.email,
           cpf: data.cpf,
           phone: data.phone,
-          role: data.role
+          role: data.role,
+          requiresOnboarding: data.requiresOnboarding
         });
+
+        // ADM sem empresa → wizard de onboarding
+        if (data.requiresOnboarding) {
+          this.router.navigate(['/onboarding']);
+          return;
+        }
 
         const user = this.authSession.getUser();
         if (user && this.onboarding.isAdminMock(user) && !this.onboarding.isCompanyOnboardingCompleted(user.userId)) {

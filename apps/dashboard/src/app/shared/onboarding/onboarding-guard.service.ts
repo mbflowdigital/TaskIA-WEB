@@ -13,18 +13,23 @@ export class OnboardingGuard implements CanActivateChild {
   ) {}
 
   canActivateChild(_: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean | UrlTree {
-    if (state.url.startsWith('/onboarding/company')) return true;
+    // Deixa as rotas de onboarding passarem livremente
+    if (state.url.startsWith('/onboarding')) return true;
 
     const user = this.authSession.getUser();
     if (!user) return true;
 
-    // Só aplica onboarding para admins.
-    if (!this.onboarding.isAdminMock(user)) return true;
+    // ── Nova lógica: flag do backend (ADM sem empresa vinculada) ──
+    if (this.authSession.requiresOnboarding()) {
+      return this.router.parseUrl('/onboarding');
+    }
 
-    // Já completou? segue normal.
-    if (this.onboarding.isCompanyOnboardingCompleted(user.userId)) return true;
+    // ── Lógica legada: localStorage para fluxo de empresa (ADM_MASTER) ──
+    // Aplica apenas para ADM_MASTER; ADM usa o novo fluxo acima.
+    if (user.role === 'ADM_MASTER' && !this.onboarding.isCompanyOnboardingCompleted(user.userId)) {
+      return this.router.parseUrl('/onboarding/company');
+    }
 
-    // Não completou: força onboarding.
-    return this.router.parseUrl('/onboarding/company');
+    return true;
   }
 }

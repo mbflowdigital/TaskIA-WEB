@@ -17,6 +17,14 @@ const appRoutes: Routes = [
     pathMatch: 'full',
   },
   {
+    // Wizard de onboarding ADM — full-screen sem sidebar/navbar
+    path: 'onboarding',
+    loadComponent: () =>
+      import('./pages/onboarding/onboarding-wizard/onboarding-wizard.component').then(
+        m => m.OnboardingWizardComponent
+      )
+  },
+  {
     path: '',
     component: FullLayoutComponent,
     data: { title: 'full Views' },

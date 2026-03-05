@@ -1,0 +1,293 @@
+﻿<div class="taskia-onboarding">
+  <div class="onboarding-card">
+
+    <!-- ── Left: Brand / Steps ──────────────────────────────── -->
+    <div class="onboarding-brand">
+      <div class="brand-top">
+        <img src="assets/img/ai-logo.png" alt="TaskIA" class="brand-logo" />
+        <h1 class="brand-title">TaskIA</h1>
+        <p class="brand-subtitle">Configure sua empresa e comece a usar o sistema</p>
+      </div>
+
+      <div class="brand-steps">
+        <p class="steps-title">Progresso</p>
+
+        <div class="step-item">
+          <div class="step-dot" [class.active]="currentStep === 'welcome'" [class.done]="stepIndex > 0">
+            {{ stepIndex > 0 ? '✓' : '1' }}
+          </div>
+          <span class="step-name" [class.active]="currentStep === 'welcome'" [class.done]="stepIndex > 0">Boas-vindas</span>
+        </div>
+
+        <div class="step-item">
+          <div class="step-dot" [class.active]="currentStep === 'company'" [class.done]="stepIndex > 1">
+            {{ stepIndex > 1 ? '✓' : '2' }}
+          </div>
+          <span class="step-name" [class.active]="currentStep === 'company'" [class.done]="stepIndex > 1">Dados da empresa</span>
+        </div>
+
+        <div class="step-item">
+          <div class="step-dot" [class.active]="currentStep === 'location'" [class.done]="stepIndex > 2">
+            {{ stepIndex > 2 ? '✓' : '3' }}
+          </div>
+          <span class="step-name" [class.active]="currentStep === 'location'" [class.done]="stepIndex > 2">Localização</span>
+        </div>
+
+        <div class="step-item">
+          <div class="step-dot" [class.active]="currentStep === 'team'">4</div>
+          <span class="step-name" [class.active]="currentStep === 'team'">Equipe</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Content ───────────────────────────────────── -->
+    <div class="onboarding-content">
+
+      <!-- Progress bar (mobile + desktop) -->
+      <div class="progress-bar-wrap">
+        <div class="progress">
+          <div class="progress-fill" [style.width.%]="progressPercent"></div>
+        </div>
+      </div>
+
+      <!-- Step body -->
+      <div class="step-body" [class.animating]="isAnimating">
+
+        <!-- ══ STEP 1: WELCOME ══════════════════════════════════ -->
+        <div *ngIf="currentStep === 'welcome'" class="welcome-step">
+          <div class="welcome-icon-wrap">
+            <i class="ft-star"></i>
+          </div>
+          <h4>Olá, {{ userName }}! 👋</h4>
+          <p>
+            Antes de acessar o painel, vamos configurar a sua empresa.
+            Isso leva menos de 2 minutos.
+          </p>
+          <ul class="check-list">
+            <li><i class="ft-check-circle"></i> Nome e segmento da empresa</li>
+            <li><i class="ft-check-circle"></i> Endereço completo</li>
+            <li><i class="ft-check-circle"></i> Tamanho da equipe</li>
+          </ul>
+          <div class="step-footer" style="width:100%;justify-content:flex-end;border:none;padding-top:0">
+            <button type="button" class="btn-next" (click)="next()">Começar →</button>
+          </div>
+        </div>
+
+        <!-- ══ STEP 2: COMPANY ══════════════════════════════════ -->
+        <div *ngIf="currentStep === 'company'">
+          <div class="step-heading">
+            <h4>Dados da Empresa</h4>
+            <p>Como sua empresa é conhecida no mercado?</p>
+          </div>
+
+          <form novalidate [formGroup]="companyForm">
+            <div class="form-group">
+              <label class="form-label">Nome da empresa *</label>
+              <input
+                type="text"
+                class="form-input"
+                formControlName="companyName"
+                placeholder="Ex.: TaskIA Tecnologia LTDA"
+                [class.input-error]="companySubmitted && cf['companyName'].invalid"
+              />
+              <div class="input-error-message" *ngIf="companySubmitted && cf['companyName'].invalid">
+                Nome da empresa é obrigatório (mínimo 2 caracteres).
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Segmento / Categoria *</label>
+              <select
+                class="form-input"
+                formControlName="category"
+                [class.input-error]="companySubmitted && cf['category'].invalid"
+                style="cursor:pointer"
+              >
+                <option value="">Selecione um segmento...</option>
+                <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+              </select>
+              <div class="input-error-message" *ngIf="companySubmitted && cf['category'].invalid">
+                Selecione o segmento da empresa.
+              </div>
+            </div>
+          </form>
+
+          <div class="step-footer">
+            <button type="button" class="btn-back" (click)="back()">← Voltar</button>
+            <button type="button" class="btn-next" (click)="next()">Próximo →</button>
+          </div>
+        </div>
+
+        <!-- ══ STEP 3: LOCATION ══════════════════════════════════ -->
+        <div *ngIf="currentStep === 'location'">
+          <div class="step-heading">
+            <h4>Localização</h4>
+            <p>Onde a sua empresa está localizada?</p>
+          </div>
+
+          <form novalidate [formGroup]="locationForm">
+            <div class="row">
+              <div class="col-8">
+                <div class="form-group">
+                  <label class="form-label">Rua / Logradouro *</label>
+                  <input type="text" class="form-input" formControlName="addressStreet"
+                    placeholder="Ex.: Av. Paulista"
+                    [class.input-error]="locationSubmitted && lf['addressStreet'].invalid" />
+                  <div class="input-error-message" *ngIf="locationSubmitted && lf['addressStreet'].invalid">Obrigatório.</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="form-group">
+                  <label class="form-label">Número *</label>
+                  <input type="text" class="form-input" formControlName="addressNumber"
+                    placeholder="100"
+                    [class.input-error]="locationSubmitted && lf['addressNumber'].invalid" />
+                  <div class="input-error-message" *ngIf="locationSubmitted && lf['addressNumber'].invalid">Obrigatório.</div>
+                </div>
+              </div>
+
+              <div class="col-6">
+                <div class="form-group">
+                  <label class="form-label">Complemento</label>
+                  <input type="text" class="form-input" formControlName="addressComplement" placeholder="Sala 12" />
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-group">
+                  <label class="form-label">Bairro *</label>
+                  <input type="text" class="form-input" formControlName="addressNeighborhood"
+                    placeholder="Ex.: Centro"
+                    [class.input-error]="locationSubmitted && lf['addressNeighborhood'].invalid" />
+                  <div class="input-error-message" *ngIf="locationSubmitted && lf['addressNeighborhood'].invalid">Obrigatório.</div>
+                </div>
+              </div>
+
+              <div class="col-7">
+                <div class="form-group">
+                  <label class="form-label">Cidade *</label>
+                  <input type="text" class="form-input" formControlName="addressCity"
+                    placeholder="São Paulo"
+                    [class.input-error]="locationSubmitted && lf['addressCity'].invalid" />
+                  <div class="input-error-message" *ngIf="locationSubmitted && lf['addressCity'].invalid">Obrigatório.</div>
+                </div>
+              </div>
+              <div class="col-2">
+                <div class="form-group">
+                  <label class="form-label">UF *</label>
+                  <input type="text" class="form-input" formControlName="addressState"
+                    placeholder="SP" maxlength="2" style="text-transform:uppercase"
+                    [class.input-error]="locationSubmitted && lf['addressState'].invalid" />
+                  <div class="input-error-message" *ngIf="locationSubmitted && lf['addressState'].invalid">UF inválida.</div>
+                </div>
+              </div>
+              <div class="col-3">
+                <div class="form-group">
+                  <label class="form-label">CEP *</label>
+                  <input type="text" class="form-input" formControlName="addressZip"
+                    placeholder="00000-000" maxlength="9"
+                    [class.input-error]="locationSubmitted && lf['addressZip'].invalid" />
+                  <div class="input-error-message" *ngIf="locationSubmitted && lf['addressZip'].invalid">CEP inválido.</div>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <div class="step-footer">
+            <button type="button" class="btn-back" (click)="back()">← Voltar</button>
+            <button type="button" class="btn-next" (click)="next()">Próximo →</button>
+          </div>
+        </div>
+
+        <!-- ══ STEP 4: TEAM ══════════════════════════════════════ -->
+        <div *ngIf="currentStep === 'team'">
+
+          <!-- Preview final -->
+          <ng-container *ngIf="showPreview; else teamInputTpl">
+            <div class="step-heading">
+              <h4>Confirme os dados</h4>
+              <p>Revise as informações antes de finalizar o cadastro.</p>
+            </div>
+
+            <div class="preview-block">
+              <p class="preview-block-title">Empresa</p>
+              <div class="preview-row">
+                <span class="p-label">Nome</span>
+                <span class="p-value">{{ companyForm.value.companyName }}</span>
+              </div>
+              <div class="preview-row">
+                <span class="p-label">Segmento</span>
+                <span class="p-value">{{ companyForm.value.category }}</span>
+              </div>
+            </div>
+
+            <div class="preview-block">
+              <p class="preview-block-title">Localização</p>
+              <div class="preview-row">
+                <span class="p-label">Endereço</span>
+                <span class="p-value">{{ fullAddress }}</span>
+              </div>
+            </div>
+
+            <div class="preview-block">
+              <p class="preview-block-title">Equipe</p>
+              <div class="preview-row">
+                <span class="p-label">Membros</span>
+                <span class="p-value">{{ teamForm.value.numberOfMembers }}</span>
+              </div>
+            </div>
+
+            <div class="alert-error" *ngIf="submitError">
+              <i class="ft-alert-circle"></i>{{ submitError }}
+            </div>
+
+            <div class="step-footer">
+              <button type="button" class="btn-back" (click)="back()" [disabled]="isSubmitting">← Editar</button>
+              <button type="button" class="btn-next btn-finish" (click)="submit()" [disabled]="isSubmitting">
+                <span *ngIf="isSubmitting">
+                  <span class="spinner-border spinner-border-sm mr-1" role="status"></span> Salvando...
+                </span>
+                <span *ngIf="!isSubmitting">✓ Finalizar</span>
+              </button>
+            </div>
+          </ng-container>
+
+          <!-- Input equipe -->
+          <ng-template #teamInputTpl>
+            <div class="step-heading">
+              <h4>Sua Equipe</h4>
+              <p>Quantas pessoas fazem parte da sua empresa?</p>
+            </div>
+
+            <form novalidate [formGroup]="teamForm">
+              <div class="form-group">
+                <label class="form-label">Número de membros *</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  formControlName="numberOfMembers"
+                  placeholder="Ex.: 25"
+                  min="1"
+                  [class.input-error]="teamSubmitted && tf['numberOfMembers'].invalid"
+                />
+                <div class="input-error-message" *ngIf="teamSubmitted && tf['numberOfMembers'].invalid">
+                  Informe a quantidade de membros (mínimo 1).
+                </div>
+              </div>
+            </form>
+
+            <div class="step-footer">
+              <button type="button" class="btn-back" (click)="back()">← Voltar</button>
+              <button type="button" class="btn-next" (click)="next()">Revisar →</button>
+            </div>
+          </ng-template>
+
+        </div>
+        <!-- /STEP 4 -->
+
+      </div>
+      <!-- /step-body -->
+    </div>
+    <!-- /onboarding-content -->
+
+  </div>
+</div>

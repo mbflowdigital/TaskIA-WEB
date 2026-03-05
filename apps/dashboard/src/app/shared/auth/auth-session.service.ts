@@ -7,6 +7,7 @@ export interface AuthUser {
   cpf?: string;
   phone?: string;
   role?: string;
+  requiresOnboarding?: boolean;
 }
 
 const STORAGE_KEY = 'auth_user';
@@ -33,6 +34,18 @@ export class AuthSessionService {
 
   getRole(): string {
     return this.getUser()?.role ?? 'USER';
+  }
+
+  requiresOnboarding(): boolean {
+    return this.getUser()?.requiresOnboarding === true;
+  }
+
+  clearOnboardingFlag(): void {
+    const user = this.getUser();
+    if (user) {
+      user.requiresOnboarding = false;
+      this.setUser(user);
+    }
   }
 
   clear(): void {

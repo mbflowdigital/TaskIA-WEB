@@ -2,9 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ReactiveFormsModule, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 import { CompanyOnboardingData, OnboardingService } from 'app/shared/onboarding/onboarding.service';
+import { CompaniesApiService } from 'app/shared/api/companies-api.service';
+import { UsersApiService } from 'app/shared/api/users-api.service';
 
 @Component({
   selector: 'app-company-onboarding',
@@ -52,7 +55,9 @@ export class CompanyOnboardingComponent implements OnInit {
   constructor(
     private readonly authSession: AuthSessionService,
     private readonly onboarding: OnboardingService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly companiesApi: CompaniesApiService,
+    private readonly usersApi: UsersApiService
   ) {}
 
   ngOnInit(): void {
@@ -143,27 +148,47 @@ export class CompanyOnboardingComponent implements OnInit {
 
     this.isSubmitting = true;
 
-    // Mock: salva em localStorage até o backend existir.
-    this.onboarding.completeCompanyOnboarding(user.userId, {
-      companyName,
-      department,
-      employeeCount,
-      addressZip,
-      addressStreet,
-      addressNumber,
-      addressComplement,
-      addressNeighborhood,
-      addressCity,
-      addressState,
-      addressCountry
-    });
+    const address = [addressStreet, addressNumber, addressComplement, addressNeighborhood, addressCity, addressState, addressZip, addressCountry]
+      .filter(Boolean).join(', ');
 
-    // Próximo passo: cadastro de funcionário (opcional)
-    this.onboarding.startEmployeeOnboarding(user.userId);
-    this.companyData = this.onboarding.getCompanyOnboardingData(user.userId);
-    this.prefillEmployeeFormFromSession();
-    this.step = 'employee';
-    this.isSubmitting = false;
+    this.companiesApi.create({
+      name: companyName,
+      address,
+      numberOfMembers: employeeCount,
+      category: department
+    })
+    .pipe(finalize(() => { this.isSubmitting = false; }))
+    .subscribe({
+      next: (result) => {
+        if (!result?.isSuccess) {
+          this.submitError = result?.message ?? 'Erro ao salvar empresa.';
+          return;
+        }
+
+        // Persiste no localStorage para manter o fluxo de onboarding
+        this.onboarding.completeCompanyOnboarding(user.userId, {
+          companyName,
+          department,
+          employeeCount,
+          addressZip,
+          addressStreet,
+          addressNumber,
+          addressComplement,
+          addressNeighborhood,
+          addressCity,
+          addressState,
+          addressCountry
+        });
+
+        this.onboarding.startEmployeeOnboarding(user.userId);
+        this.companyData = this.onboarding.getCompanyOnboardingData(user.userId);
+        this.prefillEmployeeFormFromSession();
+        this.step = 'employee';
+      },
+      error: () => {
+        this.submitError = 'Erro inesperado ao salvar empresa.';
+      }
+    });
   }
 
   onEmployeeSave(): void {
@@ -185,13 +210,23 @@ export class CompanyOnboardingComponent implements OnInit {
     const cpf = String(this.employeeForm.getRawValue().cpf ?? '').trim() || undefined;
     const phone = String(this.employeeForm.getRawValue().phone ?? '').trim() || undefined;
     const birthDateRaw = String(this.employeeForm.getRawValue().birthDate ?? '').trim();
-    const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : undefined;
+    const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : new Date().toISOString();
 
-    // Mock: salva em localStorage até o backend existir.
-    this.onboarding.completeEmployeeOnboarding(user.userId, { name, email, cpf, phone, birthDate });
-
-    this.isEmployeeSubmitting = false;
-    this.router.navigate(['/page']);
+    this.usersApi.create({ name, email, cpf, phone, birthDate, role: 'USER' })
+      .pipe(finalize(() => { this.isEmployeeSubmitting = false; }))
+      .subscribe({
+        next: (result) => {
+          if (!result?.isSuccess) {
+            this.employeeSubmitError = result?.message ?? 'Erro ao cadastrar funcionário.';
+            return;
+          }
+          this.onboarding.completeEmployeeOnboarding(user.userId, { name, email, cpf, phone, birthDate });
+          this.router.navigate(['/page']);
+        },
+        error: () => {
+          this.employeeSubmitError = 'Erro inesperado ao cadastrar funcionário.';
+        }
+      });
   }
 
   onEmployeeSkip(): void {
