@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   cpf?: string;
   phone?: string;
+  role?: string;
 }
 
 const STORAGE_KEY = 'auth_user';
@@ -28,6 +29,10 @@ export class AuthSessionService {
 
   getUserId(): string | null {
     return this.getUser()?.userId ?? null;
+  }
+
+  getRole(): string {
+    return this.getUser()?.role ?? 'USER';
   }
 
   clear(): void {

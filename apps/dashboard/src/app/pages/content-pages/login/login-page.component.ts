@@ -5,6 +5,7 @@ import { finalize } from 'rxjs/operators';
 import { AuthApiService } from 'app/shared/api/auth-api.service';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 import { LoginData } from 'app/shared/api/auth/auth.types';
+import { OnboardingService } from 'app/shared/onboarding/onboarding.service';
 
 @Component({
   selector: 'app-login-page',
@@ -43,6 +44,7 @@ export class LoginPageComponent {
     private readonly router: Router,
     private readonly authApi: AuthApiService,
     private readonly authSession: AuthSessionService,
+    private readonly onboarding: OnboardingService,
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone
   ) {}
@@ -93,8 +95,16 @@ export class LoginPageComponent {
           name: data.name,
           email: data.email,
           cpf: data.cpf,
-          phone: data.phone
+          phone: data.phone,
+          role: data.role
         });
+
+        const user = this.authSession.getUser();
+        if (user && this.onboarding.isAdminMock(user) && !this.onboarding.isCompanyOnboardingCompleted(user.userId)) {
+          this.router.navigate(['/onboarding/company']);
+          return;
+        }
+
         this.router.navigate(['/page']);
         });
       },

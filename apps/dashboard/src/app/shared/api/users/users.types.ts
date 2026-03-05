@@ -5,6 +5,7 @@ export interface UserDto {
   phone?: string;
   cpf?: string;
   birthDate?: string;
+  role?: string;
   isEmailVerified: boolean;
   isActive: boolean;
   createdAt: string;
@@ -17,6 +18,7 @@ export interface CreateUserRequest {
   phone?: string;
   cpf?: string;
   birthDate?: string | null;
+  role?: string;
 }
 
 export interface UpdateUserRequest {

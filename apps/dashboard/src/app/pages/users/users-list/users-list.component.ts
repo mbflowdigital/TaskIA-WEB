@@ -21,7 +21,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
   loadError?: string;
 
   verifiedFilter: '' | 'Yes' | 'No' = '';
-  roleFilter: '' | 'User' | 'Staff' = '';
+  roleFilter: '' | 'USER' | 'ADM' | 'ADM_MASTER' = '';
   statusFilter: '' | 'Active' | 'Close' | 'Banned' = '';
 
   searchValue = '';
@@ -185,9 +185,8 @@ export class UsersListComponent implements OnInit, OnDestroy {
       }
 
       if (roleFilter) {
-        // Backend não possui Role atualmente; mantemos o mesmo UX do template com role default.
-        const role = 'User';
-        if (role !== roleFilter) return false;
+        const role = (u.role ?? 'USER').toUpperCase();
+        if (role !== roleFilter.toUpperCase()) return false;
       }
 
       if (statusFilter) {

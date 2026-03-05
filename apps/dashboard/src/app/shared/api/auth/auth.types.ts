@@ -10,6 +10,7 @@ export interface LoginData {
   cpf: string;
   phone: string;
   isFirstAccess: boolean;
+  role: string;
   token: string | null;
   tokenExpiration: string | null;
 }

@@ -5,5 +5,5 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'http://brotherdigital-001-site2.atempurl.com'
+  apiUrl: 'https://localhost:44310'
 };

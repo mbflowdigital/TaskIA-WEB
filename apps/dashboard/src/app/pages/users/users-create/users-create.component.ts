@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { UsersApiService } from '../../../shared/api/users-api.service';
+import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-users-create',
@@ -33,13 +34,15 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     email: new UntypedFormControl('', [Validators.required, Validators.email]),
     cpf: new UntypedFormControl(''),
     phone: new UntypedFormControl(''),
-    birthDate: new UntypedFormControl('')
+    birthDate: new UntypedFormControl(''),
+    role: new UntypedFormControl('USER')
   });
 
   constructor(
     private readonly usersApi: UsersApiService,
     private readonly route: ActivatedRoute,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly authSession: AuthSessionService
   ) {}
 
   ngOnInit(): void {
@@ -100,6 +103,21 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     return this.form.controls;
   }
 
+  get allowedRoles(): { value: string; label: string }[] {
+    const myRole = this.authSession.getRole();
+    if (myRole === 'ADM_MASTER') {
+      return [
+        { value: 'USER', label: 'Usuário' },
+        { value: 'ADM', label: 'Administrador' },
+        { value: 'ADM_MASTER', label: 'Administrador Master' }
+      ];
+    }
+    if (myRole === 'ADM') {
+      return [{ value: 'USER', label: 'Usuário' }];
+    }
+    return [{ value: 'USER', label: 'Usuário' }];
+  }
+
   onSubmit(): void {
     this.formSubmitted = true;
     this.submitError = undefined;
@@ -156,9 +174,10 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     }
 
     const email = String(this.form.getRawValue().email ?? '').trim();
+    const role = String(this.form.getRawValue().role ?? 'USER');
 
     this.usersApi
-      .create({ name, email, phone, cpf, birthDate })
+      .create({ name, email, phone, cpf, birthDate, role })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -191,7 +210,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     this.submitErrors = [];
     this.submitSuccess = undefined;
     this.loadError = undefined;
-    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '' });
+    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '', role: 'USER' });
 
     if (this.isEditMode) {
       this.form.controls['email'].disable();
