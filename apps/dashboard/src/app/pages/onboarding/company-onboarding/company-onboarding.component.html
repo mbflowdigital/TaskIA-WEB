@@ -1,0 +1,384 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section class="company-onboarding">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-content">
+              <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h4 class="mb-0">
+                      {{ step === 'company' ? 'Cadastro da empresa' : 'Cadastro de funcionário' }}
+                    </h4>
+                    <small class="text-muted">
+                      {{
+                        step === 'company'
+                          ? 'Complete este passo para começar a usar o sistema'
+                          : 'Cadastre um funcionário agora ou ignore por enquanto'
+                      }}
+                    </small>
+                  </div>
+                </div>
+
+                <hr />
+
+                <!-- Step 1: Company -->
+                <div *ngIf="step === 'company'">
+                  <div *ngIf="submitError" class="alert alert-danger">
+                    {{ submitError }}
+                  </div>
+
+                  <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()">
+                  <div class="row">
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="company-name">Nome da empresa</label>
+                          <input
+                            id="company-name"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: TaskIA LTDA"
+                            formControlName="companyName"
+                            [class.is-invalid]="formSubmitted && f.companyName.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.companyName.invalid">
+                            Nome da empresa é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="department">Departamento</label>
+                          <input
+                            id="department"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: Tecnologia"
+                            formControlName="department"
+                            [class.is-invalid]="formSubmitted && f.department.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.department.invalid">
+                            Departamento é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="employee-count">Quantidade de funcionários</label>
+                          <input
+                            id="employee-count"
+                            type="number"
+                            class="form-control"
+                            placeholder="Ex.: 50"
+                            formControlName="employeeCount"
+                            [class.is-invalid]="formSubmitted && f.employeeCount.invalid"
+                            min="1"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.employeeCount.invalid">
+                            Quantidade de funcionários é obrigatória.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12">
+                      <h6 class="mt-2 mb-1">Endereço</h6>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-zip">CEP</label>
+                          <input
+                            id="address-zip"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: 01001000"
+                            formControlName="addressZip"
+                            [class.is-invalid]="formSubmitted && f.addressZip.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressZip.invalid">
+                            CEP é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-8">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-street">Logradouro</label>
+                          <input
+                            id="address-street"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: Av. Paulista"
+                            formControlName="addressStreet"
+                            [class.is-invalid]="formSubmitted && f.addressStreet.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressStreet.invalid">
+                            Logradouro é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-number">Número</label>
+                          <input
+                            id="address-number"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: 1000"
+                            formControlName="addressNumber"
+                            [class.is-invalid]="formSubmitted && f.addressNumber.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressNumber.invalid">
+                            Número é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-8">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-complement">Complemento</label>
+                          <input
+                            id="address-complement"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: Sala 12"
+                            formControlName="addressComplement"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-neighborhood">Bairro</label>
+                          <input
+                            id="address-neighborhood"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: Bela Vista"
+                            formControlName="addressNeighborhood"
+                            [class.is-invalid]="formSubmitted && f.addressNeighborhood.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressNeighborhood.invalid">
+                            Bairro é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-city">Cidade</label>
+                          <input
+                            id="address-city"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: São Paulo"
+                            formControlName="addressCity"
+                            [class.is-invalid]="formSubmitted && f.addressCity.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressCity.invalid">
+                            Cidade é obrigatória.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-state">Estado (UF)</label>
+                          <input
+                            id="address-state"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: SP"
+                            formControlName="addressState"
+                            [class.is-invalid]="formSubmitted && f.addressState.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressState.invalid">
+                            Estado é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-8">
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="address-country">País</label>
+                          <input
+                            id="address-country"
+                            type="text"
+                            class="form-control"
+                            placeholder="Ex.: Brasil"
+                            formControlName="addressCountry"
+                            [class.is-invalid]="formSubmitted && f.addressCountry.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.addressCountry.invalid">
+                            País é obrigatório.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-sm-row flex-column justify-content-end mt-2">
+                    <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+                      {{ isSubmitting ? 'Salvando...' : 'Concluir' }}
+                    </button>
+                  </div>
+                </form>
+
+                </div>
+
+                <!-- Step 2: Employee -->
+                <div *ngIf="step === 'employee'">
+                  <div *ngIf="employeeSubmitError" class="alert alert-danger">
+                    {{ employeeSubmitError }}
+                  </div>
+
+                  <div class="mb-2" *ngIf="companyData">
+                    <h6 class="mb-1">Empresa</h6>
+                    <div class="row">
+                      <div class="col-12 col-md-6">
+                        <small class="text-muted d-block">Nome</small>
+                        <div>{{ companyData.companyName }}</div>
+                      </div>
+                      <div class="col-12 col-md-6 mt-1 mt-md-0">
+                        <small class="text-muted d-block">Departamento</small>
+                        <div>{{ companyData.department }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <form novalidate [formGroup]="employeeForm" (ngSubmit)="onEmployeeSave()">
+                    <h6 class="mt-2 mb-1">Funcionário</h6>
+
+                    <div class="row">
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <div class="controls">
+                            <label for="employee-name">Nome</label>
+                            <input
+                              id="employee-name"
+                              type="text"
+                              class="form-control"
+                              placeholder="Nome"
+                              formControlName="name"
+                              [class.is-invalid]="employeeFormSubmitted && ef.name.invalid"
+                            />
+                            <div class="invalid-feedback" *ngIf="employeeFormSubmitted && ef.name.invalid">
+                              Nome é obrigatório.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <div class="controls">
+                            <label for="employee-email">E-mail</label>
+                            <input
+                              id="employee-email"
+                              type="email"
+                              class="form-control"
+                              placeholder="Email"
+                              formControlName="email"
+                              [class.is-invalid]="employeeFormSubmitted && ef.email.invalid"
+                            />
+                            <div class="invalid-feedback" *ngIf="employeeFormSubmitted && ef.email.invalid">
+                              Email válido é obrigatório.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <div class="controls">
+                            <label for="employee-cpf">CPF</label>
+                            <input
+                              id="employee-cpf"
+                              type="text"
+                              class="form-control"
+                              placeholder="000.000.000-00"
+                              formControlName="cpf"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <div class="controls">
+                            <label for="employee-phone">Telefone</label>
+                            <input
+                              id="employee-phone"
+                              type="text"
+                              class="form-control"
+                              placeholder="Telefone"
+                              formControlName="phone"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <div class="controls">
+                            <label for="employee-birthdate">Data de nascimento</label>
+                            <input
+                              id="employee-birthdate"
+                              type="date"
+                              class="form-control"
+                              formControlName="birthDate"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex flex-sm-row flex-column justify-content-end mt-2">
+                      <button
+                        type="button"
+                        class="btn bg-light-secondary mb-1 mb-sm-0 mr-sm-2"
+                        (click)="onEmployeeSkip()"
+                        [disabled]="isEmployeeSubmitting"
+                      >
+                        Ignorar por enquanto
+                      </button>
+                      <button type="submit" class="btn btn-primary" [disabled]="isEmployeeSubmitting">
+                        {{ isEmployeeSubmitting ? 'Salvando...' : 'Salvar' }}
+                      </button>
+                    </div>
+                  </form>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

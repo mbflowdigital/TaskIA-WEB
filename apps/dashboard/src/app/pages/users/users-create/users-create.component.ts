@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { UsersApiService } from '../../../shared/api/users-api.service';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-users-create',
@@ -31,18 +32,27 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
     email: new UntypedFormControl('', [Validators.required, Validators.email]),
-    cpf: new UntypedFormControl(''),
+    cpf: new UntypedFormControl('', [Validators.required]),
     phone: new UntypedFormControl(''),
-    birthDate: new UntypedFormControl('')
+    birthDate: new UntypedFormControl('', [Validators.required]),
+    role: new UntypedFormControl('USER')
   });
 
   constructor(
     private readonly usersApi: UsersApiService,
     private readonly route: ActivatedRoute,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly authSession: AuthSessionService
   ) {}
 
   ngOnInit(): void {
+    const role = this.authSession.getRole().trim().toUpperCase();
+    const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    if (!isAdmin) {
+      this.router.navigate(['/page']);
+      return;
+    }
+
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
 
@@ -156,9 +166,10 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     }
 
     const email = String(this.form.getRawValue().email ?? '').trim();
+    const role = 'USER';
 
     this.usersApi
-      .create({ name, email, phone, cpf, birthDate })
+      .create({ name, email, phone, cpf, birthDate, role })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -191,7 +202,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     this.submitErrors = [];
     this.submitSuccess = undefined;
     this.loadError = undefined;
-    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '' });
+    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '', role: 'USER' });
 
     if (this.isEditMode) {
       this.form.controls['email'].disable();

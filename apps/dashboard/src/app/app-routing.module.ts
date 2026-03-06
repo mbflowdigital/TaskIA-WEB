@@ -8,6 +8,7 @@ import { Full_ROUTES } from "./shared/routes/full-layout.routes";
 import { CONTENT_ROUTES } from "./shared/routes/content-layout.routes";
 
 import { AuthGuard } from './shared/auth/auth-guard.service';
+import { OnboardingGuard } from './shared/onboarding/onboarding-guard.service';
 
 const appRoutes: Routes = [
   {
@@ -15,7 +16,22 @@ const appRoutes: Routes = [
     redirectTo: 'pages/login',
     pathMatch: 'full',
   },
-  { path: '', component: FullLayoutComponent, data: { title: 'full Views' }, children: Full_ROUTES, canActivate: [AuthGuard] },
+  {
+    // Wizard de onboarding ADM — full-screen sem sidebar/navbar
+    path: 'onboarding',
+    loadComponent: () =>
+      import('./pages/onboarding/onboarding-wizard/onboarding-wizard.component').then(
+        m => m.OnboardingWizardComponent
+      )
+  },
+  {
+    path: '',
+    component: FullLayoutComponent,
+    data: { title: 'full Views' },
+    children: Full_ROUTES,
+    canActivate: [AuthGuard],
+    canActivateChild: [OnboardingGuard]
+  },
   { path: '', component: ContentLayoutComponent, data: { title: 'content Views' }, children: CONTENT_ROUTES },
   {
     path: '**',

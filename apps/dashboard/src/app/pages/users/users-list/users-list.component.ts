@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { UsersApiService } from '../../../shared/api/users-api.service';
 import { UserDto } from 'app/shared/api/users/users.types';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-users-list',
@@ -21,7 +22,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
   loadError?: string;
 
   verifiedFilter: '' | 'Yes' | 'No' = '';
-  roleFilter: '' | 'User' | 'Staff' = '';
+  roleFilter: '' | 'USER' | 'ADM' | 'ADM_MASTER' = '';
   statusFilter: '' | 'Active' | 'Close' | 'Banned' = '';
 
   searchValue = '';
@@ -36,10 +37,18 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly usersApi: UsersApiService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly authSession: AuthSessionService
   ) {}
 
   ngOnInit(): void {
+    const role = this.authSession.getRole().trim().toUpperCase();
+    const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    if (!isAdmin) {
+      this.router.navigate(['/page']);
+      return;
+    }
+
     this.load();
   }
 
@@ -185,9 +194,8 @@ export class UsersListComponent implements OnInit, OnDestroy {
       }
 
       if (roleFilter) {
-        // Backend não possui Role atualmente; mantemos o mesmo UX do template com role default.
-        const role = 'User';
-        if (role !== roleFilter) return false;
+        const role = (u.role ?? 'USER').toUpperCase();
+        if (role !== roleFilter.toUpperCase()) return false;
       }
 
       if (statusFilter) {

@@ -50,8 +50,9 @@
                           name="roleFilter"
                         >
                           <option value="">Qualquer</option>
-                          <option value="User">Usuário</option>
-                          <option value="Staff">Equipe</option>
+                          <option value="USER">Usuário</option>
+                          <option value="ADM">Administrador</option>
+                          <option value="ADM_MASTER">Adm. Master</option>
                         </select>
                       </div>
                     </div>
@@ -194,7 +195,18 @@
                             {{ user.isEmailVerified ? 'Sim' : 'Não' }}
                           </span>
                         </td>
-                        <td><span class="badge bg-light-secondary">Usuário</span></td>
+                        <td>
+                          <span
+                            class="badge"
+                            [ngClass]="{
+                              'bg-light-danger':    user.role === 'ADM_MASTER',
+                              'bg-light-info':      user.role === 'ADM',
+                              'bg-light-secondary': !user.role || user.role === 'USER'
+                            }"
+                          >
+                            {{ user.role === 'ADM_MASTER' ? 'Adm. Master' : user.role === 'ADM' ? 'Administrador' : 'Usuário' }}
+                          </span>
+                        </td>
                         <td>
                           <span
                             class="badge"

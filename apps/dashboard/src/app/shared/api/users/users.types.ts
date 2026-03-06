@@ -1,10 +1,12 @@
 export interface UserDto {
   id: string;
+  companyId?: string | null;
   name: string;
   email: string;
   phone?: string;
   cpf?: string;
   birthDate?: string;
+  role?: string;
   isEmailVerified: boolean;
   isActive: boolean;
   createdAt: string;
@@ -17,6 +19,7 @@ export interface CreateUserRequest {
   phone?: string;
   cpf?: string;
   birthDate?: string | null;
+  role?: string;
 }
 
 export interface UpdateUserRequest {

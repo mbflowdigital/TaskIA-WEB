@@ -116,7 +116,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     const request$ = this.isEditMode
       ? this.projectsApi.update(this.editingProjectId!, {
           id: this.editingProjectId!,
-          userId: this.CURRENT_USER_ID,
           name,
           description: description || undefined,
           objective: objective || undefined,
