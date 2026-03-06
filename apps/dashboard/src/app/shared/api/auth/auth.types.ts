@@ -5,11 +5,15 @@ export interface LoginRequest {
 
 export interface LoginData {
   userId: string;
+  companyId?: string | null;
+  companyName?: string | null;
   name: string;
   email: string;
   cpf: string;
   phone: string;
   isFirstAccess: boolean;
+  requiresOnboarding: boolean;
+  role: string;
   token: string | null;
   tokenExpiration: string | null;
 }

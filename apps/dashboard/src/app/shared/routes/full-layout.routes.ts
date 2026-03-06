@@ -8,6 +8,10 @@ export const Full_ROUTES: Routes = [
     loadChildren: () => import('../../page/page.module').then(m => m.PageModule)
   },
   {
+    path: 'onboarding/company',
+    loadComponent: () => import('../../pages/onboarding/company-onboarding/company-onboarding.component').then(m => m.CompanyOnboardingComponent)
+  },
+  {
     path: 'users',
     loadComponent: () => import('../../pages/users/users-list/users-list.component').then(m => m.UsersListComponent)
   },

@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -6,6 +6,7 @@ import { catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ApiResult } from 'app/shared/api/shared/api-result.types';
 import { CheckEmailResponse, CreateUserRequest, UpdateUserRequest, UserDto } from 'app/shared/api/users/users.types';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,35 +14,63 @@ import { CheckEmailResponse, CreateUserRequest, UpdateUserRequest, UserDto } fro
 export class UsersApiService {
   private readonly baseUrl = environment.apiUrl;
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly authSession: AuthSessionService
+  ) {}
+
+  private getActorHeaders(): HttpHeaders {
+    const user = this.authSession.getUser();
+    let headers = new HttpHeaders();
+
+    if (user?.userId) {
+      headers = headers.set('X-User-Id', user.userId);
+    }
+
+    if (user?.role) {
+      headers = headers.set('X-User-Role', user.role);
+    }
+
+    return headers;
+  }
 
   create(request: CreateUserRequest): Observable<ApiResult<UserDto>> {
     return this.http
-      .post<ApiResult<UserDto>>(`${this.baseUrl}/api/users`, request)
+      .post<ApiResult<UserDto>>(`${this.baseUrl}/api/users`, request, {
+        headers: this.getActorHeaders()
+      })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<UserDto>)));
   }
 
   getAll(): Observable<ApiResult<UserDto[]>> {
     return this.http
-      .get<ApiResult<UserDto[]>>(`${this.baseUrl}/api/users`)
+      .get<ApiResult<UserDto[]>>(`${this.baseUrl}/api/users`, {
+        headers: this.getActorHeaders()
+      })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<UserDto[]>)));
   }
 
   getById(id: string): Observable<ApiResult<UserDto>> {
     return this.http
-      .get<ApiResult<UserDto>>(`${this.baseUrl}/api/users/${id}`)
+      .get<ApiResult<UserDto>>(`${this.baseUrl}/api/users/${id}`, {
+        headers: this.getActorHeaders()
+      })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<UserDto>)));
   }
 
   update(id: string, request: UpdateUserRequest): Observable<ApiResult<UserDto>> {
     return this.http
-      .put<ApiResult<UserDto>>(`${this.baseUrl}/api/users/${id}`, request)
+      .put<ApiResult<UserDto>>(`${this.baseUrl}/api/users/${id}`, request, {
+        headers: this.getActorHeaders()
+      })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<UserDto>)));
   }
 
   delete(id: string): Observable<ApiResult> {
     return this.http
-      .delete<ApiResult>(`${this.baseUrl}/api/users/${id}`)
+      .delete<ApiResult>(`${this.baseUrl}/api/users/${id}`, {
+        headers: this.getActorHeaders()
+      })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult)));
   }
 
@@ -49,7 +78,10 @@ export class UsersApiService {
     const params = new HttpParams().set('email', email);
 
     return this.http
-      .get<ApiResult<UserDto[]>>(`${this.baseUrl}/api/users/search`, { params })
+      .get<ApiResult<UserDto[]>>(`${this.baseUrl}/api/users/search`, {
+        params,
+        headers: this.getActorHeaders()
+      })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<UserDto[]>)));
   }
 

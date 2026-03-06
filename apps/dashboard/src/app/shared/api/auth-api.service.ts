@@ -11,6 +11,14 @@ import {
   LoginRequest
 } from 'app/shared/api/auth/auth.types';
 
+export interface OnboardingRequest {
+  userId: string;
+  companyName: string;
+  address: string;
+  numberOfMembers: number;
+  category: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -31,5 +39,11 @@ export class AuthApiService {
     return this.http
       .post<ApiResult<null>>(`${this.baseUrl}/api/auth/change-password-first-access`, request)
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<null>)));
+  }
+
+  onboarding(request: OnboardingRequest): Observable<LoginApiResult> {
+    return this.http
+      .post<LoginApiResult>(`${this.baseUrl}/api/auth/onboarding`, request)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as LoginApiResult)));
   }
 }

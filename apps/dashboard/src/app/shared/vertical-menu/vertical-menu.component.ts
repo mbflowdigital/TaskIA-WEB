@@ -53,12 +53,28 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   ngOnInit() {
-    this.menuItems = ROUTES;
+    this.menuItems = JSON.parse(JSON.stringify(ROUTES));
     this.loadProjects();
   }
 
+  private applyRoleVisibility(): void {
+    const role = this.authSession.getRole().trim().toUpperCase();
+    const canSeeUsers = role === 'ADM' || role === 'ADM_MASTER';
+
+    if (canSeeUsers) return;
+
+    this.menuItems = this.menuItems
+      .map((menu: RouteInfo) => {
+        if (!menu.submenu?.length) return menu;
+
+        const filteredSubmenu = menu.submenu.filter(item => item.path !== '/users');
+        return { ...menu, submenu: filteredSubmenu };
+      })
+      .filter((menu: RouteInfo) => menu.path || (menu.submenu && menu.submenu.length > 0));
+  }
+
   private loadProjects() {
-    this.projectsApiService.getAll(this.authSession.getUserId() ?? undefined).subscribe(result => {
+    this.projectsApiService.getAll().subscribe(result => {
       if (result?.data?.length) {
         this.projectsSubmenu = result.data
           .filter(p => p.status === 'Active')
@@ -89,6 +105,8 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
         ...this.projectsSubmenu
       ];
     }
+
+    this.applyRoleVisibility();
   }
 
   ngAfterViewInit() {
@@ -131,7 +149,7 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     else if (this.config.layout.menuPosition === "Side") { // Vertical Menu{
-      this.menuItems = ROUTES;
+      this.menuItems = JSON.parse(JSON.stringify(ROUTES));
       this.injectProjects();
     }
 
