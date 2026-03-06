@@ -13,6 +13,7 @@ export interface AuthUser {
 }
 
 const STORAGE_KEY = 'auth_user';
+const TOKEN_STORAGE_KEY = 'auth_token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthSessionService {
@@ -38,6 +39,10 @@ export class AuthSessionService {
     return this.getUser()?.role ?? 'USER';
   }
 
+  getToken(): string | null {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  }
+
   requiresOnboarding(): boolean {
     return this.getUser()?.requiresOnboarding === true;
   }
@@ -52,7 +57,7 @@ export class AuthSessionService {
 
   clear(): void {
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
   }
 
   isLoggedIn(): boolean {

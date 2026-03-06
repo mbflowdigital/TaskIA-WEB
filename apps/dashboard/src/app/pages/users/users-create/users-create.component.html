@@ -131,11 +131,14 @@
                             id="users-create-role"
                             class="form-control"
                             formControlName="role"
-                            disabled
+                            [attr.disabled]="canCreateAdmins ? null : true"
                           >
                             <option value="USER">Usuário</option>
+                            <option *ngIf="canCreateAdmins" value="ADM">Administrador</option>
                           </select>
-                          <small class="text-muted">Perfil fixo: Usuário padrão (USER).</small>
+                          <small class="text-muted">
+                            {{ canCreateAdmins ? 'ADM_MASTER pode criar Usuário (USER) ou Administrador (ADM).' : 'Perfil fixo: Usuário padrão (USER).' }}
+                          </small>
                         </div>
                       </div>
                     </div>
