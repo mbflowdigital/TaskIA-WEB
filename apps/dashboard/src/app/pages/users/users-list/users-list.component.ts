@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { UsersApiService } from '../../../shared/api/users-api.service';
 import { UserDto } from 'app/shared/api/users/users.types';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-users-list',
@@ -36,10 +37,18 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly usersApi: UsersApiService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly authSession: AuthSessionService
   ) {}
 
   ngOnInit(): void {
+    const role = this.authSession.getRole().trim().toUpperCase();
+    const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    if (!isAdmin) {
+      this.router.navigate(['/page']);
+      return;
+    }
+
     this.load();
   }
 

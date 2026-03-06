@@ -87,7 +87,11 @@
                             class="form-control"
                             placeholder="000.000.000-00"
                             formControlName="cpf"
+                            [class.is-invalid]="formSubmitted && f.cpf.invalid"
                           />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.cpf.invalid">
+                            CPF é obrigatório.
+                          </div>
                         </div>
                       </div>
 
@@ -99,7 +103,11 @@
                             type="date"
                             class="form-control"
                             formControlName="birthDate"
+                            [class.is-invalid]="formSubmitted && f.birthDate.invalid"
                           />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.birthDate.invalid">
+                            Data de nascimento é obrigatória.
+                          </div>
                         </div>
                       </div>
 
@@ -123,9 +131,11 @@
                             id="users-create-role"
                             class="form-control"
                             formControlName="role"
+                            disabled
                           >
-                            <option *ngFor="let r of allowedRoles" [value]="r.value">{{ r.label }}</option>
+                            <option value="USER">Usuário</option>
                           </select>
+                          <small class="text-muted">Perfil fixo: Usuário padrão (USER).</small>
                         </div>
                       </div>
                     </div>

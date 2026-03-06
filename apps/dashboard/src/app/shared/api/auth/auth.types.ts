@@ -5,6 +5,8 @@ export interface LoginRequest {
 
 export interface LoginData {
   userId: string;
+  companyId?: string | null;
+  companyName?: string | null;
   name: string;
   email: string;
   cpf: string;

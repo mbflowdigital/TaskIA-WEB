@@ -170,7 +170,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     this.loadError = undefined;
 
     this.projectsApi
-      .getAll(this.authSession.getUserId() ?? undefined)
+      .getAll()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {

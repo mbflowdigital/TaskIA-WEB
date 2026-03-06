@@ -1,5 +1,7 @@
 export interface ProjectDto {
   id: string;
+  companyId?: string | null;
+  companyName?: string;
   name: string;
   description?: string;
   objective?: string;
@@ -24,7 +26,6 @@ export interface CreateProjectRequest {
 
 export interface UpdateProjectRequest {
   id: string;
-  userId: string;
   name: string;
   description?: string;
   objective?: string;

@@ -13,7 +13,7 @@ export const ROUTES: RouteInfo[] = [
     ]
   },
   {
-    path: '', title: 'Configurações', icon: 'ft-settings', class: 'has-sub', badge: '', badgeClass: '', isExternalLink: false,
+    path: '', title: 'Administração', icon: 'ft-settings', class: 'has-sub', badge: '', badgeClass: '', isExternalLink: false,
     submenu: [
       { path: '/users', title: 'Usuários', icon: 'ft-users submenu-icon', class: '', badge: '', badgeClass: '', isExternalLink: false, submenu: [] },
     ]

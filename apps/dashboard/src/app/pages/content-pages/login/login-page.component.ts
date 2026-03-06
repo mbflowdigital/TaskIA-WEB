@@ -92,6 +92,8 @@ export class LoginPageComponent {
         }
         this.authSession.setUser({
           userId: data.userId,
+          companyId: data.companyId,
+          companyName: data.companyName ?? undefined,
           name: data.name,
           email: data.email,
           cpf: data.cpf,
@@ -99,18 +101,6 @@ export class LoginPageComponent {
           role: data.role,
           requiresOnboarding: data.requiresOnboarding
         });
-
-        // ADM sem empresa → wizard de onboarding
-        if (data.requiresOnboarding) {
-          this.router.navigate(['/onboarding']);
-          return;
-        }
-
-        const user = this.authSession.getUser();
-        if (user && this.onboarding.isAdminMock(user) && !this.onboarding.isCompanyOnboardingCompleted(user.userId)) {
-          this.router.navigate(['/onboarding/company']);
-          return;
-        }
 
         this.router.navigate(['/page']);
         });

@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { UsersApiService } from '../../../shared/api/users-api.service';
-import { AuthSessionService } from '../../../shared/auth/auth-session.service';
+import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Component({
   selector: 'app-users-create',
@@ -32,9 +32,9 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
     email: new UntypedFormControl('', [Validators.required, Validators.email]),
-    cpf: new UntypedFormControl(''),
+    cpf: new UntypedFormControl('', [Validators.required]),
     phone: new UntypedFormControl(''),
-    birthDate: new UntypedFormControl(''),
+    birthDate: new UntypedFormControl('', [Validators.required]),
     role: new UntypedFormControl('USER')
   });
 
@@ -46,6 +46,13 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    const role = this.authSession.getRole().trim().toUpperCase();
+    const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    if (!isAdmin) {
+      this.router.navigate(['/page']);
+      return;
+    }
+
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
 
@@ -101,21 +108,6 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
 
   get f() {
     return this.form.controls;
-  }
-
-  get allowedRoles(): { value: string; label: string }[] {
-    const myRole = this.authSession.getRole();
-    if (myRole === 'ADM_MASTER') {
-      return [
-        { value: 'USER', label: 'Usuário' },
-        { value: 'ADM', label: 'Administrador' },
-        { value: 'ADM_MASTER', label: 'Administrador Master' }
-      ];
-    }
-    if (myRole === 'ADM') {
-      return [{ value: 'USER', label: 'Usuário' }];
-    }
-    return [{ value: 'USER', label: 'Usuário' }];
   }
 
   onSubmit(): void {
@@ -174,7 +166,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     }
 
     const email = String(this.form.getRawValue().email ?? '').trim();
-    const role = String(this.form.getRawValue().role ?? 'USER');
+    const role = 'USER';
 
     this.usersApi
       .create({ name, email, phone, cpf, birthDate, role })

@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { ProjectDto } from '../shared/api/projects/projects.types';
 import { ProjectsApiService } from '../shared/api/projects-api.service';
 import { AuthSessionService } from '../shared/auth/auth-session.service';
+import { UsersApiService } from '../shared/api/users-api.service';
+import { CompaniesApiService } from '../shared/api/companies-api.service';
 
 @Component({
   selector: 'app-page',
@@ -15,27 +17,71 @@ export class PageComponent implements OnInit {
 
   recentProjects: ProjectDto[] = [];
   loadingProjects = true;
+  companyName = 'Empresa';
+  totalProjects = 0;
+  totalUsers = 0;
+  activeProjects = 0;
+  myRole = 'USER';
 
   constructor(
     private router: Router,
     private projectsApi: ProjectsApiService,
-    private authSession: AuthSessionService
+    private authSession: AuthSessionService,
+    private usersApi: UsersApiService,
+    private companiesApi: CompaniesApiService
   ) {}
 
   ngOnInit(): void {
-    this.projectsApi.getAll(this.authSession.getUserId() ?? undefined).subscribe({
+    this.myRole = this.authSession.getRole().trim().toUpperCase();
+    const sessionUser = this.authSession.getUser();
+    const companyId = sessionUser?.companyId ?? null;
+    const companyName = sessionUser?.companyName ?? null;
+
+    this.projectsApi.getAll().subscribe({
       next: (result) => {
         this.loadingProjects = false;
-        if (result?.isSuccess && result.data?.length) {
-          this.recentProjects = result.data
-            .filter(p => p.status !== 'Inactive')
-            .slice()
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, 4);
-        }
+        const projects = result?.isSuccess && result.data?.length ? result.data : [];
+        this.totalProjects = projects.length;
+        this.activeProjects = projects.filter(p => p.status === 'Active').length;
+        this.recentProjects = projects
+          .filter(p => p.status !== 'Inactive')
+          .slice()
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 4);
       },
       error: () => { this.loadingProjects = false; }
     });
+
+    if (companyId) {
+      this.companyName = companyName || 'Empresa';
+
+      this.companiesApi.getUsersByCompany(companyId).subscribe({
+        next: (result) => {
+          const users = Array.isArray((result as any)?.data) ? (result as any).data : [];
+          this.totalUsers = users.length;
+        }
+      });
+
+      if (!companyName) {
+        this.companiesApi.getById(companyId).subscribe({
+          next: (companyResult) => {
+            this.companyName = companyResult?.isSuccess && companyResult.data?.name
+              ? companyResult.data.name
+              : 'Empresa';
+          }
+        });
+      }
+    } else {
+      this.companyName = this.myRole === 'ADM_MASTER' ? 'Todas as empresas' : 'Sem empresa vinculada';
+
+      if (this.myRole === 'ADM_MASTER') {
+        this.usersApi.getAll().subscribe({
+          next: (result) => {
+            this.totalUsers = result?.isSuccess && result.data?.length ? result.data.length : 0;
+          }
+        });
+      }
+    }
   }
 
   onSubmit(): void {

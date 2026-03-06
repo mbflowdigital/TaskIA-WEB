@@ -1,5 +1,6 @@
 export interface UserDto {
   id: string;
+  companyId?: string | null;
   name: string;
   email: string;
   phone?: string;
