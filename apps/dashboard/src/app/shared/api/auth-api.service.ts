@@ -35,10 +35,10 @@ export class AuthApiService {
 
   changePasswordFirstAccess(
     request: ChangePasswordFirstAccessRequest
-  ): Observable<ApiResult<null>> {
+  ): Observable<LoginApiResult> {
     return this.http
-      .post<ApiResult<null>>(`${this.baseUrl}/api/auth/change-password-first-access`, request)
-      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<null>)));
+      .post<LoginApiResult>(`${this.baseUrl}/api/auth/change-password-first-access`, request)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as LoginApiResult)));
   }
 
   onboarding(request: OnboardingRequest): Observable<LoginApiResult> {

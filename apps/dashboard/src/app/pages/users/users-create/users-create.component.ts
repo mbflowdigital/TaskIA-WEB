@@ -17,6 +17,7 @@ import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 export class UsersCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
+  canCreateAdmins = false;
   isEditMode = false;
   editingUserId?: string;
   isLoading = false;
@@ -48,6 +49,8 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
     const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    this.canCreateAdmins = role === 'ADM_MASTER';
+
     if (!isAdmin) {
       this.router.navigate(['/page']);
       return;
@@ -166,7 +169,9 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     }
 
     const email = String(this.form.getRawValue().email ?? '').trim();
-    const role = 'USER';
+    const role = this.canCreateAdmins
+      ? String(this.form.getRawValue().role ?? 'USER').trim().toUpperCase()
+      : 'USER';
 
     this.usersApi
       .create({ name, email, phone, cpf, birthDate, role })
