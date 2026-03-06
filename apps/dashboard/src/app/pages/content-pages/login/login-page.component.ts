@@ -52,6 +52,26 @@ export class LoginPageComponent {
   get lf() { return this.loginForm.controls; }
   get faf() { return this.firstAccessForm.controls; }
 
+  private persistSessionAndRedirect(data: LoginData): void {
+    if (data.token) {
+      localStorage.setItem('auth_token', data.token);
+    }
+
+    this.authSession.setUser({
+      userId: data.userId,
+      companyId: data.companyId,
+      companyName: data.companyName ?? undefined,
+      name: data.name,
+      email: data.email,
+      cpf: data.cpf,
+      phone: data.phone,
+      role: data.role,
+      requiresOnboarding: data.requiresOnboarding
+    });
+
+    this.router.navigate([data.requiresOnboarding ? '/onboarding' : '/page']);
+  }
+
   // ── Submit login ─────────────────────────────────────────────────────────
   onSubmit(): void {
     this.loginFormSubmitted = true;
@@ -86,23 +106,7 @@ export class LoginPageComponent {
           return;
         }
 
-        // Token salvo e redireciona
-        if (data.token) {
-          localStorage.setItem('auth_token', data.token);
-        }
-        this.authSession.setUser({
-          userId: data.userId,
-          companyId: data.companyId,
-          companyName: data.companyName ?? undefined,
-          name: data.name,
-          email: data.email,
-          cpf: data.cpf,
-          phone: data.phone,
-          role: data.role,
-          requiresOnboarding: data.requiresOnboarding
-        });
-
-        this.router.navigate(['/page']);
+        this.persistSessionAndRedirect(data);
         });
       },
       error: () => {
@@ -139,21 +143,21 @@ export class LoginPageComponent {
     }).pipe(finalize(() => { this.isChangingPassword = false; }))
       .subscribe({
       next: (result) => {
-        if (!result?.isSuccess) {
+        if (!result?.isSuccess || !result.data) {
           this.firstAccessError = result?.message ?? 'Não foi possível alterar a senha.';
           return;
         }
 
         this.firstAccessSuccess = true;
 
-        // Re-faz login com a nova senha automaticamente após 2s
+        // Fecha o modal e segue para onboarding/dashboard com a sessão retornada pela API
         setTimeout(() => {
           this.showFirstAccessModal = false;
           this.firstAccessSuccess = false;
           this.firstAccessForm.reset();
           this.firstAccessSubmitted = false;
           this.loginForm.patchValue({ password: newPassword });
-          this.onSubmit();
+          this.persistSessionAndRedirect(result.data as LoginData);
         }, 2000);
       },
       error: () => {
