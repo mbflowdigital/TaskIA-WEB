@@ -8,6 +8,10 @@ export const Full_ROUTES: Routes = [
     loadChildren: () => import('../../page/page.module').then(m => m.PageModule)
   },
   {
+    path: 'onboarding/company',
+    loadComponent: () => import('../../pages/onboarding/company-onboarding/company-onboarding.component').then(m => m.CompanyOnboardingComponent)
+  },
+  {
     path: 'users',
     loadComponent: () => import('../../pages/users/users-list/users-list.component').then(m => m.UsersListComponent)
   },
@@ -18,6 +22,22 @@ export const Full_ROUTES: Routes = [
   {
     path: 'users/:id/edit',
     loadComponent: () => import('../../pages/users/users-create/users-create.component').then(m => m.UsersCreateComponent)
+  },
+  {
+    path: 'companies',
+    loadComponent: () => import('../../pages/companies/companies-list/companies-list.component').then(m => m.CompaniesListComponent)
+  },
+  {
+    path: 'companies/create',
+    loadComponent: () => import('../../pages/companies/companies-create/companies-create.component').then(m => m.CompaniesCreateComponent)
+  },
+  {
+    path: 'companies/:id/edit',
+    loadComponent: () => import('../../pages/companies/companies-create/companies-create.component').then(m => m.CompaniesCreateComponent)
+  },
+  {
+    path: 'companies/:id',
+    loadComponent: () => import('../../pages/companies/company-detail/company-detail.component').then(m => m.CompanyDetailComponent)
   },
   {
     path: 'projects',

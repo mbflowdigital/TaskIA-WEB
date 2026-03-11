@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
+import { AuthRefreshService } from './shared/auth/auth-refresh.service';
 
 @Component({
     selector: 'app-root',
@@ -12,7 +13,11 @@ export class AppComponent implements OnInit, OnDestroy {
 
     subscription: Subscription;
 
-    constructor(private router: Router, private translate: TranslateService) {
+    constructor(
+        private router: Router,
+        private translate: TranslateService,
+        private authRefresh: AuthRefreshService
+    ) {
         const supportedLangs = ['pt-BR', 'en', 'es', 'de'];
         this.translate.addLangs(supportedLangs);
         this.translate.setDefaultLang('pt-BR');
@@ -29,6 +34,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
+        this.authRefresh.initializeMonitoring();
         this.subscription = this.router.events
             .pipe(
                 filter(event => event instanceof NavigationEnd)

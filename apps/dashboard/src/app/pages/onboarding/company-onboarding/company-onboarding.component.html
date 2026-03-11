@@ -72,6 +72,25 @@
                     <div class="col-12 col-md-6">
                       <div class="form-group">
                         <div class="controls">
+                          <label for="company-cnpj">CNPJ</label>
+                          <input
+                            id="company-cnpj"
+                            type="text"
+                            class="form-control"
+                            placeholder="00.000.000/0000-00"
+                            formControlName="cnpj"
+                            [class.is-invalid]="formSubmitted && f.cnpj.invalid"
+                          />
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.cnpj.invalid">
+                            Informe um CNPJ com 14 dígitos.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <div class="form-group">
+                        <div class="controls">
                           <label for="employee-count">Quantidade de funcionários</label>
                           <input
                             id="employee-count"
@@ -103,11 +122,14 @@
                             class="form-control"
                             placeholder="Ex.: 01001000"
                             formControlName="addressZip"
+                            (blur)="onZipBlur()"
                             [class.is-invalid]="formSubmitted && f.addressZip.invalid"
                           />
                           <div class="invalid-feedback" *ngIf="formSubmitted && f.addressZip.invalid">
                             CEP é obrigatório.
                           </div>
+                          <small *ngIf="isLookingUpCep" class="text-muted d-block mt-1">Consultando CEP...</small>
+                          <small *ngIf="cepError" class="text-danger d-block mt-1">{{ cepError }}</small>
                         </div>
                       </div>
                     </div>
@@ -243,7 +265,7 @@
                   </div>
 
                   <div class="d-flex flex-sm-row flex-column justify-content-end mt-2">
-                    <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+                    <button type="submit" class="btn btn-primary" [disabled]="isSubmitting || isLookingUpCep">
                       {{ isSubmitting ? 'Salvando...' : 'Concluir' }}
                     </button>
                   </div>
@@ -353,6 +375,27 @@
                               class="form-control"
                               formControlName="birthDate"
                             />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <div class="controls">
+                            <label for="employee-position">Cargo</label>
+                            <select
+                              id="employee-position"
+                              class="form-control"
+                              formControlName="positionId"
+                              [class.is-invalid]="employeeFormSubmitted && ef.positionId.invalid"
+                            >
+                              <option value="">Selecione um cargo</option>
+                              <option *ngFor="let position of positions" [value]="position.id">{{ position.positionName }}</option>
+                            </select>
+                            <div class="invalid-feedback" *ngIf="employeeFormSubmitted && ef.positionId.invalid">
+                              Cargo é obrigatório.
+                            </div>
+                            <small *ngIf="positionsLoading" class="text-muted d-block mt-1">Carregando cargos...</small>
                           </div>
                         </div>
                       </div>

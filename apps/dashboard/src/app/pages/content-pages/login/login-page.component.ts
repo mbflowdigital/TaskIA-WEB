@@ -53,22 +53,7 @@ export class LoginPageComponent {
   get faf() { return this.firstAccessForm.controls; }
 
   private persistSessionAndRedirect(data: LoginData): void {
-    if (data.token) {
-      localStorage.setItem('auth_token', data.token);
-    }
-
-    this.authSession.setUser({
-      userId: data.userId,
-      companyId: data.companyId,
-      companyName: data.companyName ?? undefined,
-      name: data.name,
-      email: data.email,
-      cpf: data.cpf,
-      phone: data.phone,
-      role: data.role,
-      requiresOnboarding: data.requiresOnboarding
-    });
-
+    this.authSession.setSession(data);
     this.router.navigate([data.requiresOnboarding ? '/onboarding' : '/page']);
   }
 

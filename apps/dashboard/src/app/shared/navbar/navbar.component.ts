@@ -8,6 +8,7 @@ import { CustomizerService } from '../services/customizer.service';
 import { UntypedFormControl } from '@angular/forms';
 import { LISTITEMS } from '../data/template-search';
 import { Router } from '@angular/router';
+import { AuthSessionService } from '../auth/auth-session.service';
 
 @Component({
   selector: "app-navbar",
@@ -27,6 +28,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
   transparentBGClass = "";
   hideSidebar: boolean = true;
   public isCollapsed = true;
+  userName = 'Usuario';
   layoutSub: Subscription;
   configSub: Subscription;
 
@@ -47,6 +49,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(public translate: TranslateService,
     private layoutService: LayoutService,
     private router: Router,
+    private authSessionService: AuthSessionService,
     private configService: ConfigService, private cdr: ChangeDetectorRef) {
 
     const initialLang = this.translate.currentLang || this.translate.getDefaultLang() || 'pt-BR';
@@ -64,6 +67,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.listItems = LISTITEMS;
+    this.userName = this.authSessionService.getUser()?.name?.trim() || 'Usuario';
 
     if (this.innerWidth < 1200) {
       this.isSmallScreen = true;

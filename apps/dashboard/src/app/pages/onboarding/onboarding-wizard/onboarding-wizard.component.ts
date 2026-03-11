@@ -10,11 +10,20 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 
 import { AuthApiService } from 'app/shared/api/auth-api.service';
+import { UsersApiService } from 'app/shared/api/users-api.service';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 export type WizardStep = 'welcome' | 'company' | 'location' | 'team';
 
 const STEPS: WizardStep[] = ['welcome', 'company', 'location', 'team'];
+
+function normalizeCnpj(value: string | null | undefined): string {
+  return (value ?? '').replace(/\D/g, '');
+}
+
+function isValidBasicCnpj(value: string | null | undefined): boolean {
+  return normalizeCnpj(value).length === 14;
+}
 
 @Component({
   selector: 'app-onboarding-wizard',
@@ -29,6 +38,8 @@ export class OnboardingWizardComponent implements OnInit {
   isSubmitting = false;
   submitError?: string;
   showPreview = false;
+  isLookingUpCep = false;
+  cepError?: string;
 
   userName = '';
   userId = '';
@@ -36,6 +47,7 @@ export class OnboardingWizardComponent implements OnInit {
   // ── Formulário unificado ───────────────────────────────────────────────
   companyForm = new UntypedFormGroup({
     companyName: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
+    cnpj: new UntypedFormControl('', [Validators.required, control => isValidBasicCnpj(control.value) ? null : { cnpj: true }]),
     category: new UntypedFormControl('', [Validators.required])
   });
 
@@ -75,6 +87,7 @@ export class OnboardingWizardComponent implements OnInit {
   constructor(
     private readonly authSession: AuthSessionService,
     private readonly authApi: AuthApiService,
+    private readonly usersApi: UsersApiService,
     private readonly router: Router
   ) {}
 
@@ -120,6 +133,68 @@ export class OnboardingWizardComponent implements OnInit {
       'Brasil'
     ].filter(Boolean);
     return parts.join(', ');
+  }
+
+  private setLocationLookupState(isBusy: boolean): void {
+    const controls = [
+      'addressZip',
+      'addressStreet',
+      'addressNumber',
+      'addressComplement',
+      'addressNeighborhood',
+      'addressCity',
+      'addressState'
+    ];
+
+    for (const controlName of controls) {
+      const control = this.locationForm.get(controlName);
+      if (!control) {
+        continue;
+      }
+
+      if (isBusy) {
+        control.disable({ emitEvent: false });
+      } else {
+        control.enable({ emitEvent: false });
+      }
+    }
+  }
+
+  onZipBlur(): void {
+    const cep = String(this.locationForm.value.addressZip ?? '').replace(/\D/g, '');
+    this.cepError = undefined;
+
+    if (cep.length !== 8) {
+      return;
+    }
+
+    this.isLookingUpCep = true;
+    this.setLocationLookupState(true);
+
+    this.usersApi.getAddressByCep(cep).subscribe({
+      next: (result) => {
+        this.isLookingUpCep = false;
+        this.setLocationLookupState(false);
+
+        if (!result?.isSuccess || !result.data) {
+          this.cepError = result?.message ?? 'Não foi possível localizar o CEP.';
+          return;
+        }
+
+        this.locationForm.patchValue({
+          addressStreet: result.data.logradouro ?? '',
+          addressComplement: result.data.complemento ?? '',
+          addressNeighborhood: result.data.bairro ?? '',
+          addressCity: result.data.localidade ?? '',
+          addressState: (result.data.uf ?? '').toUpperCase()
+        });
+      },
+      error: () => {
+        this.isLookingUpCep = false;
+        this.setLocationLookupState(false);
+        this.cepError = 'Erro inesperado ao consultar o CEP.';
+      }
+    });
   }
 
   // ── Navigation ───────────────────────────────────────────────────────────
@@ -178,6 +253,7 @@ export class OnboardingWizardComponent implements OnInit {
       userId: this.userId,
       companyName: String(this.companyForm.value.companyName).trim(),
       address: this.fullAddress,
+      cnpj: normalizeCnpj(String(this.companyForm.value.cnpj ?? '')),
       numberOfMembers,
       category: String(this.companyForm.value.category).trim()
     })

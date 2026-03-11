@@ -24,6 +24,10 @@
                   {{ loadError }}
                 </div>
 
+                <div *ngIf="referenceError" class="alert alert-warning mt-1">
+                  {{ referenceError }}
+                </div>
+
                 <div *ngIf="submitError" class="alert alert-danger">
                   <div>{{ submitError }}</div>
                   <ul *ngIf="submitErrors.length" class="mb-0 mt-1">
@@ -78,6 +82,25 @@
                     </div>
 
                     <div class="col-12 col-md-6">
+                      <div class="form-group" *ngIf="isAdmMaster">
+                        <div class="controls">
+                          <label for="users-create-company">Empresa</label>
+                          <select
+                            id="users-create-company"
+                            class="form-control"
+                            formControlName="companyId"
+                            [class.is-invalid]="formSubmitted && f.companyId.invalid"
+                          >
+                            <option value="">Selecione uma empresa</option>
+                            <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
+                          </select>
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.companyId.invalid">
+                            Empresa é obrigatória para ADM_MASTER.
+                          </div>
+                          <small *ngIf="companiesLoading" class="text-muted">Carregando empresas...</small>
+                        </div>
+                      </div>
+
                       <div class="form-group">
                         <div class="controls">
                           <label for="users-create-cpf">CPF</label>
@@ -124,6 +147,25 @@
                         </div>
                       </div>
 
+                      <div class="form-group">
+                        <div class="controls">
+                          <label for="users-create-position">Cargo</label>
+                          <select
+                            id="users-create-position"
+                            class="form-control"
+                            formControlName="positionId"
+                            [class.is-invalid]="formSubmitted && f.positionId.invalid"
+                          >
+                            <option value="">Selecione um cargo</option>
+                            <option *ngFor="let position of positions" [value]="position.id">{{ position.positionName }}</option>
+                          </select>
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.positionId.invalid">
+                            Cargo é obrigatório.
+                          </div>
+                          <small *ngIf="positionsLoading" class="text-muted">Carregando cargos...</small>
+                        </div>
+                      </div>
+
                       <div class="form-group" *ngIf="!isEditMode">
                         <div class="controls">
                           <label for="users-create-role">Tipo de Usuário</label>
@@ -131,14 +173,11 @@
                             id="users-create-role"
                             class="form-control"
                             formControlName="role"
-                            [attr.disabled]="canCreateAdmins ? null : true"
+                            disabled
                           >
                             <option value="USER">Usuário</option>
-                            <option *ngIf="canCreateAdmins" value="ADM">Administrador</option>
                           </select>
-                          <small class="text-muted">
-                            {{ canCreateAdmins ? 'ADM_MASTER pode criar Usuário (USER) ou Administrador (ADM).' : 'Perfil fixo: Usuário padrão (USER).' }}
-                          </small>
+                          <small class="text-muted">Perfil fixo: Usuário padrão (USER).</small>
                         </div>
                       </div>
                     </div>

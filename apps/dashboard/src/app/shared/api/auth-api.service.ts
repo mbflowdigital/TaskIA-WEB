@@ -8,13 +8,15 @@ import { ApiResult } from 'app/shared/api/shared/api-result.types';
 import {
   ChangePasswordFirstAccessRequest,
   LoginApiResult,
-  LoginRequest
+  LoginRequest,
+  RefreshTokenRequest
 } from 'app/shared/api/auth/auth.types';
 
 export interface OnboardingRequest {
   userId: string;
   companyName: string;
   address: string;
+  cnpj: string;
   numberOfMembers: number;
   category: string;
 }
@@ -35,15 +37,21 @@ export class AuthApiService {
 
   changePasswordFirstAccess(
     request: ChangePasswordFirstAccessRequest
-  ): Observable<LoginApiResult> {
+  ): Observable<ApiResult<null>> {
     return this.http
-      .post<LoginApiResult>(`${this.baseUrl}/api/auth/change-password-first-access`, request)
-      .pipe(catchError((err: HttpErrorResponse) => of(err.error as LoginApiResult)));
+      .post<ApiResult<null>>(`${this.baseUrl}/api/auth/change-password-first-access`, request)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<null>)));
   }
 
   onboarding(request: OnboardingRequest): Observable<LoginApiResult> {
     return this.http
       .post<LoginApiResult>(`${this.baseUrl}/api/auth/onboarding`, request)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as LoginApiResult)));
+  }
+
+  refreshToken(request: RefreshTokenRequest): Observable<LoginApiResult> {
+    return this.http
+      .post<LoginApiResult>(`${this.baseUrl}/api/auth/refresh-token`, request)
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as LoginApiResult)));
   }
 }
