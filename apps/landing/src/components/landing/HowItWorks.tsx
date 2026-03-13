@@ -5,19 +5,19 @@ const steps = [
   {
     num: "01",
     icon: Upload,
-    title: "Suba gravação ou descreva o projeto",
-    desc: "Faça upload de áudio, transcrição ou simplesmente descreva o escopo do projeto em texto livre.",
+    title: "Criar o projeto",
+    desc: "Escolha um título e os envolvidos, faça upload de áudio, transcrição ou simplesmente descreva o escopo do projeto em texto livre.",
   },
   {
     num: "02",
     icon: Brain,
     title: "IA gera o plano completo",
-    desc: "Em segundos, receba macro atividades, subtarefas, responsáveis sugeridos e prazos estimados.",
+    desc: "Em segundos, receba macro atividades, subtarefas, responsáveis sugeridos e prazos estimadose e revise continuamente os prazos das atividades sempre que necessário.",
   },
   {
     num: "03",
     icon: Rocket,
-    title: "Gerencie e automatize entregas",
+    title: "Publique e automatize a gestão das atividades",
     desc: "Ajuste o plano, ative notificações automáticas e acompanhe o progresso em tempo real.",
   },
 ];
