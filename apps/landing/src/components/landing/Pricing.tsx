@@ -26,7 +26,7 @@ const plans = [
     price: "Sob consulta",
     period: "",
     desc: "Para grandes organizações com necessidades específicas.",
-    features: ["Tudo do Business","API dedicada", "Segurança avançada (SOC 2)", "Gerente de conta dedicado"],
+    features: ["Tudo do Business", "API dedicada","SSO (Single Sign-On)","SAML (Security Assertion Markup Language)","SLA personalizado", "Segurança avançada (SOC 2)", "Gerente de conta dedicado"],
     cta: "Falar com Vendas",
     highlighted: false,
   },
