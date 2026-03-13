@@ -37,7 +37,7 @@ const Hero = () => {
             </h1>
 
             <p className="text-lg text-hero-muted max-w-lg mb-8 leading-relaxed">
-              Transforme gravações de reuniões e briefings em planos de projeto completos — com atividades, responsáveis e prazos definidos automaticamente pela IA.
+             Transforme gravações e anotações em planos de ação completos, com atividades, responsáveis e prazos com ajuda da IA 
             </p>
 
             {/* Lead form */}

@@ -31,7 +31,7 @@ const Problem = () => {
         >
           <span className="text-sm font-semibold text-accent uppercase tracking-wider">O Problema</span>
           <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mt-3 mb-4">
-            Dores que sua consultoria enfrenta
+            Dores que a sua empresa enfrenta
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Os métodos tradicionais de gestão de projetos geram ineficiência e perdas significativas.

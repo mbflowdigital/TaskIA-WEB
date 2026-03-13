@@ -6,7 +6,7 @@ const benefits = [
   { icon: Shield, title: "Maior responsabilização", desc: "Definição clara de papéis e tarefas impulsiona o comprometimento." },
   { icon: BellRing, title: "Follow-up automático", desc: "Notificações e lembretes mantêm todos engajados sem esforço manual." },
   { icon: Clock, title: "Entregas no prazo", desc: "Monitoramento contínuo para evitar atrasos e garantir pontualidade." },
-  { icon: Plug, title: "Integração simplificada", desc: "Conecte-se aos seus fluxos de trabalho e ferramentas existentes." },
+  { icon: Plug, title: "Integração", desc: "Conecte-se aos seus fluxos de trabalho e ferramentas da sua empresa." },
 ];
 
 const Benefits = () => {

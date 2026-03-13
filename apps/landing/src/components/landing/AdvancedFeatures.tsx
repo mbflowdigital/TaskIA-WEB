@@ -4,7 +4,6 @@ import { Users, History, Link2, Lock } from "lucide-react";
 const features = [
   { icon: Users, title: "Edição Colaborativa", desc: "Múltiplos usuários editando simultaneamente com controle de conflitos." },
   { icon: History, title: "Histórico e Auditoria", desc: "Rastreie todas as alterações com log completo de atividades e responsáveis." },
-  { icon: Link2, title: "Integrações", desc: "Conecte com e-mail, calendário, Slack, Teams, Excel e CSV nativamente." },
   { icon: Lock, title: "Segurança e Permissões", desc: "Controle granular de acesso por projeto, equipe e nível hierárquico." },
 ];
 
@@ -24,7 +23,7 @@ const AdvancedFeatures = () => {
           </h2>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
