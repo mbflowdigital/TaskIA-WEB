@@ -4,8 +4,11 @@ import { ReactiveFormsModule, UntypedFormControl, UntypedFormGroup, Validators }
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
+import { CompaniesApiService, CompanyDto } from '../../../shared/api/companies-api.service';
+import { PositionsApiService } from '../../../shared/api/positions-api.service';
 import { UsersApiService } from '../../../shared/api/users-api.service';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
+import { PositionDto } from 'app/shared/api/positions/positions.types';
 
 @Component({
   selector: 'app-users-create',
@@ -17,11 +20,11 @@ import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 export class UsersCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
-  canCreateAdmins = false;
   isEditMode = false;
   editingUserId?: string;
   isLoading = false;
   loadError?: string;
+  referenceError?: string;
 
   isSubmitting = false;
   submitError?: string;
@@ -29,6 +32,12 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   submitSuccess?: string;
 
   formSubmitted = false;
+  isAdmMaster = false;
+  companiesLoading = false;
+  positionsLoading = false;
+
+  companies: CompanyDto[] = [];
+  positions: PositionDto[] = [];
 
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
@@ -36,11 +45,15 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     cpf: new UntypedFormControl('', [Validators.required]),
     phone: new UntypedFormControl(''),
     birthDate: new UntypedFormControl('', [Validators.required]),
-    role: new UntypedFormControl('USER')
+    role: new UntypedFormControl('USER'),
+    companyId: new UntypedFormControl(''),
+    positionId: new UntypedFormControl('', [Validators.required])
   });
 
   constructor(
     private readonly usersApi: UsersApiService,
+    private readonly companiesApi: CompaniesApiService,
+    private readonly positionsApi: PositionsApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly authSession: AuthSessionService
@@ -49,12 +62,19 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
     const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
-    this.canCreateAdmins = role === 'ADM_MASTER';
+    this.isAdmMaster = role === 'ADM_MASTER';
 
     if (!isAdmin) {
       this.router.navigate(['/page']);
       return;
     }
+
+    if (this.isAdmMaster) {
+      this.form.controls['companyId'].setValidators([Validators.required]);
+      this.form.controls['companyId'].updateValueAndValidity({ emitEvent: false });
+    }
+
+    this.loadReferenceData();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
@@ -91,7 +111,9 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
             email: result.data.email,
             phone: result.data.phone ?? '',
             cpf: result.data.cpf ?? '',
-            birthDate: birthVal
+            birthDate: birthVal,
+            companyId: result.data.companyId ?? '',
+            positionId: result.data.positionId ?? ''
           }, { emitEvent: false });
         },
         error: (err: unknown) => {
@@ -113,6 +135,66 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     return this.form.controls;
   }
 
+  private loadReferenceData(): void {
+    this.positionsLoading = true;
+    this.referenceError = undefined;
+
+    this.positionsApi
+      .getAll()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.positionsLoading = false;
+
+          if (!result?.isSuccess || !result.data) {
+            this.positions = [];
+            this.referenceError = result?.message ?? 'Não foi possível carregar os cargos.';
+            return;
+          }
+
+          this.positions = result.data;
+        },
+        error: (err: unknown) => {
+          this.positionsLoading = false;
+          this.positions = [];
+          this.referenceError =
+            typeof err === 'object' && err && 'message' in err
+              ? String((err as { message?: unknown }).message)
+              : 'Erro inesperado ao carregar os cargos.';
+        }
+      });
+
+    if (!this.isAdmMaster) {
+      return;
+    }
+
+    this.companiesLoading = true;
+    this.companiesApi
+      .getAll()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.companiesLoading = false;
+
+          if (!result?.isSuccess || !result.data) {
+            this.companies = [];
+            this.referenceError = result?.message ?? 'Não foi possível carregar as empresas.';
+            return;
+          }
+
+          this.companies = result.data;
+        },
+        error: (err: unknown) => {
+          this.companiesLoading = false;
+          this.companies = [];
+          this.referenceError =
+            typeof err === 'object' && err && 'message' in err
+              ? String((err as { message?: unknown }).message)
+              : 'Erro inesperado ao carregar as empresas.';
+        }
+      });
+  }
+
   onSubmit(): void {
     this.formSubmitted = true;
     this.submitError = undefined;
@@ -127,10 +209,22 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     const phone = String(this.form.getRawValue().phone ?? '').trim() || undefined;
     const cpf = String(this.form.getRawValue().cpf ?? '').trim();
     const birthDateRaw = String(this.form.getRawValue().birthDate ?? '').trim();
+    const companyId = String(this.form.getRawValue().companyId ?? '').trim() || undefined;
+    const positionId = Number(this.form.getRawValue().positionId ?? 0);
     // Send date as-is (yyyy-MM-dd) to avoid UTC timezone shifting
     const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : null;
 
-    console.debug('[users-create] submit payload →', { name, phone, cpf, birthDate });
+    if (!Number.isFinite(positionId) || positionId <= 0) {
+      this.isSubmitting = false;
+      this.submitError = 'Selecione um cargo válido.';
+      return;
+    }
+
+    if (this.isAdmMaster && !companyId) {
+      this.isSubmitting = false;
+      this.submitError = 'Selecione a empresa do usuário.';
+      return;
+    }
 
     if (this.isEditMode) {
       const id = this.editingUserId;
@@ -141,7 +235,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
       }
 
       this.usersApi
-        .update(id, { id, name, phone, cpf, birthDate })
+        .update(id, { id, name, phone, cpf, birthDate, companyId, positionId })
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (result) => {
@@ -169,12 +263,10 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     }
 
     const email = String(this.form.getRawValue().email ?? '').trim();
-    const role = this.canCreateAdmins
-      ? String(this.form.getRawValue().role ?? 'USER').trim().toUpperCase()
-      : 'USER';
+    const role = 'USER';
 
     this.usersApi
-      .create({ name, email, phone, cpf, birthDate, role })
+      .create({ name, email, phone, cpf, birthDate, role, companyId, positionId })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -207,7 +299,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     this.submitErrors = [];
     this.submitSuccess = undefined;
     this.loadError = undefined;
-    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '', role: 'USER' });
+    this.form.reset({ name: '', email: '', phone: '', cpf: '', birthDate: '', role: 'USER', companyId: '', positionId: '' });
 
     if (this.isEditMode) {
       this.form.controls['email'].disable();

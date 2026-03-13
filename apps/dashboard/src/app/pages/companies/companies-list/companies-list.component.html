@@ -1,0 +1,218 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section id="companies-list">
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex align-items-start justify-content-between flex-column flex-md-row">
+            <div>
+              <p class="content-sub-header mb-1">Gerencie as empresas cadastradas no sistema</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h4 class="card-title mb-0">Filtros</h4>
+            </div>
+            <div class="card-content">
+              <div class="card-body">
+                <form (submit)="$event.preventDefault()">
+                  <div class="row">
+                    <div class="col-12 col-sm-6 col-lg-4">
+                      <div class="form-group">
+                        <label for="companies-list-category">Categoria</label>
+                        <input
+                          id="companies-list-category"
+                          type="text"
+                          class="form-control form-control-sm"
+                          [(ngModel)]="categoryFilter"
+                          (ngModelChange)="onFilterChange()"
+                          name="categoryFilter"
+                          placeholder="Filtrar por categoria"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-4">
+                      <div class="form-group">
+                        <label for="companies-list-status">Status</label>
+                        <select
+                          id="companies-list-status"
+                          class="form-control form-control-sm"
+                          [(ngModel)]="statusFilter"
+                          (ngModelChange)="onFilterChange()"
+                          name="statusFilter"
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="Active">Ativa</option>
+                          <option value="Close">Inativa</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-lg-4">
+                      <div class="form-group mb-0">
+                        <label class="invisible">Ações</label>
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm btn-block"
+                          (click)="clearFilters()"
+                          [disabled]="isLoading"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <div class="w-100">
+                <div class="d-flex align-items-start justify-content-between flex-column flex-md-row">
+                  <div>
+                    <h4 class="card-title mb-0">Empresas</h4>
+                    <small class="text-muted">{{ filteredCompanies.length }} resultado(s)</small>
+                  </div>
+
+                  <div class="d-flex align-items-center mt-1 mt-md-0">
+                    <a class="btn btn-primary btn-sm mr-1" routerLink="/companies/create">Cadastrar empresa</a>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="reload()" [disabled]="isLoading">
+                      Atualizar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between flex-column flex-md-row mt-2">
+                  <label class="mb-0 text-muted">
+                    Mostrar
+                    <select
+                      name="companies-list-select"
+                      class="form-control form-control-sm d-inline-block width-100 p-right-25 pl-4 mx-1"
+                      [ngModel]="limit"
+                      (change)="updateLimit($event)"
+                    >
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                    registros
+                  </label>
+
+                  <div class="d-flex align-items-center mt-1 mt-md-0">
+                    <span class="text-muted mr-1">Buscar:</span>
+                    <input
+                      class="form-control form-control-sm width-200"
+                      type="text"
+                      [value]="searchValue"
+                      (keyup)="filterUpdate($event)"
+                      placeholder="Buscar por nome, categoria, endereço..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-content">
+              <div class="card-body">
+                <div *ngIf="isLoading" class="mt-1">Carregando empresas...</div>
+
+                <div *ngIf="loadError" class="alert alert-danger mt-1">
+                  {{ loadError }}
+                </div>
+
+                <div *ngIf="actionError" class="alert alert-danger mt-1">
+                  {{ actionError }}
+                </div>
+
+                <div class="table-responsive" *ngIf="!isLoading && !loadError">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th style="min-width: 220px;">Empresa</th>
+                        <th>CNPJ</th>
+                        <th>Categoria</th>
+                        <th style="min-width: 220px;">Endereço</th>
+                        <th>Membros</th>
+                        <th>Usuários</th>
+                        <th>Status</th>
+                        <th style="width: 1%; white-space: nowrap;">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let company of visibleRows; trackBy: trackById">
+                        <td>
+                          <div class="cell-line-height" style="min-width: 0;">
+                            <div class="line-height-1 mb-0 text-truncate" style="max-width: 260px;">
+                              {{ company.name }}
+                            </div>
+                            <small class="text-muted text-truncate d-block" style="max-width: 260px;">
+                              {{ company.id }}
+                            </small>
+                          </div>
+                        </td>
+                        <td>{{ company.cnpj || '-' }}</td>
+                        <td>{{ company.category || '-' }}</td>
+                        <td class="text-truncate" style="max-width: 260px;">{{ company.address || '-' }}</td>
+                        <td>{{ company.numberOfMembers }}</td>
+                        <td>{{ company.userCount }}</td>
+                        <td>
+                          <span
+                            class="badge"
+                            [ngClass]="{ 'bg-light-success': company.isActive, 'bg-light-warning': !company.isActive }"
+                          >
+                            {{ company.isActive ? 'Ativa' : 'Inativa' }}
+                          </span>
+                        </td>
+                        <td class="text-right" style="white-space: nowrap;">
+                          <div class="position-relative d-inline-block">
+                            <button
+                              type="button"
+                              class="btn btn-outline-secondary btn-sm"
+                              (click)="toggleActions(company.id)"
+                              [disabled]="deletingCompanyId === company.id"
+                            >
+                              Ações
+                            </button>
+
+                            <div *ngIf="openActionsForId === company.id" class="dropdown-menu show actions-menu">
+                              <button type="button" class="dropdown-item" (click)="viewCompany(company)">Ver</button>
+                              <button type="button" class="dropdown-item" (click)="editCompany(company)">Editar</button>
+                              <button
+                                type="button"
+                                class="dropdown-item text-danger"
+                                (click)="deleteCompany(company)"
+                                [disabled]="deletingCompanyId === company.id"
+                              >
+                                {{ deletingCompanyId === company.id ? 'Removendo...' : 'Remover' }}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr *ngIf="visibleRows.length === 0">
+                        <td colspan="8" class="text-center text-muted">Nenhuma empresa encontrada</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

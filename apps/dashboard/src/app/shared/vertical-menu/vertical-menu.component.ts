@@ -60,14 +60,18 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
   private applyRoleVisibility(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
     const canSeeUsers = role === 'ADM' || role === 'ADM_MASTER';
-
-    if (canSeeUsers) return;
+    const canSeeCompanies = role === 'ADM_MASTER';
 
     this.menuItems = this.menuItems
       .map((menu: RouteInfo) => {
         if (!menu.submenu?.length) return menu;
 
-        const filteredSubmenu = menu.submenu.filter(item => item.path !== '/users');
+        const filteredSubmenu = menu.submenu.filter(item => {
+          if (item.path === '/users') return canSeeUsers;
+          if (item.path === '/companies') return canSeeCompanies;
+          return true;
+        });
+
         return { ...menu, submenu: filteredSubmenu };
       })
       .filter((menu: RouteInfo) => menu.path || (menu.submenu && menu.submenu.length > 0));

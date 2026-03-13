@@ -12,10 +12,16 @@ export interface LoginData {
   cpf: string;
   phone: string;
   isFirstAccess: boolean;
-  requiresOnboarding: boolean;
+  requiresOnboarding?: boolean;
   role: string;
   token: string | null;
   tokenExpiration: string | null;
+  refreshToken: string | null;
+}
+
+export interface RefreshTokenRequest {
+  token: string;
+  refreshToken: string;
 }
 
 export interface LoginApiResult {
