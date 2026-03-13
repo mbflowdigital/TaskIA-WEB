@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 
+import { LoginData } from '../api/auth/auth.types';
+
 export interface AuthUser {
   userId: string;
   companyId?: string | null;
@@ -14,9 +16,29 @@ export interface AuthUser {
 
 const STORAGE_KEY = 'auth_user';
 const TOKEN_STORAGE_KEY = 'auth_token';
+const REFRESH_TOKEN_STORAGE_KEY = 'auth_refresh_token';
+const TOKEN_EXPIRATION_STORAGE_KEY = 'auth_token_expiration';
 
 @Injectable({ providedIn: 'root' })
 export class AuthSessionService {
+
+  setSession(data: LoginData): void {
+    this.setUser({
+      userId: data.userId,
+      companyId: data.companyId,
+      companyName: data.companyName ?? undefined,
+      name: data.name,
+      email: data.email,
+      cpf: data.cpf,
+      phone: data.phone,
+      role: data.role,
+      requiresOnboarding: data.requiresOnboarding ?? false
+    });
+
+    this.setStoredValue(TOKEN_STORAGE_KEY, data.token);
+    this.setStoredValue(REFRESH_TOKEN_STORAGE_KEY, data.refreshToken);
+    this.setStoredValue(TOKEN_EXPIRATION_STORAGE_KEY, data.tokenExpiration);
+  }
 
   setUser(user: AuthUser): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
@@ -43,6 +65,38 @@ export class AuthSessionService {
     return localStorage.getItem(TOKEN_STORAGE_KEY);
   }
 
+  getRefreshToken(): string | null {
+    return localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+  }
+
+  getTokenExpiration(): Date | null {
+    const rawValue = localStorage.getItem(TOKEN_EXPIRATION_STORAGE_KEY);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const expiration = new Date(rawValue);
+    return Number.isNaN(expiration.getTime()) ? null : expiration;
+  }
+
+  updateTokens(token: string | null, refreshToken: string | null, tokenExpiration: string | null): void {
+    this.setStoredValue(TOKEN_STORAGE_KEY, token);
+    this.setStoredValue(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+    this.setStoredValue(TOKEN_EXPIRATION_STORAGE_KEY, tokenExpiration);
+  }
+
+  isTokenExpiringSoon(thresholdMs = 120000): boolean {
+    const token = this.getToken();
+    const expiration = this.getTokenExpiration();
+
+    if (!token || !expiration) {
+      return false;
+    }
+
+    return expiration.getTime() - Date.now() <= thresholdMs;
+  }
+
   requiresOnboarding(): boolean {
     return this.getUser()?.requiresOnboarding === true;
   }
@@ -58,9 +112,20 @@ export class AuthSessionService {
   clear(): void {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_EXPIRATION_STORAGE_KEY);
   }
 
   isLoggedIn(): boolean {
-    return !!this.getUser();
+    return !!this.getUser() && !!this.getToken();
+  }
+
+  private setStoredValue(key: string, value: string | null | undefined): void {
+    if (value) {
+      localStorage.setItem(key, value);
+      return;
+    }
+
+    localStorage.removeItem(key);
   }
 }

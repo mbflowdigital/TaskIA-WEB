@@ -65,6 +65,7 @@
           </p>
           <ul class="check-list">
             <li><i class="ft-check-circle"></i> Nome e segmento da empresa</li>
+            <li><i class="ft-check-circle"></i> CNPJ da empresa</li>
             <li><i class="ft-check-circle"></i> Endereço completo</li>
             <li><i class="ft-check-circle"></i> Tamanho da equipe</li>
           </ul>
@@ -96,6 +97,20 @@
             </div>
 
             <div class="form-group">
+              <label class="form-label">CNPJ *</label>
+              <input
+                type="text"
+                class="form-input"
+                formControlName="cnpj"
+                placeholder="00.000.000/0000-00"
+                [class.input-error]="companySubmitted && cf['cnpj'].invalid"
+              />
+              <div class="input-error-message" *ngIf="companySubmitted && cf['cnpj'].invalid">
+                Informe um CNPJ com 14 dígitos.
+              </div>
+            </div>
+
+            <div class="form-group">
               <label class="form-label">Segmento / Categoria *</label>
               <select
                 class="form-input"
@@ -113,8 +128,8 @@
           </form>
 
           <div class="step-footer">
-            <button type="button" class="btn-back" (click)="back()">← Voltar</button>
-            <button type="button" class="btn-next" (click)="next()">Próximo →</button>
+            <button type="button" class="btn-back" (click)="back()" [disabled]="isLookingUpCep">← Voltar</button>
+            <button type="button" class="btn-next" (click)="next()" [disabled]="isLookingUpCep">Próximo →</button>
           </div>
         </div>
 
@@ -185,8 +200,11 @@
                   <label class="form-label">CEP *</label>
                   <input type="text" class="form-input" formControlName="addressZip"
                     placeholder="00000-000" maxlength="9"
+                    (blur)="onZipBlur()"
                     [class.input-error]="locationSubmitted && lf['addressZip'].invalid" />
                   <div class="input-error-message" *ngIf="locationSubmitted && lf['addressZip'].invalid">CEP inválido.</div>
+                  <div class="text-muted mt-1" *ngIf="isLookingUpCep">Consultando CEP...</div>
+                  <div class="input-error-message" *ngIf="cepError">{{ cepError }}</div>
                 </div>
               </div>
             </div>
@@ -213,6 +231,10 @@
               <div class="preview-row">
                 <span class="p-label">Nome</span>
                 <span class="p-value">{{ companyForm.value.companyName }}</span>
+              </div>
+              <div class="preview-row">
+                <span class="p-label">CNPJ</span>
+                <span class="p-value">{{ companyForm.value.cnpj }}</span>
               </div>
               <div class="preview-row">
                 <span class="p-label">Segmento</span>

@@ -16,6 +16,7 @@ export const ROUTES: RouteInfo[] = [
     path: '', title: 'Administração', icon: 'ft-settings', class: 'has-sub', badge: '', badgeClass: '', isExternalLink: false,
     submenu: [
       { path: '/users', title: 'Usuários', icon: 'ft-users submenu-icon', class: '', badge: '', badgeClass: '', isExternalLink: false, submenu: [] },
+      { path: '/companies', title: 'Empresas', icon: 'ft-briefcase submenu-icon', class: '', badge: '', badgeClass: '', isExternalLink: false, submenu: [] },
     ]
   },
 ];

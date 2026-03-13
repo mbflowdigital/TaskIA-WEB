@@ -5,7 +5,7 @@ import { catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { ApiResult } from 'app/shared/api/shared/api-result.types';
-import { CheckEmailResponse, CreateUserRequest, UpdateUserRequest, UserDto } from 'app/shared/api/users/users.types';
+import { CheckEmailResponse, CreateUserRequest, UpdateUserRequest, UserDto, ViaCepDto } from 'app/shared/api/users/users.types';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Injectable({
@@ -98,6 +98,14 @@ export class UsersApiService {
           })
         )
       );
+  }
+
+  getAddressByCep(cep: string): Observable<ApiResult<ViaCepDto>> {
+    return this.http
+      .get<ApiResult<ViaCepDto>>(`${this.baseUrl}/api/users/cep/${cep}`, {
+        headers: this.getActorHeaders()
+      })
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<ViaCepDto>)));
   }
 }
 

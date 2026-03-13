@@ -7,6 +7,8 @@ import { finalize } from 'rxjs/operators';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 import { CompanyOnboardingData, OnboardingService } from 'app/shared/onboarding/onboarding.service';
 import { CompaniesApiService } from 'app/shared/api/companies-api.service';
+import { PositionsApiService } from 'app/shared/api/positions-api.service';
+import { PositionDto } from 'app/shared/api/positions/positions.types';
 import { UsersApiService } from 'app/shared/api/users-api.service';
 
 @Component({
@@ -28,9 +30,14 @@ export class CompanyOnboardingComponent implements OnInit {
   isEmployeeSubmitting = false;
   employeeFormSubmitted = false;
   employeeSubmitError?: string;
+  isLookingUpCep = false;
+  cepError?: string;
+  positionsLoading = false;
+  positions: PositionDto[] = [];
 
   form = new UntypedFormGroup({
     companyName: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
+    cnpj: new UntypedFormControl('', [Validators.required, Validators.pattern(/^([0-9]{14}|[0-9]{2}\.?[0-9]{3}\.?[0-9]{3}\/?[0-9]{4}\-?[0-9]{2})$/)]),
     department: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
     employeeCount: new UntypedFormControl('', [Validators.required]),
 
@@ -49,7 +56,8 @@ export class CompanyOnboardingComponent implements OnInit {
     email: new UntypedFormControl('', [Validators.required, Validators.email]),
     cpf: new UntypedFormControl(''),
     phone: new UntypedFormControl(''),
-    birthDate: new UntypedFormControl('')
+    birthDate: new UntypedFormControl(''),
+    positionId: new UntypedFormControl('', [Validators.required])
   });
 
   constructor(
@@ -57,6 +65,7 @@ export class CompanyOnboardingComponent implements OnInit {
     private readonly onboarding: OnboardingService,
     private readonly router: Router,
     private readonly companiesApi: CompaniesApiService,
+    private readonly positionsApi: PositionsApiService,
     private readonly usersApi: UsersApiService
   ) {}
 
@@ -74,6 +83,7 @@ export class CompanyOnboardingComponent implements OnInit {
     }
 
     const userId = user.userId;
+  this.loadPositions();
 
     // Se já completou empresa, pode ser que esteja pendente o passo do funcionário.
     if (this.onboarding.isCompanyOnboardingCompleted(userId)) {
@@ -98,6 +108,82 @@ export class CompanyOnboardingComponent implements OnInit {
 
   get ef() {
     return this.employeeForm.controls;
+  }
+
+  private setAddressLookupState(isBusy: boolean): void {
+    const controls = [
+      'addressZip',
+      'addressStreet',
+      'addressNumber',
+      'addressComplement',
+      'addressNeighborhood',
+      'addressCity',
+      'addressState',
+      'addressCountry'
+    ];
+
+    for (const controlName of controls) {
+      const control = this.form.get(controlName);
+      if (!control) {
+        continue;
+      }
+
+      if (isBusy) {
+        control.disable({ emitEvent: false });
+      } else {
+        control.enable({ emitEvent: false });
+      }
+    }
+  }
+
+  private loadPositions(): void {
+    this.positionsLoading = true;
+    this.positionsApi.getAll().subscribe({
+      next: (result) => {
+        this.positionsLoading = false;
+        this.positions = result?.isSuccess && result.data ? result.data : [];
+      },
+      error: () => {
+        this.positionsLoading = false;
+        this.positions = [];
+      }
+    });
+  }
+
+  onZipBlur(): void {
+    const cep = String(this.form.value.addressZip ?? '').replace(/\D/g, '');
+    this.cepError = undefined;
+
+    if (cep.length !== 8) {
+      return;
+    }
+
+    this.isLookingUpCep = true;
+    this.setAddressLookupState(true);
+    this.usersApi.getAddressByCep(cep).subscribe({
+      next: (result) => {
+        this.isLookingUpCep = false;
+        this.setAddressLookupState(false);
+
+        if (!result?.isSuccess || !result.data) {
+          this.cepError = result?.message ?? 'Não foi possível localizar o CEP.';
+          return;
+        }
+
+        this.form.patchValue({
+          addressStreet: result.data.logradouro ?? '',
+          addressComplement: result.data.complemento ?? '',
+          addressNeighborhood: result.data.bairro ?? '',
+          addressCity: result.data.localidade ?? '',
+          addressState: (result.data.uf ?? '').toUpperCase()
+        });
+      },
+      error: () => {
+        this.isLookingUpCep = false;
+        this.setAddressLookupState(false);
+        this.cepError = 'Erro inesperado ao consultar o CEP.';
+      }
+    });
   }
 
   private prefillEmployeeFormFromSession(): void {
@@ -128,6 +214,7 @@ export class CompanyOnboardingComponent implements OnInit {
     }
 
     const companyName = String(this.form.value.companyName ?? '').trim();
+    const cnpj = String(this.form.value.cnpj ?? '').replace(/\D/g, '');
     const department = String(this.form.value.department ?? '').trim();
     const employeeCountRaw = String(this.form.value.employeeCount ?? '').trim();
     const employeeCount = Number(employeeCountRaw);
@@ -154,6 +241,7 @@ export class CompanyOnboardingComponent implements OnInit {
     this.companiesApi.create({
       name: companyName,
       address,
+      cnpj,
       numberOfMembers: employeeCount,
       category: department
     })
@@ -210,9 +298,16 @@ export class CompanyOnboardingComponent implements OnInit {
     const cpf = String(this.employeeForm.getRawValue().cpf ?? '').trim() || undefined;
     const phone = String(this.employeeForm.getRawValue().phone ?? '').trim() || undefined;
     const birthDateRaw = String(this.employeeForm.getRawValue().birthDate ?? '').trim();
+    const positionId = Number(this.employeeForm.getRawValue().positionId ?? 0);
     const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : new Date().toISOString();
 
-    this.usersApi.create({ name, email, cpf, phone, birthDate, role: 'USER' })
+    if (!Number.isFinite(positionId) || positionId <= 0) {
+      this.employeeSubmitError = 'Selecione um cargo válido.';
+      this.isEmployeeSubmitting = false;
+      return;
+    }
+
+    this.usersApi.create({ name, email, cpf, phone, birthDate, role: 'USER', positionId })
       .pipe(finalize(() => { this.isEmployeeSubmitting = false; }))
       .subscribe({
         next: (result) => {

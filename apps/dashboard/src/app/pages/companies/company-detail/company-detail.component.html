@@ -1,0 +1,119 @@
+<div class="content-wrapper">
+  <div class="content-body">
+    <section class="company-detail">
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+              <h4 class="mb-0">Detalhes da empresa</h4>
+              <small class="text-muted">Visualize os dados da empresa e seus funcionários</small>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary" routerLink="/companies">Voltar</a>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="isLoading" class="mt-1">Carregando dados da empresa...</div>
+
+      <div *ngIf="loadError" class="alert alert-danger mt-1">
+        {{ loadError }}
+      </div>
+
+      <ng-container *ngIf="!isLoading && company">
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h4 class="card-title mb-0">Empresa</h4>
+              </div>
+              <div class="card-content">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-12 col-md-6 col-xl-4 mb-2">
+                      <small class="text-muted d-block">Nome</small>
+                      <div>{{ company.name }}</div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4 mb-2">
+                      <small class="text-muted d-block">CNPJ</small>
+                      <div>{{ company.cnpj || '-' }}</div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4 mb-2">
+                      <small class="text-muted d-block">Categoria</small>
+                      <div>{{ company.category || '-' }}</div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4 mb-2">
+                      <small class="text-muted d-block">Número de membros</small>
+                      <div>{{ company.numberOfMembers }}</div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4 mb-2">
+                      <small class="text-muted d-block">Usuários ativos</small>
+                      <div>{{ company.userCount }}</div>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-4 mb-2">
+                      <small class="text-muted d-block">Status</small>
+                      <span class="badge" [ngClass]="{ 'bg-light-success': company.isActive, 'bg-light-warning': !company.isActive }">
+                        {{ company.isActive ? 'Ativa' : 'Inativa' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="mt-2 mb-0">
+                    <small class="text-muted d-block">Endereço</small>
+                    <div>{{ company.address || '-' }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header d-flex align-items-center justify-content-between">
+                <h4 class="card-title mb-0">Funcionários</h4>
+                <small class="text-muted">{{ users.length }} registro(s)</small>
+              </div>
+              <div class="card-content">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                      <thead>
+                        <tr>
+                          <th>Nome</th>
+                          <th>E-mail</th>
+                          <th>Cargo</th>
+                          <th>Perfil</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let user of users">
+                          <td>
+                            <div>{{ user.name }}</div>
+                            <small class="text-muted">{{ user.cpf || '-' }}</small>
+                          </td>
+                          <td>{{ user.email }}</td>
+                          <td>{{ user.positionName || '-' }}</td>
+                          <td>{{ user.role || '-' }}</td>
+                          <td>
+                            <span class="badge" [ngClass]="{ 'bg-light-success': user.isActive, 'bg-light-warning': !user.isActive }">
+                              {{ user.isActive ? 'Ativo' : 'Inativo' }}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr *ngIf="users.length === 0">
+                          <td colspan="5" class="text-center text-muted">Nenhum funcionário encontrado para esta empresa</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </section>
+  </div>
+</div>
