@@ -10,8 +10,7 @@ export interface ProjectSuggestion {
   description: string;
   objective: string;
 }
-
-@Injectable({
+/** Serviço para chamadas à Claude AI API */@Injectable({
   providedIn: 'root'
 })
 export class ClaudeApiService {
