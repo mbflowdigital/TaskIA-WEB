@@ -5,7 +5,7 @@ import { ProjectsApiService } from '../shared/api/projects-api.service';
 import { AuthSessionService } from '../shared/auth/auth-session.service';
 import { UsersApiService } from '../shared/api/users-api.service';
 import { CompaniesApiService } from '../shared/api/companies-api.service';
-import { ClaudeApiService } from 'app/shared/api/claude-api.service';
+import { ClaudeApiService } from '../shared/api/claude-api.service';
 
 @Component({
   selector: 'app-page',
