@@ -9,6 +9,7 @@ import { UntypedFormControl } from '@angular/forms';
 import { LISTITEMS } from '../data/template-search';
 import { Router } from '@angular/router';
 import { AuthSessionService } from '../auth/auth-session.service';
+import { AuthRefreshService } from '../auth/auth-refresh.service';
 
 @Component({
   selector: "app-navbar",
@@ -50,6 +51,7 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
     private layoutService: LayoutService,
     private router: Router,
     private authSessionService: AuthSessionService,
+    private authRefreshService: AuthRefreshService,
     private configService: ConfigService, private cdr: ChangeDetectorRef) {
 
     const initialLang = this.translate.currentLang || this.translate.getDefaultLang() || 'pt-BR';
@@ -229,5 +231,11 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleSidebar() {
     this.layoutService.toggleSidebarSmallScreen(this.hideSidebar);
+  }
+
+  logout(): void {
+    this.authRefreshService.stopMonitoring();
+    this.authSessionService.clear();
+    this.router.navigate(['/pages/login']);
   }
 }

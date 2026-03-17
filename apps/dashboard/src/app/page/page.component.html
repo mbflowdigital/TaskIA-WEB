@@ -37,7 +37,7 @@
   </div>
 
   <!-- Chat input -->
-  <div class="ia-home__input-wrap">
+  <div class="ia-home__input-wrap" *ngIf="!suggestion">
     <div class="ia-home__input-box" [class.ia-home__input-box--active]="projectName.length > 0">
       <textarea
         class="ia-home__textarea"
@@ -60,10 +60,40 @@
       </button>
     </div>
     <p class="ia-home__hint">Pressione <kbd>Enter</kbd> para enviar</p>
+    <p class="ia-home__error" *ngIf="claudeError"><i class="ft-alert-circle"></i> {{ claudeError }}</p>
+  </div>
+
+  <!-- Esboço gerado pela IA -->
+  <div class="ia-home__draft" *ngIf="suggestion">
+    <div class="ia-home__draft-header">
+      <div class="ia-home__draft-avatar">
+        <i class="ft-cpu"></i>
+      </div>
+      <span class="ia-home__draft-label">Esboço gerado pela IA</span>
+    </div>
+    <div class="ia-home__draft-card">
+      <h5 class="ia-home__draft-name">{{ suggestedProjectName }}</h5>
+      <div class="ia-home__draft-field">
+        <span class="ia-home__draft-field-label">Descrição</span>
+        <p>{{ suggestion.description }}</p>
+      </div>
+      <div class="ia-home__draft-field">
+        <span class="ia-home__draft-field-label">Objetivo</span>
+        <p>{{ suggestion.objective }}</p>
+      </div>
+      <div class="ia-home__draft-actions">
+        <button class="ia-home__draft-btn ia-home__draft-btn--primary" (click)="confirmCreate()">
+          <i class="ft-check"></i> Criar este projeto
+        </button>
+        <button class="ia-home__draft-btn ia-home__draft-btn--secondary" (click)="discardSuggestion()">
+          <i class="ft-x"></i> Recomeçar
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Recent projects -->
-  <div class="ia-home__recent" *ngIf="!loadingProjects && recentProjects.length > 0">
+  <div class="ia-home__recent" *ngIf="!suggestion && !loadingProjects && recentProjects.length > 0">
     <h6 class="ia-home__recent-title">
       <i class="ft-clock"></i> Projetos recentes
     </h6>

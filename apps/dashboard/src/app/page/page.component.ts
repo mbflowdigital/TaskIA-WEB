@@ -5,6 +5,7 @@ import { ProjectsApiService } from '../shared/api/projects-api.service';
 import { AuthSessionService } from '../shared/auth/auth-session.service';
 import { UsersApiService } from '../shared/api/users-api.service';
 import { CompaniesApiService } from '../shared/api/companies-api.service';
+import { ClaudeApiService } from '../shared/api/claude-api.service';
 
 @Component({
   selector: 'app-page',
@@ -23,12 +24,17 @@ export class PageComponent implements OnInit {
   activeProjects = 0;
   myRole = 'USER';
 
+  claudeError = '';
+  suggestion: { description: string; objective: string } | null = null;
+  suggestedProjectName = '';
+
   constructor(
     private router: Router,
     private projectsApi: ProjectsApiService,
     private authSession: AuthSessionService,
     private usersApi: UsersApiService,
-    private companiesApi: CompaniesApiService
+    private companiesApi: CompaniesApiService,
+    private claudeApi: ClaudeApiService
   ) {}
 
   ngOnInit(): void {
@@ -88,7 +94,42 @@ export class PageComponent implements OnInit {
     const name = this.projectName.trim();
     if (!name) return;
     this.isLoading = true;
-    this.router.navigate(['/projects/create'], { queryParams: { name } });
+    this.claudeError = '';
+    this.suggestion = null;
+
+    this.claudeApi.suggestProject(name).subscribe({
+      next: (result) => {
+        this.isLoading = false;
+        if (result?.isSuccess && result.data) {
+          this.suggestedProjectName = name;
+          this.suggestion = result.data;
+        } else {
+          this.claudeError = result?.message || 'Não foi possível gerar sugestão da IA.';
+        }
+      },
+      error: () => {
+        this.isLoading = false;
+        this.claudeError = 'Erro ao conectar com a IA. Tente novamente.';
+      }
+    });
+  }
+
+  confirmCreate(): void {
+    if (!this.suggestion) return;
+    this.router.navigate(['/projects/create'], {
+      queryParams: {
+        name: this.suggestedProjectName,
+        description: this.suggestion.description,
+        objective: this.suggestion.objective
+      }
+    });
+  }
+
+  discardSuggestion(): void {
+    this.suggestion = null;
+    this.suggestedProjectName = '';
+    this.projectName = '';
+    this.claudeError = '';
   }
 
   onKeydown(event: KeyboardEvent): void {
