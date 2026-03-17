@@ -10,7 +10,7 @@
                   <div>
                     <h4 class="mb-0">{{ isEditMode ? 'Editar projeto' : 'Criar projeto' }}</h4>
                     <small class="text-muted">
-                      {{ isEditMode ? 'Atualize os dados do projeto' : 'Cadastre um novo projeto' }}
+                      {{ currentStepSubtitle }}
                     </small>
                   </div>
                   <a class="btn btn-sm btn-outline-secondary" routerLink="/projects">Voltar</a>
@@ -31,90 +31,334 @@
 
                 <div *ngIf="submitSuccess" class="alert alert-success">{{ submitSuccess }}</div>
 
-                <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!isLoading && !loadError">
+                <!-- TELA 1: DADOS BÁSICOS -->
+                <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!isLoading && !loadError && currentStep === 1">
                   <div class="row">
-                    <div class="col-12 col-md-6">
+                    <!-- Nome do projeto -->
+                    <div class="col-12">
                       <div class="form-group">
-                        <label for="projects-create-name">Nome *</label>
+                        <label for="projects-create-name">Nome do projeto *</label>
                         <input
                           id="projects-create-name"
                           type="text"
                           class="form-control"
-                          placeholder="Nome do projeto"
+                          placeholder="Nome do projeto (10-200 caracteres)"
                           formControlName="name"
                           [class.is-invalid]="formSubmitted && f.name.invalid"
                         />
                         <div class="invalid-feedback" *ngIf="formSubmitted && f.name.invalid">
-                          Nome é obrigatório (mínimo 2 caracteres).
+                          <div *ngIf="f.name.errors?.['required']">Nome é obrigatório</div>
+                          <div *ngIf="f.name.errors?.['minlength']">Mínimo 10 caracteres</div>
+                          <div *ngIf="f.name.errors?.['maxlength']">Máximo 200 caracteres</div>
                         </div>
                       </div>
                     </div>
 
-                    <div class="col-12 col-md-6">
+                    <!-- Objetivo principal -->
+                    <div class="col-12">
                       <div class="form-group">
-                        <label for="projects-create-description">Descrição</label>
-                        <textarea
-                          id="projects-create-description"
-                          class="form-control"
-                          placeholder="Descrição do projeto"
-                          formControlName="description"
-                          rows="3"
-                        ></textarea>
-                      </div>
-                    </div>
-
-                    <div class="col-12 col-md-6">
-                      <div class="form-group">
-                        <label for="projects-create-objective">Objetivo final</label>
+                        <label for="projects-create-objective">Objetivo principal *</label>
                         <textarea
                           id="projects-create-objective"
                           class="form-control"
-                          placeholder="Qual é o objetivo final deste projeto?"
+                          placeholder="Descreva o objetivo principal do projeto (mínimo 20 caracteres)"
                           formControlName="objective"
                           rows="3"
+                          [class.is-invalid]="formSubmitted && f.objective.invalid"
                         ></textarea>
+                        <div class="invalid-feedback" *ngIf="formSubmitted && f.objective.invalid">
+                          <div *ngIf="f.objective.errors?.['required']">Objetivo é obrigatório</div>
+                          <div *ngIf="f.objective.errors?.['minlength']">Mínimo 20 caracteres</div>
+                        </div>
                       </div>
                     </div>
 
+                    <!-- Data de início -->
                     <div class="col-12 col-md-6">
                       <div class="form-group">
-                        <label for="projects-create-start">Data de início</label>
+                        <label for="projects-create-start">Data de início prevista *</label>
                         <input
                           id="projects-create-start"
                           type="date"
                           class="form-control"
                           formControlName="startDate"
+                          [class.is-invalid]="formSubmitted && f.startDate.invalid"
                         />
+                        <div class="invalid-feedback" *ngIf="formSubmitted && f.startDate.invalid">
+                          Data de início é obrigatória
+                        </div>
                       </div>
                     </div>
 
+                    <!-- Data de fim -->
                     <div class="col-12 col-md-6">
                       <div class="form-group">
-                        <label for="projects-create-end">Data de término</label>
+                        <label for="projects-create-end">Data de término prevista (opcional)</label>
                         <input
                           id="projects-create-end"
                           type="date"
                           class="form-control"
                           formControlName="endDate"
+                          [class.is-invalid]="formSubmitted && form.errors?.['endDateInvalid']"
                         />
+                        <div class="invalid-feedback" *ngIf="formSubmitted && form.errors?.['endDateInvalid']">
+                          Data de término deve ser posterior à data de início
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Descrição -->
+                    <div class="col-12">
+                      <div class="form-group">
+                        <label for="projects-create-description">Descrição (opcional)</label>
+                        <textarea
+                          id="projects-create-description"
+                          class="form-control"
+                          placeholder="Descrição adicional do projeto (até 3000 caracteres)"
+                          formControlName="description"
+                          rows="5"
+                          [class.is-invalid]="formSubmitted && f.description.invalid"
+                        ></textarea>
+                        <small class="text-muted d-block mt-1">
+                          {{ (f.description.value?.length ?? 0) }} / 3000 caracteres
+                        </small>
+                        <div class="invalid-feedback" *ngIf="formSubmitted && f.description.invalid">
+                          Máximo 3000 caracteres
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div class="d-flex flex-sm-row flex-column justify-content-end mt-2">
+                  <div class="wizard-buttons mt-4 d-flex flex-sm-row flex-column justify-content-between align-items-center">
                     <button
                       type="button"
-                      class="btn bg-light-secondary mb-1 mb-sm-0 mr-sm-2"
+                      class="btn bg-light-secondary"
                       (click)="onReset()"
                       [disabled]="isSubmitting"
                     >
                       Limpar
                     </button>
-                    <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
-                      {{ isSubmitting ? 'Salvando...' : (isEditMode ? 'Salvar alterações' : 'Criar projeto') }}
+                    
+                    <!-- Step Indicators (Bolinhas de progresso) -->
+                    <div class="wizard-steps d-flex gap-2 align-items-center">
+                      <button 
+                        type="button"
+                        class="step-dot"
+                        [class.active]="currentStep === 1"
+                        [class.completed]="currentStep > 1"
+                        (click)="goToStep(1)"
+                        title="Dados básicos"
+                      >
+                        <span>1</span>
+                      </button>
+                      <div class="step-line" [class.active]="currentStep > 1"></div>
+                      <button 
+                        type="button"
+                        class="step-dot"
+                        [class.active]="currentStep === 2"
+                        [class.completed]="currentStep > 2"
+                        (click)="goToStep(2)"
+                        title="Definir equipe"
+                      >
+                        <span>2</span>
+                      </button>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      class="btn btn-primary" 
+                      (click)="nextStep()"
+                      [disabled]="isSubmitting"
+                    >
+                      {{ nextButtonText }}
                     </button>
                   </div>
                 </form>
+
+                <!-- TELA 2: EQUIPE E FUNÇÕES -->
+                <form [formGroup]="form" *ngIf="currentStep === 2 && !analysisResult && !isLoading && !loadError">
+                  <div class="step-section mb-3">
+                    <h5 class="mb-2">Seção 1: Confirmar dados da empresa</h5>
+                    <div class="row">
+                      <div class="col-12 col-md-6">
+                        <div class="form-group">
+                          <label for="projects-create-company-name">Nome da empresa</label>
+                          <input
+                            id="projects-create-company-name"
+                            type="text"
+                            class="form-control"
+                            [value]="companyDisplayName"
+                            readonly
+                          />
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-3">
+                        <div class="form-group">
+                          <label for="projects-create-department">Setor/Departamento responsável *</label>
+                          <select
+                            id="projects-create-department"
+                            class="form-control"
+                            formControlName="department"
+                            [class.is-invalid]="formSubmitted && f.department.invalid"
+                          >
+                            <option value="">Selecione</option>
+                            <option *ngFor="let department of departmentOptions" [value]="department">{{ department }}</option>
+                          </select>
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.department.invalid">
+                            Informe o setor/departamento responsável.
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-md-3">
+                        <div class="form-group">
+                          <label for="projects-create-project-type">Tipo de projeto *</label>
+                          <select
+                            id="projects-create-project-type"
+                            class="form-control"
+                            formControlName="projectType"
+                            [class.is-invalid]="formSubmitted && f.projectType.invalid"
+                          >
+                            <option value="">Selecione</option>
+                            <option *ngFor="let type of projectTypeOptions" [value]="type">{{ type }}</option>
+                          </select>
+                          <div class="invalid-feedback" *ngIf="formSubmitted && f.projectType.invalid">
+                            Informe o tipo do projeto.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="step-section" formArrayName="teamMembers">
+                    <h5 class="mb-2">Seção 2: Selecionar membros da equipe</h5>
+                    <p class="text-muted mb-2">Selecione os usuários e defina função, dedicação e aprovador.</p>
+
+                    <div *ngIf="loadingTeamData" class="alert alert-light border">Carregando usuários da empresa...</div>
+                    <div *ngIf="!loadingTeamData && !availableUsers.length" class="alert alert-warning mb-2">
+                      Nenhum usuário cadastrado para esta empresa.
+                    </div>
+
+                    <div class="team-member-card mb-2" *ngFor="let member of teamMembersArray.controls; let i = index" [formGroupName]="i">
+                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                        <label class="mb-0 member-selector">
+                          <input type="checkbox" formControlName="selected" (change)="onToggleMember(i)" />
+                          <span class="ml-1">{{ member.get('userName')?.value }}</span>
+                        </label>
+                      </div>
+
+                      <div class="row mt-2" *ngIf="member.get('selected')?.value">
+                        <div class="col-12 col-md-5">
+                          <div class="form-group mb-1">
+                            <label>Função no projeto *</label>
+                            <select class="form-control" formControlName="role">
+                              <option value="">Selecione</option>
+                              <option *ngFor="let role of roleOptions" [value]="role">{{ role }}</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="col-12 col-md-5">
+                          <div class="form-group mb-1">
+                            <label>Dedicação *</label>
+                            <select class="form-control" formControlName="dedication">
+                              <option value="">Selecione</option>
+                              <option *ngFor="let dedication of dedicationOptions" [value]="dedication">{{ dedication }}</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="col-12 col-md-2 d-flex align-items-center">
+                          <label class="mb-0 mt-1">
+                            <input type="checkbox" formControlName="isApprover" />
+                            <span class="ml-1">É aprovador?</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['teamRequired']">
+                      Selecione pelo menos 1 membro da equipe.
+                    </div>
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['leadershipRequired']">
+                      Selecione pelo menos 1 Gerente de Projeto ou Tech Lead.
+                    </div>
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['approverLeadershipRequired']">
+                      Se marcar "É aprovador", o membro deve ter cargo de liderança.
+                    </div>
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['memberFieldsRequired']">
+                      Defina função e dedicação para todos os membros selecionados.
+                    </div>
+                  </div>
+
+                  <div class="wizard-buttons mt-4 d-flex flex-sm-row flex-column justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
+                      ← Voltar
+                    </button>
+
+                    <div class="wizard-steps d-flex gap-2 align-items-center">
+                      <button 
+                        type="button"
+                        class="step-dot"
+                        [class.active]="currentStep === 1"
+                        [class.completed]="currentStep > 1"
+                        (click)="goToStep(1)"
+                        title="Dados básicos"
+                      >
+                        <span>1</span>
+                      </button>
+                      <div class="step-line" [class.active]="currentStep > 1"></div>
+                      <button 
+                        type="button"
+                        class="step-dot"
+                        [class.active]="currentStep === 2"
+                        [class.completed]="currentStep > 2"
+                        (click)="goToStep(2)"
+                        title="Definir equipe"
+                      >
+                        <span>2</span>
+                      </button>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      class="btn btn-primary" 
+                      (click)="onConcluir()"
+                      [disabled]="isSubmitting"
+                    >
+                      {{ isSubmitting ? 'Analisando...' : 'Concluir' }}
+                    </button>
+                  </div>
+                </form>
+
+                <!-- ANÁLISE IA -->
+                <div *ngIf="currentStep === 2 && analysisResult" class="mt-3">
+                  <div class="alert alert-success mb-3">
+                    <strong>Projeto criado e análise concluída!</strong>
+                  </div>
+                  <div class="card mb-3 border-0 shadow-sm">
+                    <div class="card-body">
+                      <h6 class="text-primary mb-1">Análise Geral</h6>
+                      <p class="mb-0">{{ analysisResult.overview }}</p>
+                    </div>
+                  </div>
+                  <div class="card mb-3 border-0 shadow-sm">
+                    <div class="card-body">
+                      <h6 class="text-warning mb-1">Riscos Identificados</h6>
+                      <p class="mb-0">{{ analysisResult.risks }}</p>
+                    </div>
+                  </div>
+                  <div class="card mb-3 border-0 shadow-sm">
+                    <div class="card-body">
+                      <h6 class="text-success mb-1">Recomendações</h6>
+                      <p class="mb-0">{{ analysisResult.recommendations }}</p>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-end">
+                    <a routerLink="/projects" class="btn btn-primary">Ver projetos →</a>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

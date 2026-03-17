@@ -1,1 +1,95 @@
 // projects-create styles
+
+.wizard-buttons {
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1.5rem;
+    
+    .wizard-steps {
+      order: -1; // Move os dots para cima em mobile
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+.wizard-steps {
+  .step-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #d9d9d9;
+    background-color: #ffffff;
+    color: #666;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+
+    &:hover:not([disabled]) {
+      border-color: #003d82;
+      color: #003d82;
+    }
+
+    &.active {
+      border-color: #003d82;
+      background-color: #003d82;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 61, 130, 0.2);
+    }
+
+    &.completed {
+      border-color: #28a745;
+      background-color: #28a745;
+      color: #ffffff;
+
+      span::before {
+        content: '✓';
+        position: absolute;
+      }
+
+      span {
+        visibility: hidden;
+      }
+    }
+
+    &[disabled] {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  .step-line {
+    width: 30px;
+    height: 2px;
+    background-color: #d9d9d9;
+    transition: background-color 0.3s ease;
+
+    &.active {
+      background-color: #28a745;
+    }
+  }
+}
+
+.step-section {
+  border: 1px solid #e8edf3;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #fbfcfe;
+}
+
+.team-member-card {
+  border: 1px solid #dfe7f2;
+  border-radius: 10px;
+  padding: 0.9rem;
+  background: #ffffff;
+}
+
+.member-selector {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+}

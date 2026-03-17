@@ -1,11 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { ReactiveFormsModule, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
+import { AbstractControl, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
+import { CompaniesApiService } from '../../../shared/api/companies-api.service';
+import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
+import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from '../../../shared/api/claude-api.service';
 
 @Component({
   selector: 'app-projects-create',
@@ -16,6 +19,15 @@ import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 })
 export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  private readonly leadershipRoles = ['Gerente de Projeto', 'Tech Lead'];
+
+  // Wizard
+  currentStep = 1;
+  readonly totalSteps = 2;
+
+  companyDisplayName = 'Empresa';
+  availableUsers: UserDto[] = [];
+  loadingTeamData = false;
 
   isEditMode = false;
   editingProjectId?: string;
@@ -26,6 +38,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   submitError?: string;
   submitErrors: string[] = [];
   submitSuccess?: string;
+  analysisResult?: ProjectAnalysisResult;
 
   formSubmitted = false;
 
@@ -34,19 +47,66 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return this.authSession.getUserId() ?? '';
   }
 
+  // Validação customizada: data fim > data início
+  private dateEndGreaterThanStart = (control: AbstractControl): ValidationErrors | null => {
+    const form = control as UntypedFormGroup;
+    if (!form.get('startDate') || !form.get('endDate')) return null;
+
+    const startDate = form.get('startDate')?.value;
+    const endDate = form.get('endDate')?.value;
+
+    if (!startDate || !endDate) return null;
+
+    const start = new Date(startDate).getTime();
+    const end = new Date(endDate).getTime();
+
+    return end > start ? null : { endDateInvalid: true };
+  };
+
   form = new UntypedFormGroup({
-    name: new UntypedFormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(200)]),
-    description: new UntypedFormControl(''),
-    objective: new UntypedFormControl(''),
-    startDate: new UntypedFormControl(''),
-    endDate: new UntypedFormControl('')
-  });
+    // TELA 1: DADOS BÁSICOS
+    name: new UntypedFormControl('', [
+      Validators.required,
+      Validators.minLength(10),
+      Validators.maxLength(200)
+    ]),
+    objective: new UntypedFormControl('', [
+      Validators.required,
+      Validators.minLength(20)
+    ]),
+    startDate: new UntypedFormControl('', Validators.required),
+    endDate: new UntypedFormControl(''),
+    description: new UntypedFormControl('', [
+      Validators.maxLength(3000) // ~30 linhas
+    ]),
+
+    // TELA 2: EQUIPE E FUNÇÕES
+    department: new UntypedFormControl('', Validators.required),
+    projectType: new UntypedFormControl('', Validators.required),
+    teamMembers: new UntypedFormArray([], [this.teamSelectionValidator.bind(this)])
+  }, { validators: this.dateEndGreaterThanStart });
 
   get f() { return this.form.controls; }
+  get teamMembersArray(): UntypedFormArray { return this.form.get('teamMembers') as UntypedFormArray; }
+
+  readonly departmentOptions = ['TI', 'Marketing', 'RH', 'Operações', 'Financeiro', 'Produto', 'Comercial'];
+  readonly projectTypeOptions = ['Migração', 'Implantação', 'Melhoria', 'Desenvolvimento', 'Integração'];
+  readonly roleOptions = [
+    'Gerente de Projeto',
+    'Tech Lead',
+    'Desenvolvedor',
+    'Analista',
+    'Designer',
+    'QA',
+    'DevOps'
+  ];
+  readonly dedicationOptions = ['Integral', 'Parcial 50%', 'Parcial 25%', 'Consultor Pontual'];
 
   constructor(
     private readonly projectsApi: ProjectsApiService,
+    private readonly companiesApi: CompaniesApiService,
     private readonly authSession: AuthSessionService,
+    private readonly claudeApi: ClaudeApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -54,8 +114,18 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     const nameParam = this.route.snapshot.queryParamMap.get('name');
-    const descriptionParam = this.route.snapshot.queryParamMap.get('description');
+
     const objectiveParam = this.route.snapshot.queryParamMap.get('objective');
+    const descriptionParam = this.route.snapshot.queryParamMap.get('description');
+    const sessionUser = this.authSession.getUser();
+    const sessionRole = this.authSession.getRole().trim().toUpperCase();
+    const companyId = (sessionUser?.companyId ?? '').trim();
+
+    this.companyDisplayName = sessionUser?.companyName ?? 'Empresa';
+    if (sessionRole !== 'ADM_MASTER' && this.isValidGuid(companyId)) {
+      this.loadTeamData(companyId);
+    }
+
 
     if (nameParam) {
       this.form.patchValue({
@@ -64,6 +134,13 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         objective: objectiveParam ?? ''
       });
     }
+    if (objectiveParam) {
+      this.form.patchValue({ objective: objectiveParam });
+    }
+    if (descriptionParam) {
+      this.form.patchValue({ description: descriptionParam });
+    }
+
     if (!id) return;
 
     this.isEditMode = true;
@@ -101,11 +178,338 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   }
 
   onReset(): void {
-    this.form.reset({ name: '', description: '', objective: '', startDate: '', endDate: '' });
+    this.form.reset({
+      name: '',
+      description: '',
+      objective: '',
+      startDate: '',
+      endDate: '',
+      department: '',
+      projectType: ''
+    });
+    for (const member of this.teamMembersArray.controls) {
+      member.patchValue({
+        selected: false,
+        role: '',
+        dedication: '',
+        isApprover: false
+      });
+    }
+    this.teamMembersArray.updateValueAndValidity();
     this.formSubmitted = false;
     this.submitError = undefined;
     this.submitErrors = [];
     this.submitSuccess = undefined;
+    this.currentStep = 1;
+  }
+
+  // WIZARD: Validar apenas tela atual antes de avançar
+  private isStep1Valid(): boolean {
+    const name = this.f.name;
+    const objective = this.f.objective;
+    const startDate = this.f.startDate;
+    const endDate = this.f.endDate;
+
+    // Marcar campos como touched para mostrar erros
+    name?.markAsTouched();
+    objective?.markAsTouched();
+    startDate?.markAsTouched();
+    if (endDate?.value) endDate?.markAsTouched();
+
+    // Validar cada campo obrigatório
+    if (name?.invalid || objective?.invalid || startDate?.invalid) {
+      return false;
+    }
+
+    // Validação cross-field: se endDate preenchida, deve ser > startDate
+    if (endDate?.value && this.form.errors?.['endDateInvalid']) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private teamSelectionValidator(control: AbstractControl): ValidationErrors | null {
+    const formArray = control as UntypedFormArray;
+    const selected = formArray.controls.filter((member) => member.get('selected')?.value === true);
+
+    const errors: ValidationErrors = {};
+
+    if (selected.length === 0) {
+      errors['teamRequired'] = true;
+      return errors;
+    }
+
+    const hasLeader = selected.some((member) => this.isLeadershipRole(member.get('role')?.value));
+    if (!hasLeader) {
+      errors['leadershipRequired'] = true;
+    }
+
+    const hasApproverWithoutLeadership = selected.some((member) => {
+      const isApprover = member.get('isApprover')?.value === true;
+      const role = member.get('role')?.value;
+      return isApprover && !this.isLeadershipRole(role);
+    });
+
+    if (hasApproverWithoutLeadership) {
+      errors['approverLeadershipRequired'] = true;
+    }
+
+    const missingMemberFields = selected.some((member) => {
+      const role = member.get('role')?.value;
+      const dedication = member.get('dedication')?.value;
+      return !role || !dedication;
+    });
+
+    if (missingMemberFields) {
+      errors['memberFieldsRequired'] = true;
+    }
+
+    return Object.keys(errors).length ? errors : null;
+  }
+
+  private isLeadershipRole(role: string | null | undefined): boolean {
+    return !!role && this.leadershipRoles.includes(role);
+  }
+
+  private createTeamMemberControl(user: UserDto): UntypedFormGroup {
+    return new UntypedFormGroup({
+      userId: new UntypedFormControl(user.id),
+      userName: new UntypedFormControl(user.name),
+      selected: new UntypedFormControl(false),
+      role: new UntypedFormControl(''),
+      dedication: new UntypedFormControl(''),
+      isApprover: new UntypedFormControl(false)
+    });
+  }
+
+  private setTeamMembers(users: UserDto[]): void {
+    this.teamMembersArray.clear();
+    for (const user of users) {
+      this.teamMembersArray.push(this.createTeamMemberControl(user));
+    }
+    this.teamMembersArray.updateValueAndValidity();
+  }
+
+  private loadTeamData(companyId: string): void {
+    this.loadingTeamData = true;
+
+    this.companiesApi
+      .getById(companyId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          if (result?.isSuccess && result.data?.name) {
+            this.companyDisplayName = result.data.name;
+          }
+        }
+      });
+
+    this.companiesApi
+      .getUsersByCompany(companyId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.loadingTeamData = false;
+          if (!result?.isSuccess || !Array.isArray(result.data)) {
+            this.availableUsers = [];
+            this.setTeamMembers([]);
+            return;
+          }
+
+          this.availableUsers = result.data;
+          this.setTeamMembers(this.availableUsers);
+        },
+        error: () => {
+          this.loadingTeamData = false;
+          this.availableUsers = [];
+          this.setTeamMembers([]);
+        }
+      });
+  }
+
+  private isValidGuid(value: string | null | undefined): boolean {
+    if (!value) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  onToggleMember(index: number): void {
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    const selected = member.get('selected')?.value === true;
+
+    if (!selected) {
+      member.patchValue({
+        role: '',
+        dedication: '',
+        isApprover: false
+      });
+    }
+
+    member.updateValueAndValidity();
+    this.teamMembersArray.updateValueAndValidity();
+  }
+
+  private isStep2Valid(): boolean {
+    this.f['department']?.markAsTouched();
+    this.f['projectType']?.markAsTouched();
+
+    for (const member of this.teamMembersArray.controls) {
+      member.markAllAsTouched();
+    }
+
+    this.teamMembersArray.updateValueAndValidity();
+
+    if (this.f['department']?.invalid || this.f['projectType']?.invalid) {
+      return false;
+    }
+
+    return !this.teamMembersArray.errors;
+  }
+
+  nextStep(): void {
+    // Ao avançar da tela 1, validar campos
+    this.formSubmitted = true;
+    if (this.currentStep === 1 && !this.isStep1Valid()) {
+      return; // Não avança
+    }
+
+    if (this.currentStep === 2 && !this.isStep2Valid()) {
+      return;
+    }
+
+    this.currentStep += 1;
+    this.formSubmitted = false;
+  }
+
+  previousStep(): void {
+    this.currentStep -= 1;
+    this.formSubmitted = false;
+  }
+
+  get nextButtonText(): string {
+    return 'Próximo →';
+  }
+
+  get currentStepSubtitle(): string {
+    if (this.isEditMode) {
+      return 'Atualize os dados do projeto';
+    }
+    if (this.currentStep === 2) {
+      return 'Passo 2 de 2: Equipe e funções';
+    }
+    return 'Passo 1 de 2: Dados básicos';
+  }
+
+  goToStep(step: number): void {
+    // Navegar para um passo específico
+    // Se voltando, permite sem validação
+    // Se avançando, precisa validar o passo atual
+    if (step < this.currentStep) {
+      this.currentStep = step;
+      this.formSubmitted = false;
+      return;
+    }
+    
+    if (step > this.currentStep) {
+      this.formSubmitted = true;
+      if (this.currentStep === 1 && !this.isStep1Valid()) {
+        return; // Não avança
+      }
+      if (this.currentStep === 2 && !this.isStep2Valid()) {
+        return;
+      }
+      this.currentStep = step;
+      this.formSubmitted = false;
+    }
+  }
+
+  onConcluir(): void {
+    this.formSubmitted = true;
+    if (!this.isStep2Valid()) return;
+
+    this.isSubmitting = true;
+    this.submitError = undefined;
+    this.submitErrors = [];
+
+    const raw = this.form.getRawValue();
+    const selectedMembers = (raw.teamMembers as any[])
+      .filter((m: any) => m.selected)
+      .map((m: any) => ({
+        userId: m.userId,
+        userName: m.userName,
+        role: m.role,
+        dedication: m.dedication,
+        isApprover: m.isApprover
+      }));
+
+    const payload: ProjectAnalysisRequest = {
+      projectName: raw.name,
+      objective: raw.objective,
+      startDate: raw.startDate,
+      endDate: raw.endDate || undefined,
+      description: raw.description || undefined,
+      company: this.companyDisplayName,
+      department: raw.department,
+      projectType: raw.projectType,
+      teamMembers: selectedMembers
+    };
+
+    this.claudeApi.analyzeProject(payload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          if (result?.isSuccess && result.data) {
+            this.analysisResult = result.data;
+          }
+          this.finishProjectCreation();
+        },
+        error: () => {
+          this.finishProjectCreation();
+        }
+      });
+  }
+
+  private finishProjectCreation(): void {
+    const raw = this.form.getRawValue();
+    const toIso = (v: string) => v ? new Date(v).toISOString() : null;
+
+    const request$ = this.isEditMode
+      ? this.projectsApi.update(this.editingProjectId!, {
+          id: this.editingProjectId!,
+          name: raw.name,
+          description: raw.description || undefined,
+          objective: raw.objective || undefined,
+          startDate: toIso(raw.startDate),
+          endDate: toIso(raw.endDate)
+        })
+      : this.projectsApi.create({
+          userId: this.CURRENT_USER_ID,
+          name: raw.name,
+          description: raw.description || undefined,
+          objective: raw.objective || undefined,
+          startDate: toIso(raw.startDate),
+          endDate: toIso(raw.endDate)
+        });
+
+    request$.pipe(takeUntil(this.destroy$)).subscribe({
+      next: (result) => {
+        this.isSubmitting = false;
+        if (!result?.isSuccess) {
+          this.submitError = result?.message ?? 'Não foi possível salvar o projeto.';
+          this.submitErrors = (result as any)?.errors ?? [];
+          return;
+        }
+        if (!this.analysisResult) {
+          this.submitSuccess = this.isEditMode ? 'Projeto atualizado com sucesso!' : 'Projeto criado com sucesso!';
+          setTimeout(() => this.router.navigate(['/projects']), 1500);
+        }
+        // If analysisResult is set, user navigates via the 'Ver projetos' button
+      },
+      error: () => {
+        this.isSubmitting = false;
+        this.submitError = 'Erro inesperado ao salvar o projeto.';
+      }
+    });
   }
 
   onSubmit(): void {
