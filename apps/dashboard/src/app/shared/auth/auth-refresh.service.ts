@@ -12,8 +12,10 @@ import { AuthSessionService } from './auth-session.service';
 export class AuthRefreshService {
   private readonly http: HttpClient;
   private refreshRequest$?: Observable<string | null>;
-  private readonly refreshThresholdMs = 120000;
+  private readonly refreshThresholdMs = 120000; // 2 minutos (refresh reativo quando expira)
+  private readonly proactiveRefreshIntervalMs = 15 * 60 * 1000; // 15 minutos (refresh proativo)
   private refreshMonitorId?: number;
+  private lastRefreshTime = 0;
 
   constructor(
     httpBackend: HttpBackend,
@@ -28,10 +30,16 @@ export class AuthRefreshService {
       return;
     }
 
+    this.lastRefreshTime = Date.now(); // Iniciar o contador
     this.runRefreshCheck();
+    // Check a cada 60 segundos (mais frequente para capturar expiração iminente)
     this.refreshMonitorId = window.setInterval(() => {
       this.runRefreshCheck();
-    }, 30000);
+    }, 60000);
+  }
+
+  resetRefreshTimer(): void {
+    this.lastRefreshTime = Date.now();
   }
 
   refreshIfNeeded(): Observable<string | null> {
@@ -50,16 +58,25 @@ export class AuthRefreshService {
 
   private runRefreshCheck(): void {
     const token = this.authSession.getToken();
+    const now = Date.now();
 
     if (!token || this.refreshRequest$) {
       return;
     }
 
-    if (!this.authSession.isTokenExpiringSoon(this.refreshThresholdMs)) {
+    // 1. Refresh reativo: quando token está perto de expirar (dentro de 2 minutos)
+    if (this.authSession.isTokenExpiringSoon(this.refreshThresholdMs)) {
+      this.refreshToken().subscribe();
+      this.lastRefreshTime = now;
       return;
     }
 
-    this.refreshToken().subscribe();
+    // 2. Refresh proativo: a cada 15 minutos, independente da expiração
+    if (now - this.lastRefreshTime >= this.proactiveRefreshIntervalMs) {
+      this.refreshToken().subscribe();
+      this.lastRefreshTime = now;
+      return;
+    }
   }
 
   private refreshToken(): Observable<string | null> {
@@ -106,6 +123,14 @@ export class AuthRefreshService {
 
   private handleRefreshFailure(): void {
     this.authSession.clear();
+    this.stopMonitoring();
     void this.router.navigate(['/pages/login']);
+  }
+
+  stopMonitoring(): void {
+    if (this.refreshMonitorId) {
+      window.clearInterval(this.refreshMonitorId);
+      this.refreshMonitorId = undefined;
+    }
   }
 }

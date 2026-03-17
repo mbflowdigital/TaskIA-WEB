@@ -54,8 +54,15 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     const nameParam = this.route.snapshot.queryParamMap.get('name');
+    const descriptionParam = this.route.snapshot.queryParamMap.get('description');
+    const objectiveParam = this.route.snapshot.queryParamMap.get('objective');
+
     if (nameParam) {
-      this.form.patchValue({ name: nameParam });
+      this.form.patchValue({
+        name: nameParam,
+        description: descriptionParam ?? '',
+        objective: objectiveParam ?? ''
+      });
     }
     if (!id) return;
 

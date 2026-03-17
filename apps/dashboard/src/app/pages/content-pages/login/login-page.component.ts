@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { AuthApiService } from 'app/shared/api/auth-api.service';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
+import { AuthRefreshService } from 'app/shared/auth/auth-refresh.service';
 import { LoginData } from 'app/shared/api/auth/auth.types';
 import { OnboardingService } from 'app/shared/onboarding/onboarding.service';
 
@@ -44,6 +45,7 @@ export class LoginPageComponent {
     private readonly router: Router,
     private readonly authApi: AuthApiService,
     private readonly authSession: AuthSessionService,
+    private readonly authRefresh: AuthRefreshService,
     private readonly onboarding: OnboardingService,
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone
@@ -54,6 +56,7 @@ export class LoginPageComponent {
 
   private persistSessionAndRedirect(data: LoginData): void {
     this.authSession.setSession(data);
+    this.authRefresh.resetRefreshTimer(); // Reset o timer após login
     this.router.navigate([data.requiresOnboarding ? '/onboarding' : '/page']);
   }
 
