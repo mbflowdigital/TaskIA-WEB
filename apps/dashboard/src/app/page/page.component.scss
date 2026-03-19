@@ -257,6 +257,120 @@ $border-radius: 16px;
     gap: .3rem;
     i { font-size: .75rem; }
   }
+
+  // ── Erro inline ──────────────────────────────────────────────
+  &__error {
+    font-size: .8rem;
+    color: #dc2626;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-top: .5rem;
+    i { font-size: .85rem; }
+  }
+
+  // ── Esboço da IA ─────────────────────────────────────────────
+  &__draft {
+    width: 100%;
+    max-width: 680px;
+    animation: fadeSlideIn .3s ease;
+  }
+
+  &__draft-header {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .75rem;
+  }
+
+  &__draft-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, $navy-dark, $navy);
+    border: 1.5px solid rgba($green, .4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    i { font-size: 1rem; color: $green; }
+  }
+
+  &__draft-label {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9ca3af;
+  }
+
+  &__draft-card {
+    background: #fff;
+    border: 1.5px solid rgba($green, .35);
+    border-radius: $border-radius;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 20px rgba($navy, .08);
+  }
+
+  &__draft-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: $navy;
+    margin-bottom: 1rem;
+  }
+
+  &__draft-field {
+    margin-bottom: .875rem;
+    &-label {
+      display: block;
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: $green;
+      margin-bottom: .3rem;
+    }
+    p {
+      font-size: .9rem;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0;
+    }
+  }
+
+  &__draft-actions {
+    display: flex;
+    gap: .75rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  &__draft-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1.2rem;
+    border-radius: 10px;
+    border: none;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    i { font-size: .9rem; }
+
+    &--primary {
+      background: $green;
+      color: #fff;
+      &:hover { background: darken($green, 8%); box-shadow: 0 4px 12px rgba($green, .3); transform: translateY(-1px); }
+    }
+
+    &--secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1.5px solid #e5e7eb;
+      &:hover { background: #e5e7eb; transform: translateY(-1px); }
+    }
+  }
 }
 
 .spinner {
@@ -270,3 +384,8 @@ $border-radius: 16px;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
