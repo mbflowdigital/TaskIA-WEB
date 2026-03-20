@@ -23,7 +23,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   // Wizard
   currentStep = 1;
-  readonly totalSteps = 2;
+  readonly totalSteps = 3;
 
   companyDisplayName = 'Empresa';
   availableUsers: UserDto[] = [];
@@ -83,11 +83,45 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     // TELA 2: EQUIPE E FUNÇÕES
     department: new UntypedFormControl('', Validators.required),
     projectType: new UntypedFormControl('', Validators.required),
-    teamMembers: new UntypedFormArray([], [this.teamSelectionValidator.bind(this)])
+    teamMembers: new UntypedFormArray([], [this.teamSelectionValidator.bind(this)]),
+
+    // TELA 3: CONTEXTO E RESTRIÇÕES
+    hasExternalDependencies: new UntypedFormControl('no'),
+    externalDependencies: new UntypedFormArray([]),
+    budgetType: new UntypedFormControl('unlimited'),
+    budgetValue: new UntypedFormControl(''),
+    workSchedule: new UntypedFormControl('commercial'),
+    downtimePolicy: new UntypedFormControl('na'),
+    downtimeLimitHours: new UntypedFormControl(''),
+    hasIntegrations: new UntypedFormControl('no'),
+    integrations: new UntypedFormArray([]),
+    compliance: new UntypedFormGroup({
+      publicData: new UntypedFormControl(false),
+      lgpd: new UntypedFormControl(false),
+      pciDss: new UntypedFormControl(false),
+      hipaa: new UntypedFormControl(false),
+      iso27001: new UntypedFormControl(false),
+      sox: new UntypedFormControl(false)
+    }),
+    complianceApprovers: new UntypedFormGroup({
+      legal: new UntypedFormControl(false),
+      security: new UntypedFormControl(false),
+      dpo: new UntypedFormControl(false),
+      complianceTeam: new UntypedFormControl(false)
+    }),
+    unavailablePeriods: new UntypedFormArray([])
   }, { validators: this.dateEndGreaterThanStart });
 
   get f() { return this.form.controls; }
   get teamMembersArray(): UntypedFormArray { return this.form.get('teamMembers') as UntypedFormArray; }
+  get externalDependenciesArray(): UntypedFormArray { return this.form.get('externalDependencies') as UntypedFormArray; }
+  get integrationsArray(): UntypedFormArray { return this.form.get('integrations') as UntypedFormArray; }
+  get unavailablePeriodsArray(): UntypedFormArray { return this.form.get('unavailablePeriods') as UntypedFormArray; }
+  get complianceGroup(): UntypedFormGroup { return this.form.get('compliance') as UntypedFormGroup; }
+  get hasSensitiveCompliance(): boolean {
+    const c = this.form.get('compliance');
+    return !!(c?.get('lgpd')?.value || c?.get('pciDss')?.value || c?.get('hipaa')?.value || c?.get('iso27001')?.value || c?.get('sox')?.value);
+  }
 
   readonly departmentOptions = ['TI', 'Marketing', 'RH', 'Operações', 'Financeiro', 'Produto', 'Comercial'];
   readonly projectTypeOptions = ['Migração', 'Implantação', 'Melhoria', 'Desenvolvimento', 'Integração'];
@@ -185,16 +219,21 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       startDate: '',
       endDate: '',
       department: '',
-      projectType: ''
+      projectType: '',
+      hasExternalDependencies: 'no',
+      budgetType: 'unlimited',
+      budgetValue: '',
+      workSchedule: 'commercial',
+      downtimePolicy: 'na',
+      downtimeLimitHours: '',
+      hasIntegrations: 'no'
     });
-    for (const member of this.teamMembersArray.controls) {
-      member.patchValue({
-        selected: false,
-        role: '',
-        dedication: '',
-        isApprover: false
-      });
-    }
+    this.complianceGroup.reset({ publicData: false, lgpd: false, pciDss: false, hipaa: false, iso27001: false, sox: false });
+    (this.form.get('complianceApprovers') as UntypedFormGroup).reset({ legal: false, security: false, dpo: false, complianceTeam: false });
+    this.teamMembersArray.clear();
+    this.externalDependenciesArray.clear();
+    this.integrationsArray.clear();
+    this.unavailablePeriodsArray.clear();
     this.teamMembersArray.updateValueAndValidity();
     this.formSubmitted = false;
     this.submitError = undefined;
@@ -276,19 +315,92 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return new UntypedFormGroup({
       userId: new UntypedFormControl(user.id),
       userName: new UntypedFormControl(user.name),
-      selected: new UntypedFormControl(false),
+      selected: new UntypedFormControl(true),
       role: new UntypedFormControl(''),
       dedication: new UntypedFormControl(''),
-      isApprover: new UntypedFormControl(false)
+      isApprover: new UntypedFormControl(false),
+      roleDescription: new UntypedFormControl('')
     });
   }
 
   private setTeamMembers(users: UserDto[]): void {
+    this.availableUsers = users;
     this.teamMembersArray.clear();
-    for (const user of users) {
-      this.teamMembersArray.push(this.createTeamMemberControl(user));
-    }
     this.teamMembersArray.updateValueAndValidity();
+  }
+
+  get unselectedUsers(): UserDto[] {
+    const selectedIds = new Set(this.teamMembersArray.controls.map(c => c.get('userId')?.value));
+    return this.availableUsers.filter(u => !selectedIds.has(u.id));
+  }
+
+  addMemberFromSelect(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const userId = select.value;
+    if (!userId) return;
+    const user = this.availableUsers.find(u => u.id === userId);
+    if (!user) return;
+    this.teamMembersArray.push(this.createTeamMemberControl(user));
+    this.teamMembersArray.updateValueAndValidity();
+    select.value = '';
+  }
+
+  removeMember(index: number): void {
+    this.teamMembersArray.removeAt(index);
+    this.teamMembersArray.updateValueAndValidity();
+  }
+
+  // Dynamic lists: External Dependencies
+  createExternalDependencyControl(): UntypedFormGroup {
+    return new UntypedFormGroup({
+      name: new UntypedFormControl('', Validators.required),
+      whatIsNeeded: new UntypedFormControl('', Validators.required),
+      deadline: new UntypedFormControl(''),
+      criticality: new UntypedFormControl('', Validators.required)
+    });
+  }
+
+  addExternalDependency(): void {
+    this.externalDependenciesArray.push(this.createExternalDependencyControl());
+  }
+
+  removeExternalDependency(index: number): void {
+    this.externalDependenciesArray.removeAt(index);
+  }
+
+  // Dynamic lists: Integrations
+  createIntegrationControl(): UntypedFormGroup {
+    return new UntypedFormGroup({
+      systemName: new UntypedFormControl('', Validators.required),
+      type: new UntypedFormControl('', Validators.required),
+      criticality: new UntypedFormControl('', Validators.required),
+      status: new UntypedFormControl('exists')
+    });
+  }
+
+  addIntegration(): void {
+    this.integrationsArray.push(this.createIntegrationControl());
+  }
+
+  removeIntegration(index: number): void {
+    this.integrationsArray.removeAt(index);
+  }
+
+  // Dynamic lists: Unavailable Periods
+  createUnavailablePeriodControl(): UntypedFormGroup {
+    return new UntypedFormGroup({
+      startDate: new UntypedFormControl('', Validators.required),
+      endDate: new UntypedFormControl('', Validators.required),
+      reason: new UntypedFormControl('')
+    });
+  }
+
+  addUnavailablePeriod(): void {
+    this.unavailablePeriodsArray.push(this.createUnavailablePeriodControl());
+  }
+
+  removeUnavailablePeriod(index: number): void {
+    this.unavailablePeriodsArray.removeAt(index);
   }
 
   private loadTeamData(companyId: string): void {
@@ -312,17 +424,14 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         next: (result) => {
           this.loadingTeamData = false;
           if (!result?.isSuccess || !Array.isArray(result.data)) {
-            this.availableUsers = [];
             this.setTeamMembers([]);
             return;
           }
 
-          this.availableUsers = result.data;
-          this.setTeamMembers(this.availableUsers);
+          this.setTeamMembers(result.data);
         },
         error: () => {
           this.loadingTeamData = false;
-          this.availableUsers = [];
           this.setTeamMembers([]);
         }
       });
@@ -331,22 +440,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private isValidGuid(value: string | null | undefined): boolean {
     if (!value) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-  }
-
-  onToggleMember(index: number): void {
-    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
-    const selected = member.get('selected')?.value === true;
-
-    if (!selected) {
-      member.patchValue({
-        role: '',
-        dedication: '',
-        isApprover: false
-      });
-    }
-
-    member.updateValueAndValidity();
-    this.teamMembersArray.updateValueAndValidity();
   }
 
   private isStep2Valid(): boolean {
@@ -364,6 +457,14 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     }
 
     return !this.teamMembersArray.errors;
+  }
+
+  private isStep3Valid(): boolean {
+    if (this.f['budgetType']?.value === 'fixed' && !this.f['budgetValue']?.value) {
+      this.f['budgetValue']?.markAsTouched();
+      return false;
+    }
+    return true;
   }
 
   nextStep(): void {
@@ -391,19 +492,13 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   }
 
   get currentStepSubtitle(): string {
-    if (this.isEditMode) {
-      return 'Atualize os dados do projeto';
-    }
-    if (this.currentStep === 2) {
-      return 'Passo 2 de 2: Equipe e funções';
-    }
-    return 'Passo 1 de 2: Dados básicos';
+    if (this.isEditMode) return 'Atualize os dados do projeto';
+    if (this.currentStep === 3) return 'Passo 3 de 3: Contexto e restrições';
+    if (this.currentStep === 2) return 'Passo 2 de 3: Equipe e funções';
+    return 'Passo 1 de 3: Dados básicos';
   }
 
   goToStep(step: number): void {
-    // Navegar para um passo específico
-    // Se voltando, permite sem validação
-    // Se avançando, precisa validar o passo atual
     if (step < this.currentStep) {
       this.currentStep = step;
       this.formSubmitted = false;
@@ -412,12 +507,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     
     if (step > this.currentStep) {
       this.formSubmitted = true;
-      if (this.currentStep === 1 && !this.isStep1Valid()) {
-        return; // Não avança
-      }
-      if (this.currentStep === 2 && !this.isStep2Valid()) {
-        return;
-      }
+      if (this.currentStep === 1 && !this.isStep1Valid()) return;
+      if (this.currentStep === 2 && !this.isStep2Valid()) return;
+      if (this.currentStep === 3 && !this.isStep3Valid()) return;
       this.currentStep = step;
       this.formSubmitted = false;
     }
@@ -425,7 +517,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   onConcluir(): void {
     this.formSubmitted = true;
-    if (!this.isStep2Valid()) return;
+    if (!this.isStep3Valid()) return;
 
     this.isSubmitting = true;
     this.submitError = undefined;
@@ -439,8 +531,25 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         userName: m.userName,
         role: m.role,
         dedication: m.dedication,
-        isApprover: m.isApprover
+        isApprover: m.isApprover,
+        roleDescription: m.roleDescription
       }));
+
+    const compliance = raw.compliance;
+    const selectedCompliance: string[] = [];
+    if (compliance.publicData) selectedCompliance.push('Dados Públicos');
+    if (compliance.lgpd) selectedCompliance.push('LGPD');
+    if (compliance.pciDss) selectedCompliance.push('PCI-DSS');
+    if (compliance.hipaa) selectedCompliance.push('HIPAA');
+    if (compliance.iso27001) selectedCompliance.push('ISO 27001');
+    if (compliance.sox) selectedCompliance.push('SOX');
+
+    const approvers = raw.complianceApprovers;
+    const selectedApprovers: string[] = [];
+    if (approvers.legal) selectedApprovers.push('Jurídico');
+    if (approvers.security) selectedApprovers.push('Segurança da Informação');
+    if (approvers.dpo) selectedApprovers.push('DPO');
+    if (approvers.complianceTeam) selectedApprovers.push('Compliance');
 
     const payload: ProjectAnalysisRequest = {
       projectName: raw.name,
@@ -451,7 +560,19 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       company: this.companyDisplayName,
       department: raw.department,
       projectType: raw.projectType,
-      teamMembers: selectedMembers
+      teamMembers: selectedMembers,
+      hasExternalDependencies: raw.hasExternalDependencies,
+      externalDependencies: raw.hasExternalDependencies === 'yes' ? raw.externalDependencies : [],
+      budgetType: raw.budgetType,
+      budgetValue: raw.budgetType === 'fixed' ? raw.budgetValue : undefined,
+      workSchedule: raw.workSchedule,
+      downtimePolicy: raw.downtimePolicy,
+      downtimeLimitHours: raw.downtimePolicy === 'limited' ? raw.downtimeLimitHours : undefined,
+      hasIntegrations: raw.hasIntegrations,
+      integrations: raw.hasIntegrations === 'yes' ? raw.integrations : [],
+      compliance: selectedCompliance,
+      complianceApprovers: selectedApprovers,
+      unavailablePeriods: raw.unavailablePeriods
     };
 
     this.claudeApi.analyzeProject(payload)
