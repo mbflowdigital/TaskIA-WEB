@@ -24,7 +24,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   // Wizard
   currentStep = 1;
-  readonly totalSteps = 4;
+  readonly totalSteps = 5;
 
   companyDisplayName = 'Empresa';
   availableUsers: UserDto[] = [];
@@ -44,6 +44,57 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   formSubmitted = false;
 
   priorityItems: string[] = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
+
+  // Step 5: generation animation (0=idle, 1=analyzing, 2=phases, 3=tasks, 4=done)
+  generationStep = 0;
+  private generationInterval?: ReturnType<typeof setInterval>;
+
+  reviewOpenSections: Record<string, boolean> = { basic: true, team: false, context: false, priorities: false };
+
+  toggleReviewSection(key: string): void {
+    this.reviewOpenSections[key] = !this.reviewOpenSections[key];
+  }
+
+  get reviewBasicSummary(): string {
+    const raw = this.form.getRawValue();
+    const parts: string[] = [];
+    if (raw.name) parts.push(raw.name);
+    if (raw.department) parts.push(raw.department);
+    if (raw.projectType) parts.push(raw.projectType);
+    if (raw.startDate) parts.push(`Início: ${raw.startDate}`);
+    return parts.join(' · ');
+  }
+
+  get reviewTeamSummary(): string {
+    const selected = this.teamMembersArray.controls.filter(c => c.get('selected')?.value);
+    const roles = [...new Set(selected.map(c => c.get('role')?.value).filter(Boolean))];
+    return `${selected.length} membro${selected.length !== 1 ? 's' : ''}` + (roles.length ? ` · ${roles.slice(0, 3).join(', ')}${roles.length > 3 ? '...' : ''}` : '');
+  }
+
+  get reviewContextSummary(): string {
+    const raw = this.form.getRawValue();
+    const parts: string[] = [];
+    const budgetMap: Record<string, string> = { unlimited: 'Sem limite', fixed: `R$ ${raw.budgetValue}`, tbd: 'Orç. a definir' };
+    parts.push(budgetMap[raw.budgetType] ?? raw.budgetType);
+    if (raw.hasExternalDependencies === 'yes') parts.push(`${(raw.externalDependencies as unknown[]).length} dependências`);
+    if (raw.hasIntegrations === 'yes') parts.push(`${(raw.integrations as unknown[]).length} integrações`);
+    const workMap: Record<string, string> = { commercial: 'expediente comercial', flexible: 'horário flexível', 'off-hours': 'fora do expediente' };
+    parts.push(workMap[raw.workSchedule] ?? raw.workSchedule);
+    return parts.join(' · ');
+  }
+
+  get reviewPrioritiesSummary(): string {
+    const raw = this.form.getRawValue();
+    const expMap: Record<string, string> = { never: 'Nunca fizemos', similar: 'Algo similar', exact: 'Exatamente isso' };
+    const detailMap: Record<string, string> = { macro: 'Macro', balanced: 'Balanceado', granular: 'Granular' };
+    const reviewMap: Record<string, string> = { weekly: 'Semanal', biweekly: 'Quinzenal', monthly: 'Mensal' };
+    return [
+      `1ª: ${this.priorityItems[0]}`,
+      expMap[raw.previousExperience] ?? raw.previousExperience,
+      detailMap[raw.detailLevel] ?? raw.detailLevel,
+      reviewMap[raw.reviewFrequency] ?? raw.reviewFrequency
+    ].join(' · ');
+  }
 
   // TODO: replace with auth service when ready
   private get CURRENT_USER_ID(): string {
@@ -248,6 +299,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.unavailablePeriodsArray.clear();
     this.teamMembersArray.updateValueAndValidity();
     this.priorityItems = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
+    this.generationStep = 0;
+    this.reviewOpenSections = { basic: true, team: false, context: false, priorities: false };
     this.formSubmitted = false;
     this.submitError = undefined;
     this.submitErrors = [];
@@ -514,10 +567,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   get currentStepSubtitle(): string {
     if (this.isEditMode) return 'Atualize os dados do projeto';
-    if (this.currentStep === 4) return 'Passo 4 de 4: Prioridades e expectativas';
-    if (this.currentStep === 3) return 'Passo 3 de 4: Contexto e restrições';
-    if (this.currentStep === 2) return 'Passo 2 de 4: Equipe e funções';
-    return 'Passo 1 de 4: Dados básicos';
+    if (this.currentStep === 5) return 'Passo 5 de 5: Revisão e geração';
+    if (this.currentStep === 4) return 'Passo 4 de 5: Prioridades e expectativas';
+    if (this.currentStep === 3) return 'Passo 3 de 5: Contexto e restrições';
+    if (this.currentStep === 2) return 'Passo 2 de 5: Equipe e funções';
+    return 'Passo 1 de 5: Dados básicos';
   }
 
   goToStep(step: number): void {
@@ -538,12 +592,17 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   }
 
   onConcluir(): void {
-    this.formSubmitted = true;
-    if (!this.isStep3Valid()) return;
-
     this.isSubmitting = true;
     this.submitError = undefined;
     this.submitErrors = [];
+    this.generationStep = 1;
+
+    if (this.generationInterval) clearInterval(this.generationInterval);
+    let step = 1;
+    this.generationInterval = setInterval(() => {
+      if (step < 3) { step++; this.generationStep = step; }
+      else { clearInterval(this.generationInterval); }
+    }, 2500);
 
     const raw = this.form.getRawValue();
     const selectedMembers = (raw.teamMembers as any[])
@@ -609,12 +668,16 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
+          if (this.generationInterval) clearInterval(this.generationInterval);
+          this.generationStep = 4;
           if (result?.isSuccess && result.data) {
             this.analysisResult = result.data;
           }
           this.finishProjectCreation();
         },
         error: () => {
+          if (this.generationInterval) clearInterval(this.generationInterval);
+          this.generationStep = 0;
           this.finishProjectCreation();
         }
       });

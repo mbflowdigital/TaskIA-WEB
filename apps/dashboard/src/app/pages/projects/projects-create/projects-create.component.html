@@ -184,6 +184,17 @@
                       >
                         <span>4</span>
                       </button>
+                      <div class="step-line" [class.active]="currentStep > 4"></div>
+                      <button 
+                        type="button"
+                        class="step-dot"
+                        [class.active]="currentStep === 5"
+                        [class.completed]="currentStep > 5"
+                        (click)="goToStep(5)"
+                        title="Revisão e geração"
+                      >
+                        <span>5</span>
+                      </button>
                     </div>
 
                     <button 
@@ -383,6 +394,8 @@
                       >
                         <span>4</span>
                       </button>
+                      <div class="step-line" [class.active]="currentStep > 4"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão e geração"><span>5</span></button>
                     </div>
 
                     <button 
@@ -614,6 +627,8 @@
                       <button type="button" class="step-dot" [class.active]="currentStep === 3" [class.completed]="currentStep > 3" (click)="goToStep(3)" title="Contexto e restrições"><span>3</span></button>
                       <div class="step-line" [class.active]="currentStep > 3"></div>
                       <button type="button" class="step-dot" [class.active]="currentStep === 4" [class.completed]="currentStep > 4" (click)="goToStep(4)" title="Prioridades e expectativas"><span>4</span></button>
+                      <div class="step-line" [class.active]="currentStep > 4"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão e geração"><span>5</span></button>
                     </div>
 
                     <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="isSubmitting">
@@ -731,16 +746,181 @@
                       <button type="button" class="step-dot" [class.active]="currentStep === 3" [class.completed]="currentStep > 3" (click)="goToStep(3)" title="Contexto e restrições"><span>3</span></button>
                       <div class="step-line" [class.active]="currentStep > 3"></div>
                       <button type="button" class="step-dot" [class.active]="currentStep === 4" [class.completed]="currentStep > 4" (click)="goToStep(4)" title="Prioridades e expectativas"><span>4</span></button>
+                      <div class="step-line" [class.active]="currentStep > 4"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão e geração"><span>5</span></button>
                     </div>
 
-                    <button type="button" class="btn btn-primary" (click)="onConcluir()" [disabled]="isSubmitting">
-                      {{ isSubmitting ? 'Analisando...' : 'Concluir' }}
+                    <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="isSubmitting">
+                      Próximo →
                     </button>
                   </div>
                 </form>
 
-                <!-- ANÁLISE IA -->
-                <div *ngIf="currentStep === 4 && analysisResult" class="mt-3">
+                <!-- TELA 5: REVISÃO E GERAÇÃO -->
+
+                <!-- Loading / geração -->
+                <div *ngIf="currentStep === 5 && isSubmitting" class="generation-loading text-center py-5">
+                  <div class="generation-robot mb-3">🤖</div>
+                  <h5 class="fw-bold mb-4">Gerando plano com IA...</h5>
+                  <div class="generation-steps">
+                    <div class="generation-step" [class.done]="generationStep > 1" [class.active]="generationStep === 1">
+                      <span class="gen-icon">{{ generationStep > 1 ? '✅' : (generationStep === 1 ? '⏳' : '⬜') }}</span>
+                      <span>Analisando contexto</span>
+                    </div>
+                    <div class="generation-step" [class.done]="generationStep > 2" [class.active]="generationStep === 2">
+                      <span class="gen-icon">{{ generationStep > 2 ? '✅' : (generationStep === 2 ? '⏳' : '⬜') }}</span>
+                      <span>Criando fases...</span>
+                    </div>
+                    <div class="generation-step" [class.done]="generationStep > 3" [class.active]="generationStep === 3">
+                      <span class="gen-icon">{{ generationStep > 3 ? '✅' : (generationStep === 3 ? '⏳' : '⬜') }}</span>
+                      <span>Gerando tarefas...</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Review: cards expansíveis -->
+                <div *ngIf="currentStep === 5 && !isSubmitting && !analysisResult && !isLoading && !loadError">
+
+                  <p class="text-muted mb-3">Revise o resumo de cada etapa antes de gerar o plano. Clique em <strong>Editar</strong> para voltar e ajustar.</p>
+
+                  <!-- Card: Dados básicos -->
+                  <div class="review-card mb-2">
+                    <div class="review-card-header" (click)="toggleReviewSection('basic')">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="review-step-badge">1</span>
+                        <span class="fw-semibold">Dados básicos</span>
+                        <span class="review-summary text-muted ms-2">{{ reviewBasicSummary }}</span>
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-link p-0 text-primary" (click)="$event.stopPropagation(); goToStep(1)">Editar</button>
+                        <span class="review-chevron" [class.open]="reviewOpenSections['basic']">›</span>
+                      </div>
+                    </div>
+                    <div class="review-card-body" *ngIf="reviewOpenSections['basic']">
+                      <div class="row gx-3 gy-1">
+                        <div class="col-12 col-md-6"><span class="text-muted">Nome:</span> {{ f['name'].value }}</div>
+                        <div class="col-12 col-md-3"><span class="text-muted">Departamento:</span> {{ f['department'].value }}</div>
+                        <div class="col-12 col-md-3"><span class="text-muted">Tipo:</span> {{ f['projectType'].value }}</div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Início:</span> {{ f['startDate'].value }}</div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Fim:</span> {{ f['endDate'].value || '—' }}</div>
+                        <div class="col-12" *ngIf="f['objective'].value"><span class="text-muted">Objetivo:</span> {{ f['objective'].value }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card: Equipe -->
+                  <div class="review-card mb-2">
+                    <div class="review-card-header" (click)="toggleReviewSection('team')">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="review-step-badge">2</span>
+                        <span class="fw-semibold">Equipe</span>
+                        <span class="review-summary text-muted ms-2">{{ reviewTeamSummary }}</span>
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-link p-0 text-primary" (click)="$event.stopPropagation(); goToStep(2)">Editar</button>
+                        <span class="review-chevron" [class.open]="reviewOpenSections['team']">›</span>
+                      </div>
+                    </div>
+                    <div class="review-card-body" *ngIf="reviewOpenSections['team']">
+                      <div *ngFor="let member of teamMembersArray.controls" class="review-member-row">
+                        <strong>{{ member.get('userName')?.value }}</strong>
+                        <span class="text-muted">{{ member.get('role')?.value }}</span>
+                        <span class="text-muted">{{ member.get('dedication')?.value }}</span>
+                        <span *ngIf="member.get('isApprover')?.value" class="badge bg-primary-subtle text-primary">Aprovador</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card: Contexto e restrições -->
+                  <div class="review-card mb-2">
+                    <div class="review-card-header" (click)="toggleReviewSection('context')">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="review-step-badge">3</span>
+                        <span class="fw-semibold">Contexto e restrições</span>
+                        <span class="review-summary text-muted ms-2">{{ reviewContextSummary }}</span>
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-link p-0 text-primary" (click)="$event.stopPropagation(); goToStep(3)">Editar</button>
+                        <span class="review-chevron" [class.open]="reviewOpenSections['context']">›</span>
+                      </div>
+                    </div>
+                    <div class="review-card-body" *ngIf="reviewOpenSections['context']">
+                      <div class="row gx-3 gy-1">
+                        <div class="col-12 col-md-4"><span class="text-muted">Orçamento:</span>
+                          {{ f['budgetType'].value === 'fixed' ? ('R$ ' + f['budgetValue'].value) : (f['budgetType'].value === 'tbd' ? 'A definir' : 'Sem limite') }}
+                        </div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Horário:</span>
+                          {{ f['workSchedule'].value === 'commercial' ? 'Comercial' : (f['workSchedule'].value === 'flexible' ? 'Flexível' : 'Fora do expediente') }}
+                        </div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Downtime:</span>
+                          {{ f['downtimePolicy'].value === 'zero' ? 'Zero downtime' : (f['downtimePolicy'].value === 'limited' ? ('Até ' + f['downtimeLimitHours'].value + 'h') : 'N/A') }}
+                        </div>
+                        <div class="col-12" *ngIf="f['hasExternalDependencies'].value === 'yes'">
+                          <span class="text-muted">Dependências:</span> {{ externalDependenciesArray.length }}
+                        </div>
+                        <div class="col-12" *ngIf="f['hasIntegrations'].value === 'yes'">
+                          <span class="text-muted">Integrações:</span> {{ integrationsArray.length }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card: Prioridades -->
+                  <div class="review-card mb-3">
+                    <div class="review-card-header" (click)="toggleReviewSection('priorities')">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="review-step-badge">4</span>
+                        <span class="fw-semibold">Prioridades e expectativas</span>
+                        <span class="review-summary text-muted ms-2">{{ reviewPrioritiesSummary }}</span>
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-link p-0 text-primary" (click)="$event.stopPropagation(); goToStep(4)">Editar</button>
+                        <span class="review-chevron" [class.open]="reviewOpenSections['priorities']">›</span>
+                      </div>
+                    </div>
+                    <div class="review-card-body" *ngIf="reviewOpenSections['priorities']">
+                      <div class="row gx-3 gy-1">
+                        <div class="col-12"><span class="text-muted">Ranking:</span> {{ priorityItems.join(' › ') }}</div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Experiência:</span>
+                          {{ f['previousExperience'].value === 'never' ? 'Nunca fizemos' : (f['previousExperience'].value === 'similar' ? 'Algo similar' : 'Exatamente isso') }}
+                        </div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Detalhe:</span>
+                          {{ f['detailLevel'].value === 'macro' ? 'Macro (10–15)' : (f['detailLevel'].value === 'granular' ? 'Granular (80–150)' : 'Balanceado (30–50)') }}
+                        </div>
+                        <div class="col-12 col-md-4"><span class="text-muted">Revisão:</span>
+                          {{ f['reviewFrequency'].value === 'weekly' ? 'Semanal' : (f['reviewFrequency'].value === 'biweekly' ? 'Quinzenal' : 'Mensal') }}
+                        </div>
+                        <div class="col-12" *ngIf="f['biggestRisk'].value"><span class="text-muted">Maior risco:</span> {{ f['biggestRisk'].value }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Botões passo 5 -->
+                  <div class="wizard-buttons mt-2 d-flex flex-sm-row flex-column justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
+                      ← Voltar
+                    </button>
+
+                    <div class="wizard-steps d-flex gap-2 align-items-center">
+                      <button type="button" class="step-dot" [class.active]="currentStep === 1" [class.completed]="currentStep > 1" (click)="goToStep(1)" title="Dados básicos"><span>1</span></button>
+                      <div class="step-line" [class.active]="currentStep > 1"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 2" [class.completed]="currentStep > 2" (click)="goToStep(2)" title="Equipe"><span>2</span></button>
+                      <div class="step-line" [class.active]="currentStep > 2"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 3" [class.completed]="currentStep > 3" (click)="goToStep(3)" title="Contexto"><span>3</span></button>
+                      <div class="step-line" [class.active]="currentStep > 3"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 4" [class.completed]="currentStep > 4" (click)="goToStep(4)" title="Prioridades"><span>4</span></button>
+                      <div class="step-line" [class.active]="currentStep > 4"></div>
+                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão"><span>5</span></button>
+                    </div>
+
+                    <button type="button" class="btn btn-primary btn-generate" (click)="onConcluir()" [disabled]="isSubmitting">
+                      ✨ Gerar plano
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Resultado da análise -->
+                <div *ngIf="currentStep === 5 && analysisResult" class="mt-3">
                   <div class="alert alert-success mb-3">
                     <strong>Projeto criado e análise concluída!</strong>
                   </div>
