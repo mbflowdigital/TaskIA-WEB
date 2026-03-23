@@ -43,6 +43,15 @@ export interface ProjectAnalysisRequest {
   compliance?: string[];
   complianceApprovers?: string[];
   unavailablePeriods?: UnavailablePeriodInput[];
+  // Step 4
+  priorityRanking?: string[];
+  biggestRisk?: string;
+  previousExperience?: string;
+  whatWentWell?: string;
+  whatWentWrong?: string;
+  detailLevel?: string;
+  reviewFrequency?: string;
+  finalObservations?: string;
 }
 
 export interface ExternalDependencyInput {

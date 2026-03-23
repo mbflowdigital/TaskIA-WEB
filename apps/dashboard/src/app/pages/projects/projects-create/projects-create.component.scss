@@ -187,6 +187,85 @@
   }
 }
 
+// Drag & Drop – Priority ranking list
+.priority-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 440px;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  cursor: grab;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  user-select: none;
+
+  &:hover {
+    border-color: #003d82;
+    box-shadow: 0 2px 6px rgba(0, 61, 130, 0.1);
+  }
+}
+
+.priority-item.cdk-drag-preview {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border-color: #003d82;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.priority-item.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.priority-placeholder {
+  background: #e8f0ff;
+  border: 2px dashed #003d82;
+  border-radius: 8px;
+  min-height: 50px;
+  flex: 1;
+}
+
+.cdk-drop-list-dragging .priority-item:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.drag-handle {
+  font-size: 1.1rem;
+  color: #adb5bd;
+  cursor: grab;
+  line-height: 1;
+  flex-shrink: 0;
+
+  &:active { cursor: grabbing; }
+}
+
+.priority-rank {
+  font-weight: 700;
+  color: #003d82;
+  min-width: 1.5rem;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.priority-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.char-count {
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
+  color: #6c757d;
+}
+
 // Radio & checkbox row containers
 .radio-group,
 .checkbox-group {

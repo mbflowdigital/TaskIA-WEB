@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -13,7 +14,7 @@ import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from 
 @Component({
   selector: 'app-projects-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, DragDropModule],
   templateUrl: './projects-create.component.html',
   styleUrls: ['./projects-create.component.scss']
 })
@@ -23,7 +24,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   // Wizard
   currentStep = 1;
-  readonly totalSteps = 3;
+  readonly totalSteps = 4;
 
   companyDisplayName = 'Empresa';
   availableUsers: UserDto[] = [];
@@ -41,6 +42,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   analysisResult?: ProjectAnalysisResult;
 
   formSubmitted = false;
+
+  priorityItems: string[] = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
 
   // TODO: replace with auth service when ready
   private get CURRENT_USER_ID(): string {
@@ -109,7 +112,16 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       dpo: new UntypedFormControl(false),
       complianceTeam: new UntypedFormControl(false)
     }),
-    unavailablePeriods: new UntypedFormArray([])
+    unavailablePeriods: new UntypedFormArray([]),
+
+    // TELA 4: PRIORIDADES E EXPECTATIVAS
+    biggestRisk: new UntypedFormControl(''),
+    previousExperience: new UntypedFormControl('never'),
+    whatWentWell: new UntypedFormControl(''),
+    whatWentWrong: new UntypedFormControl(''),
+    detailLevel: new UntypedFormControl('balanced'),
+    reviewFrequency: new UntypedFormControl('weekly'),
+    finalObservations: new UntypedFormControl('')
   }, { validators: this.dateEndGreaterThanStart });
 
   get f() { return this.form.controls; }
@@ -235,6 +247,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.integrationsArray.clear();
     this.unavailablePeriodsArray.clear();
     this.teamMembersArray.updateValueAndValidity();
+    this.priorityItems = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
     this.formSubmitted = false;
     this.submitError = undefined;
     this.submitErrors = [];
@@ -403,6 +416,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.unavailablePeriodsArray.removeAt(index);
   }
 
+  dropPriority(event: CdkDragDrop<string[]>): void {
+    moveItemInArray(this.priorityItems, event.previousIndex, event.currentIndex);
+  }
+
   private loadTeamData(companyId: string): void {
     this.loadingTeamData = true;
 
@@ -478,6 +495,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.currentStep === 3 && !this.isStep3Valid()) {
+      return;
+    }
+
     this.currentStep += 1;
     this.formSubmitted = false;
   }
@@ -493,9 +514,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   get currentStepSubtitle(): string {
     if (this.isEditMode) return 'Atualize os dados do projeto';
-    if (this.currentStep === 3) return 'Passo 3 de 3: Contexto e restrições';
-    if (this.currentStep === 2) return 'Passo 2 de 3: Equipe e funções';
-    return 'Passo 1 de 3: Dados básicos';
+    if (this.currentStep === 4) return 'Passo 4 de 4: Prioridades e expectativas';
+    if (this.currentStep === 3) return 'Passo 3 de 4: Contexto e restrições';
+    if (this.currentStep === 2) return 'Passo 2 de 4: Equipe e funções';
+    return 'Passo 1 de 4: Dados básicos';
   }
 
   goToStep(step: number): void {
@@ -572,7 +594,15 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       integrations: raw.hasIntegrations === 'yes' ? raw.integrations : [],
       compliance: selectedCompliance,
       complianceApprovers: selectedApprovers,
-      unavailablePeriods: raw.unavailablePeriods
+      unavailablePeriods: raw.unavailablePeriods,
+      priorityRanking: this.priorityItems,
+      biggestRisk: raw.biggestRisk || undefined,
+      previousExperience: raw.previousExperience,
+      whatWentWell: raw.previousExperience === 'similar' ? raw.whatWentWell : undefined,
+      whatWentWrong: raw.previousExperience === 'similar' ? raw.whatWentWrong : undefined,
+      detailLevel: raw.detailLevel,
+      reviewFrequency: raw.reviewFrequency,
+      finalObservations: raw.finalObservations || undefined
     };
 
     this.claudeApi.analyzeProject(payload)
