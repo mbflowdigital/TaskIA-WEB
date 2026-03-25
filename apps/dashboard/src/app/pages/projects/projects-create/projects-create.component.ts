@@ -3,9 +3,11 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, forkJoin, takeUntil, debounceTime } from 'rxjs';
 
+import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
+import { ProjectMemberRequest, ProjectDetailsRequest, ProjectExecutionSettingsRequest, UpdateProjectDetailsRequest, ProjectCompleteDto, ProjectMemberCompleteDto } from '../../../shared/api/projects/projects.types';
 import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
@@ -14,7 +16,7 @@ import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from 
 @Component({
   selector: 'app-projects-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, DragDropModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, DragDropModule, NgbTooltipModule],
   templateUrl: './projects-create.component.html',
   styleUrls: ['./projects-create.component.scss']
 })
@@ -32,14 +34,53 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   isEditMode = false;
   editingProjectId?: string;
+  createdProjectId?: string;
   isLoading = false;
   loadError?: string;
+
+  // Edit mode state for tracking existing data
+  private hasExistingDetails = false;
+  private existingDetailsId?: string;
+  private hasExistingExecutionSettings = false;
+  private existingMembersMap = new Map<string, string>(); // userId → member backend ID
+  private pendingEditMembers?: Array<{
+    userId: string; userName: string; role: string;
+    dedication: string; isApprover: boolean; roleDescription: string;
+  }>;
+
+  // Draft (localStorage autosave)
+  hasDraft = false;
+  draftSavedAt?: Date;
+  private draftWatchActive = false;
+  private draftKey(id: string): string { return `project-draft-${id}`; }
 
   isSubmitting = false;
   submitError?: string;
   submitErrors: string[] = [];
   submitSuccess?: string;
   analysisResult?: ProjectAnalysisResult;
+
+  get parsedRisks(): { level: string; label: string; items: string[] }[] {
+    if (!this.analysisResult?.risks) return [];
+    const levelMap: Record<string, string> = {
+      CRITICO: 'Crítico',
+      ALTO: 'Alto',
+      MEDIO: 'Médio',
+      BAIXO: 'Baixo'
+    };
+    return this.analysisResult.risks
+      .split('|')
+      .map(section => section.trim())
+      .filter(section => section.length > 0)
+      .map(section => {
+        const colonIdx = section.indexOf(':');
+        if (colonIdx === -1) return null;
+        const level = section.slice(0, colonIdx).trim().toUpperCase();
+        const items = section.slice(colonIdx + 1).split(',').map(i => i.trim()).filter(i => i.length > 0);
+        return { level, label: levelMap[level] ?? level, items };
+      })
+      .filter((g): g is { level: string; label: string; items: string[] } => g !== null && g.items.length > 0);
+  }
 
   formSubmitted = false;
 
@@ -242,10 +283,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
     this.isEditMode = true;
     this.editingProjectId = id;
+    this.createdProjectId = id;
     this.isLoading = true;
 
     this.projectsApi
-      .getById(id)
+      .getComplete(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
@@ -254,13 +296,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
             this.loadError = result?.message ?? 'Não foi possível carregar o projeto.';
             return;
           }
-          this.form.patchValue({
-            name: result.data.name,
-            description: result.data.description ?? '',
-            objective: result.data.objective ?? '',
-            startDate: result.data.startDate ? result.data.startDate.substring(0, 10) : '',
-            endDate: result.data.endDate ? result.data.endDate.substring(0, 10) : ''
-          });
+          this.populateFormFromComplete(result.data);
         },
         error: () => {
           this.isLoading = false;
@@ -389,9 +425,318 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     });
   }
 
+  private createEditMemberControl(data: {
+    userId: string; userName: string; role: string;
+    dedication: string; isApprover: boolean; roleDescription: string;
+  }): UntypedFormGroup {
+    return new UntypedFormGroup({
+      userId: new UntypedFormControl(data.userId),
+      userName: new UntypedFormControl(data.userName),
+      selected: new UntypedFormControl(true),
+      role: new UntypedFormControl(data.role),
+      dedication: new UntypedFormControl(data.dedication),
+      isApprover: new UntypedFormControl(data.isApprover),
+      roleDescription: new UntypedFormControl(data.roleDescription)
+    });
+  }
+
+  private populateFormFromComplete(data: ProjectCompleteDto): void {
+    // ── Step 1: basic fields ──────────────────────────────────────────────
+    this.form.patchValue({
+      name: data.name,
+      objective: data.objective ?? '',
+      description: data.description ?? '',
+      startDate: data.startDate ? data.startDate.substring(0, 10) : '',
+      endDate: data.endDate ? data.endDate.substring(0, 10) : ''
+    });
+
+    // ── Step 2: team ──────────────────────────────────────────────────────
+    this.form.patchValue({
+      department: data.responsibleSector ?? '',
+      projectType: data.projectType ?? ''
+    });
+
+    const memberData = data.members.map(m => ({
+      userId: m.userId,
+      userName: m.userName ?? '',
+      role: m.projectFunction ?? '',
+      dedication: m.dedication ?? '',
+      isApprover: m.approver?.toLowerCase() === 'sim',
+      roleDescription: m.functionDescription ?? ''
+    }));
+
+    // Track existing member IDs for syncing on save
+    this.existingMembersMap.clear();
+    data.members.forEach(m => this.existingMembersMap.set(m.userId, m.id));
+
+    if (!this.loadingTeamData) {
+      // Team data already loaded — populate members now
+      this.teamMembersArray.clear();
+      memberData.forEach(m => this.teamMembersArray.push(this.createEditMemberControl(m)));
+      this.teamMembersArray.updateValueAndValidity();
+    } else {
+      // Team data still loading — store for setTeamMembers callback
+      this.pendingEditMembers = memberData;
+    }
+
+    // ── Step 3: details ───────────────────────────────────────────────────
+    if (data.details) {
+      this.hasExistingDetails = true;
+      this.existingDetailsId = data.details.id;
+
+      const budgetMap: Record<string, string> = {
+        SemLimite: 'unlimited', ValorFixo: 'fixed', ADefinir: 'tbd'
+      };
+      const workMap: Record<string, string> = {
+        Comercial: 'commercial', Flexivel: 'flexible', ForaDoExpediente: 'off-hours'
+      };
+      const downtimeMap: Record<string, string> = {
+        NaoSeAplica: 'na', AteXHoras: 'limited', ZeroDowntime: 'zero'
+      };
+
+      this.form.patchValue({
+        hasExternalDependencies: data.details.temDependenciasExternas ? 'yes' : 'no',
+        hasIntegrations: data.details.temIntegracoes ? 'yes' : 'no',
+        budgetType: budgetMap[data.details.orcamento] ?? 'unlimited',
+        budgetValue: data.details.valorOrcamento ?? '',
+        workSchedule: workMap[data.details.horarioTrabalho] ?? 'commercial',
+        downtimePolicy: downtimeMap[data.details.downtimePermitido] ?? 'na',
+        downtimeLimitHours: data.details.horasDowntime ?? ''
+      });
+
+      // Compliances → checkboxes
+      const complianceMap: Record<string, string> = {
+        DadosPublicos: 'publicData', LGPD: 'lgpd', PCI_DSS: 'pciDss',
+        HIPAA: 'hipaa', ISO27001: 'iso27001', SOX: 'sox'
+      };
+      const complianceValues: Record<string, boolean> = {
+        publicData: false, lgpd: false, pciDss: false, hipaa: false, iso27001: false, sox: false
+      };
+      data.details.compliances.forEach(c => {
+        const key = complianceMap[c.tipoCompliance];
+        if (key) complianceValues[key] = true;
+      });
+      this.complianceGroup.patchValue(complianceValues);
+
+      // SensitiveData → approver checkboxes
+      const sensitiveMap: Record<string, string> = {
+        Juridico: 'legal', SegurancaDaInformacao: 'security', DPO: 'dpo', Compliance: 'complianceTeam'
+      };
+      const approverValues: Record<string, boolean> = {
+        legal: false, security: false, dpo: false, complianceTeam: false
+      };
+      data.details.sensitiveData.forEach(s => {
+        const key = sensitiveMap[s.tipoDadoSensivel];
+        if (key) approverValues[key] = true;
+      });
+      (this.form.get('complianceApprovers') as UntypedFormGroup).patchValue(approverValues);
+
+      // Unavailable periods
+      this.unavailablePeriodsArray.clear();
+      data.details.unavailablePeriods.forEach(p => {
+        const ctrl = this.createUnavailablePeriodControl();
+        ctrl.patchValue({
+          startDate: p.dataInicio.substring(0, 10),
+          endDate: p.dataFim.substring(0, 10),
+          reason: p.motivo ?? ''
+        });
+        this.unavailablePeriodsArray.push(ctrl);
+      });
+
+      // External dependencies
+      this.externalDependenciesArray.clear();
+      data.details.dependencies.forEach(d => {
+        const ctrl = this.createExternalDependencyControl();
+        ctrl.patchValue({
+          name: d.nome,
+          whatIsNeeded: d.descricao ?? '',
+          deadline: d.prazo ? d.prazo.substring(0, 10) : '',
+          criticality: d.criticidade
+        });
+        this.externalDependenciesArray.push(ctrl);
+      });
+
+      // Integrations
+      const integrationStatusMap: Record<string, string> = { Existe: 'exists', Criar: 'to-create' };
+      this.integrationsArray.clear();
+      data.details.integrations.forEach(i => {
+        const ctrl = this.createIntegrationControl();
+        ctrl.patchValue({
+          systemName: i.nomeSistema,
+          type: i.tipo,
+          criticality: i.criticidade,
+          status: integrationStatusMap[i.status] ?? 'exists'
+        });
+        this.integrationsArray.push(ctrl);
+      });
+    }
+
+    // ── Step 4: execution settings ────────────────────────────────────────
+    if (data.executionSettings) {
+      this.hasExistingExecutionSettings = true;
+
+      const expMap: Record<string, string> = {
+        NuncaFizemos: 'never', AlgoSimilar: 'similar', ExatamenteIsso: 'exact'
+      };
+      const detailMap: Record<string, string> = {
+        Macro: 'macro', Balanceado: 'balanced', Granular: 'granular'
+      };
+      const reviewMap: Record<string, string> = {
+        Semanal: 'weekly', Quinzenal: 'biweekly', Mensal: 'monthly'
+      };
+
+      this.form.patchValue({
+        previousExperience: expMap[data.executionSettings.experienciaEquipe] ?? 'never',
+        detailLevel: detailMap[data.executionSettings.nivelDetalhePlano] ?? 'balanced',
+        reviewFrequency: reviewMap[data.executionSettings.frequenciaRevisao] ?? 'weekly',
+        biggestRisk: data.executionSettings.maiorRisco ?? '',
+        finalObservations: data.executionSettings.observacoes ?? '',
+        whatWentWell: data.executionSettings.oQueDeuCerto ?? '',
+        whatWentWrong: data.executionSettings.oQueDeuErrado ?? ''
+      });
+
+      // Restore priority order
+      const priorityLabelMap: Record<string, string> = {
+        Prazo: 'Prazo', Qualidade: 'Qualidade', Custo: 'Custo',
+        Escopo: 'Escopo', Documentacao: 'Documentação'
+      };
+      const sorted = [...data.executionSettings.prioridadesOrdenadas].sort((a, b) => a.posicao - b.posicao);
+      if (sorted.length === 5) {
+        this.priorityItems = sorted.map(p => priorityLabelMap[p.priorityType] ?? p.priorityType);
+      }
+    }
+
+    this.checkForDraft();
+    this.startDraftWatch();
+  }
+
+  // ── Draft /localStorage ──────────────────────────────────────────────────
+
+  private checkForDraft(): void {
+    if (!this.editingProjectId) return;
+    const raw = localStorage.getItem(this.draftKey(this.editingProjectId));
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as { formValues: any; priorityItems: string[]; savedAt: string };
+      this.hasDraft = true;
+      this.draftSavedAt = new Date(draft.savedAt);
+    } catch {
+      localStorage.removeItem(this.draftKey(this.editingProjectId));
+    }
+  }
+
+  private startDraftWatch(): void {
+    if (this.draftWatchActive) return;
+    this.draftWatchActive = true;
+    this.form.valueChanges
+      .pipe(debounceTime(800), takeUntil(this.destroy$))
+      .subscribe(() => this.saveDraftToStorage());
+  }
+
+  private saveDraftToStorage(): void {
+    if (!this.editingProjectId) return;
+    const draft = {
+      formValues: this.form.getRawValue(),
+      priorityItems: this.priorityItems,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(this.draftKey(this.editingProjectId), JSON.stringify(draft));
+  }
+
+  clearDraft(): void {
+    if (!this.editingProjectId) return;
+    localStorage.removeItem(this.draftKey(this.editingProjectId));
+    this.hasDraft = false;
+  }
+
+  discardDraft(): void {
+    this.clearDraft();
+  }
+
+  restoreDraft(): void {
+    if (!this.editingProjectId) return;
+    const raw = localStorage.getItem(this.draftKey(this.editingProjectId));
+    if (!raw) { this.hasDraft = false; return; }
+    try {
+      const draft = JSON.parse(raw) as { formValues: any; priorityItems: string[]; savedAt: string };
+      this.applyDraftToForm(draft.formValues, draft.priorityItems);
+      this.hasDraft = false;
+    } catch {
+      localStorage.removeItem(this.draftKey(this.editingProjectId));
+      this.hasDraft = false;
+    }
+  }
+
+  private applyDraftToForm(values: any, priorityItems: string[]): void {
+    this.form.patchValue({
+      name: values.name,
+      objective: values.objective,
+      description: values.description,
+      startDate: values.startDate,
+      endDate: values.endDate,
+      department: values.department,
+      projectType: values.projectType,
+      hasExternalDependencies: values.hasExternalDependencies,
+      budgetType: values.budgetType,
+      budgetValue: values.budgetValue,
+      workSchedule: values.workSchedule,
+      downtimePolicy: values.downtimePolicy,
+      downtimeLimitHours: values.downtimeLimitHours,
+      hasIntegrations: values.hasIntegrations,
+      biggestRisk: values.biggestRisk,
+      previousExperience: values.previousExperience,
+      whatWentWell: values.whatWentWell,
+      whatWentWrong: values.whatWentWrong,
+      detailLevel: values.detailLevel,
+      reviewFrequency: values.reviewFrequency,
+      finalObservations: values.finalObservations
+    });
+
+    if (values.compliance) this.complianceGroup.patchValue(values.compliance);
+    if (values.complianceApprovers) (this.form.get('complianceApprovers') as UntypedFormGroup).patchValue(values.complianceApprovers);
+
+    this.teamMembersArray.clear();
+    (values.teamMembers as any[] ?? []).forEach((m: any) => {
+      this.teamMembersArray.push(this.createEditMemberControl({
+        userId: m.userId, userName: m.userName, role: m.role,
+        dedication: m.dedication, isApprover: m.isApprover, roleDescription: m.roleDescription
+      }));
+    });
+    this.teamMembersArray.updateValueAndValidity();
+
+    this.externalDependenciesArray.clear();
+    (values.externalDependencies as any[] ?? []).forEach((d: any) => {
+      const ctrl = this.createExternalDependencyControl();
+      ctrl.patchValue({ name: d.name, whatIsNeeded: d.whatIsNeeded, deadline: d.deadline, criticality: d.criticality });
+      this.externalDependenciesArray.push(ctrl);
+    });
+
+    this.integrationsArray.clear();
+    (values.integrations as any[] ?? []).forEach((i: any) => {
+      const ctrl = this.createIntegrationControl();
+      ctrl.patchValue({ systemName: i.systemName, type: i.type, criticality: i.criticality, status: i.status });
+      this.integrationsArray.push(ctrl);
+    });
+
+    this.unavailablePeriodsArray.clear();
+    (values.unavailablePeriods as any[] ?? []).forEach((p: any) => {
+      const ctrl = this.createUnavailablePeriodControl();
+      ctrl.patchValue({ startDate: p.startDate, endDate: p.endDate, reason: p.reason });
+      this.unavailablePeriodsArray.push(ctrl);
+    });
+
+    if (priorityItems?.length === 5) {
+      this.priorityItems = priorityItems;
+    }
+  }
+
   private setTeamMembers(users: UserDto[]): void {
     this.availableUsers = users;
     this.teamMembersArray.clear();
+    if (this.pendingEditMembers) {
+      this.pendingEditMembers.forEach(m => this.teamMembersArray.push(this.createEditMemberControl(m)));
+      this.pendingEditMembers = undefined;
+    }
     this.teamMembersArray.updateValueAndValidity();
   }
 
@@ -471,6 +816,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   dropPriority(event: CdkDragDrop<string[]>): void {
     moveItemInArray(this.priorityItems, event.previousIndex, event.currentIndex);
+    this.saveDraftToStorage();
   }
 
   private loadTeamData(companyId: string): void {
@@ -537,18 +883,367 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return true;
   }
 
-  nextStep(): void {
-    // Ao avançar da tela 1, validar campos
-    this.formSubmitted = true;
-    if (this.currentStep === 1 && !this.isStep1Valid()) {
-      return; // Não avança
-    }
-
-    if (this.currentStep === 2 && !this.isStep2Valid()) {
+  private saveStep3Details(): void {
+    if (!this.createdProjectId) {
+      this.isSubmitting = false;
+      this.submitError = 'ID do projeto não encontrado. Volte ao início e tente novamente.';
       return;
     }
 
-    if (this.currentStep === 3 && !this.isStep3Valid()) {
+    const raw = this.form.getRawValue();
+    const toIso = (v: string) => new Date(v).toISOString();
+
+    const budgetMap: Record<string, number> = { unlimited: 0, fixed: 1, tbd: 2 };
+    const workMap: Record<string, number> = { commercial: 0, flexible: 1, 'off-hours': 2 };
+    const downtimeMap: Record<string, number> = { na: 0, limited: 1, zero: 2 };
+    const complianceKeyMap: Record<string, number> = {
+      publicData: 0, lgpd: 1, pciDss: 2, hipaa: 3, iso27001: 4, sox: 5
+    };
+    // complianceApprovers → SensitiveDataType: Juridico=0, SegurancaDaInformacao=1, DPO=2, Compliance=3
+    const sensitiveDataKeyMap: Record<string, number> = {
+      legal: 0, security: 1, dpo: 2, complianceTeam: 3
+    };
+    // integration status: 'exists' → 1 (Existe), 'to-create' → 2 (Criar)
+    const integrationStatusMap: Record<string, number> = { exists: 1, 'to-create': 2 };
+
+    const compliance = raw.compliance as Record<string, boolean>;
+    const compliances = Object.entries(complianceKeyMap)
+      .filter(([key]) => compliance[key])
+      .map(([, value]) => ({ tipoCompliance: value }));
+
+    const approvers = raw.complianceApprovers as Record<string, boolean>;
+    const sensitiveData = Object.entries(sensitiveDataKeyMap)
+      .filter(([key]) => approvers[key])
+      .map(([, value]) => ({ tipoDadoSensivel: value }));
+
+    const unavailablePeriods = (raw.unavailablePeriods as any[]).map((p: any) => ({
+      dataInicio: toIso(p.startDate),
+      dataFim: toIso(p.endDate),
+      motivo: p.reason || undefined
+    }));
+
+    const dependencies = raw.hasExternalDependencies === 'yes'
+      ? (raw.externalDependencies as any[]).map((d: any) => ({
+          nome: d.name,
+          descricao: d.whatIsNeeded,
+          prazo: d.deadline ? toIso(d.deadline) : undefined,
+          criticidade: d.criticality
+        }))
+      : [];
+
+    const integrations = raw.hasIntegrations === 'yes'
+      ? (raw.integrations as any[]).map((i: any) => ({
+          nomeSistema: i.systemName,
+          tipo: i.type,
+          criticidade: i.criticality,
+          status: integrationStatusMap[i.status] ?? 1
+        }))
+      : [];
+
+    const budgetValue = raw.budgetType === 'fixed' && raw.budgetValue
+      ? parseFloat(raw.budgetValue)
+      : undefined;
+
+    const downtimeHours = raw.downtimePolicy === 'limited' && raw.downtimeLimitHours
+      ? parseFloat(raw.downtimeLimitHours)
+      : undefined;
+
+    const request: ProjectDetailsRequest = {
+      projectId: this.createdProjectId,
+      temDependenciasExternas: raw.hasExternalDependencies === 'yes',
+      temIntegracoes: raw.hasIntegrations === 'yes',
+      orcamento: budgetMap[raw.budgetType] ?? 0,
+      valorOrcamento: budgetValue,
+      horarioTrabalho: workMap[raw.workSchedule] ?? 0,
+      downtimePermitido: downtimeMap[raw.downtimePolicy] ?? 0,
+      horasDowntime: downtimeHours,
+      compliances,
+      unavailablePeriods,
+      dependencies,
+      integrations,
+      sensitiveData
+    };
+
+    if (this.isEditMode && this.hasExistingDetails && this.existingDetailsId) {
+      // Editing: use PUT (compliances and periods stay as saved in DB)
+      const updateRequest: UpdateProjectDetailsRequest = {
+        id: this.existingDetailsId,
+        temDependenciasExternas: request.temDependenciasExternas,
+        temIntegracoes: request.temIntegracoes,
+        orcamento: request.orcamento,
+        valorOrcamento: request.valorOrcamento,
+        horarioTrabalho: request.horarioTrabalho,
+        downtimePermitido: request.downtimePermitido,
+        horasDowntime: request.horasDowntime,
+        dependencies: request.dependencies,
+        integrations: request.integrations,
+        sensitiveData: request.sensitiveData
+      };
+      this.projectsApi.updateDetails(this.createdProjectId, updateRequest)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (result) => {
+            this.isSubmitting = false;
+            if (result && !result.isSuccess) {
+              this.submitError = result.message ?? 'Não foi possível atualizar os detalhes.';
+              this.submitErrors = (result as any)?.errors ?? [];
+              return;
+            }
+            this.clearDraft();
+            this.currentStep += 1;
+            this.formSubmitted = false;
+          },
+          error: () => {
+            this.isSubmitting = false;
+            this.submitError = 'Erro ao atualizar detalhes do projeto. Tente novamente.';
+          }
+        });
+    } else {
+      this.projectsApi.saveDetails(this.createdProjectId, request)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (result) => {
+            this.isSubmitting = false;
+            if (result && !result.isSuccess) {
+              this.submitError = result.message ?? 'Não foi possível salvar os detalhes.';
+              this.submitErrors = (result as any)?.errors ?? [];
+              return;
+            }
+            this.hasExistingDetails = true;
+            this.clearDraft();
+            this.currentStep += 1;
+            this.formSubmitted = false;
+          },
+          error: () => {
+            this.isSubmitting = false;
+            this.submitError = 'Erro ao salvar detalhes do projeto. Tente novamente.';
+          }
+        });
+    }
+  }
+
+  private saveStep4ExecutionSettings(): void {
+    if (!this.createdProjectId) {
+      this.isSubmitting = false;
+      this.submitError = 'ID do projeto não encontrado. Volte ao início e tente novamente.';
+      return;
+    }
+
+    const raw = this.form.getRawValue();
+
+    const experienceMap: Record<string, number> = { never: 1, similar: 2, exact: 3 };
+    const detailMap: Record<string, number> = { macro: 1, balanced: 2, granular: 3 };
+    const reviewMap: Record<string, number> = { weekly: 1, biweekly: 2, monthly: 3 };
+    const priorityLabelMap: Record<string, number> = {
+      'Prazo': 1, 'Qualidade': 2, 'Custo': 3, 'Escopo': 4, 'Documentação': 5
+    };
+
+    const request: ProjectExecutionSettingsRequest = {
+      experienciaEquipe: experienceMap[raw.previousExperience] ?? 1,
+      nivelDetalhePlano: detailMap[raw.detailLevel] ?? 2,
+      frequenciaRevisao: reviewMap[raw.reviewFrequency] ?? 1,
+      maiorRisco: raw.biggestRisk || undefined,
+      observacoes: raw.finalObservations || undefined,
+      oQueDeuCerto: raw.previousExperience === 'similar' ? raw.whatWentWell || undefined : undefined,
+      oQueDeuErrado: raw.previousExperience === 'similar' ? raw.whatWentWrong || undefined : undefined,
+      prioridadesOrdenadas: this.priorityItems.map((label, index) => ({
+        priorityType: priorityLabelMap[label] ?? 1,
+        posicao: index + 1
+      }))
+    };
+
+    const apiCall = (this.isEditMode && this.hasExistingExecutionSettings)
+      ? this.projectsApi.updateExecutionSettings(this.createdProjectId, request)
+      : this.projectsApi.saveExecutionSettings(this.createdProjectId, request);
+
+    apiCall
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.isSubmitting = false;
+          if (result && !result.isSuccess) {
+            this.submitError = result.message ?? 'Não foi possível salvar as configurações de execução.';
+            this.submitErrors = (result as any)?.errors ?? [];
+            return;
+          }
+          this.hasExistingExecutionSettings = true;
+          this.clearDraft();
+          this.currentStep += 1;
+          this.formSubmitted = false;
+        },
+        error: () => {
+          this.isSubmitting = false;
+          this.submitError = 'Erro ao salvar configurações de execução. Tente novamente.';
+        }
+      });
+  }
+
+  private updateProjectFromStep2(): void {
+    const raw = this.form.getRawValue();
+    const toIso = (v: string) => v ? new Date(v).toISOString() : null;
+
+    this.projectsApi.update(this.editingProjectId!, {
+      id: this.editingProjectId!,
+      name: raw.name,
+      objective: raw.objective || undefined,
+      description: raw.description || undefined,
+      status: 'Planejamento',
+      startDate: toIso(raw.startDate),
+      endDate: toIso(raw.endDate),
+      responsibleSector: raw.department,
+      projectType: raw.projectType
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (result) => {
+        if (!result?.isSuccess) {
+          this.isSubmitting = false;
+          this.submitError = result?.message ?? 'Não foi possível atualizar o projeto.';
+          this.submitErrors = (result as any)?.errors ?? [];
+          return;
+        }
+        this.syncMembersAndAdvance(raw);
+      },
+      error: () => {
+        this.isSubmitting = false;
+        this.submitError = 'Erro ao atualizar o projeto. Tente novamente.';
+      }
+    });
+  }
+
+  private syncMembersAndAdvance(raw: any): void {
+    const projectId = this.editingProjectId!;
+
+    const currentMembers = (raw.teamMembers as any[])
+      .filter((m: any) => m.selected)
+      .map((m: any) => ({
+        userId: m.userId as string,
+        role: m.role as string,
+        dedication: m.dedication as string,
+        isApprover: m.isApprover as boolean,
+        roleDescription: m.roleDescription as string | undefined
+      }));
+
+    const currentUserIds = new Set(currentMembers.map(m => m.userId));
+
+    const toDelete = [...this.existingMembersMap.entries()]
+      .filter(([uid]) => !currentUserIds.has(uid))
+      .map(([, memberId]) => this.projectsApi.removeMember(projectId, memberId));
+
+    const toAdd = currentMembers
+      .filter(m => !this.existingMembersMap.has(m.userId))
+      .map(m => this.projectsApi.addMember(projectId, {
+        userId: m.userId,
+        projectFunction: m.role,
+        dedication: m.dedication,
+        approver: m.isApprover ? 'Sim' : 'Não',
+        functionDescription: m.roleDescription || undefined
+      }));
+
+    const allObs = [...toDelete, ...toAdd];
+
+    if (allObs.length === 0) {
+      this.isSubmitting = false;
+      this.clearDraft();
+      this.currentStep += 1;
+      this.formSubmitted = false;
+      return;
+    }
+
+    forkJoin(allObs).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (results) => {
+        this.isSubmitting = false;
+        const failed = results.find(r => r && !r.isSuccess);
+        if (failed) {
+          this.submitError = (failed as any).message ?? 'Erro ao sincronizar membros.';
+          return;
+        }
+        this.clearDraft();
+        this.currentStep += 1;
+        this.formSubmitted = false;
+      },
+      error: () => {
+        this.isSubmitting = false;
+        this.submitError = 'Erro ao sincronizar membros do projeto. Tente novamente.';
+      }
+    });
+  }
+
+  private createProjectFromStep2(): void {
+    const raw = this.form.getRawValue();
+    const toIso = (v: string) => v ? new Date(v).toISOString() : null;
+
+    const members: ProjectMemberRequest[] = (raw.teamMembers as any[])
+      .filter((m: any) => m.selected)
+      .map((m: any) => ({
+        userId: m.userId,
+        projectFunction: m.role,
+        dedication: m.dedication,
+        approver: m.isApprover ? 'Sim' : 'Não',
+        functionDescription: m.roleDescription || undefined
+      }));
+
+    this.projectsApi.create({
+      userId: this.CURRENT_USER_ID,
+      name: raw.name,
+      objective: raw.objective || undefined,
+      description: raw.description || undefined,
+      status: 'Planejamento',
+      startDate: toIso(raw.startDate),
+      endDate: toIso(raw.endDate),
+      responsibleSector: raw.department,
+      projectType: raw.projectType,
+      members
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (result) => {
+        this.isSubmitting = false;
+        if (!result?.isSuccess) {
+          this.submitError = result?.message ?? 'Não foi possível criar o projeto.';
+          this.submitErrors = (result as any)?.errors ?? [];
+          return;
+        }
+        this.createdProjectId = result.data?.id;
+        this.currentStep += 1;
+        this.formSubmitted = false;
+      },
+      error: () => {
+        this.isSubmitting = false;
+        this.submitError = 'Erro ao criar o projeto. Tente novamente.';
+      }
+    });
+  }
+
+  nextStep(): void {
+    this.formSubmitted = true;
+    if (this.currentStep === 1 && !this.isStep1Valid()) {
+      return;
+    }
+
+    if (this.currentStep === 2) {
+      if (!this.isStep2Valid()) return;
+      this.submitError = undefined;
+      this.submitErrors = [];
+      this.isSubmitting = true;
+      if (this.isEditMode) {
+        this.updateProjectFromStep2();
+      } else {
+        this.createProjectFromStep2();
+      }
+      return;
+    }
+
+    if (this.currentStep === 3) {
+      if (!this.isStep3Valid()) return;
+      this.submitError = undefined;
+      this.submitErrors = [];
+      this.isSubmitting = true;
+      this.saveStep3Details();
+      return;
+    }
+
+    if (this.currentStep === 4) {
+      this.submitError = undefined;
+      this.submitErrors = [];
+      this.isSubmitting = true;
+      this.saveStep4ExecutionSettings();
       return;
     }
 
@@ -645,10 +1340,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       hasExternalDependencies: raw.hasExternalDependencies,
       externalDependencies: raw.hasExternalDependencies === 'yes' ? raw.externalDependencies : [],
       budgetType: raw.budgetType,
-      budgetValue: raw.budgetType === 'fixed' ? raw.budgetValue : undefined,
+      budgetValue: raw.budgetType === 'fixed' && raw.budgetValue != null ? String(raw.budgetValue) : undefined,
       workSchedule: raw.workSchedule,
       downtimePolicy: raw.downtimePolicy,
-      downtimeLimitHours: raw.downtimePolicy === 'limited' ? raw.downtimeLimitHours : undefined,
+      downtimeLimitHours: raw.downtimePolicy === 'limited' && raw.downtimeLimitHours != null ? String(raw.downtimeLimitHours) : undefined,
       hasIntegrations: raw.hasIntegrations,
       integrations: raw.hasIntegrations === 'yes' ? raw.integrations : [],
       compliance: selectedCompliance,
@@ -684,6 +1379,16 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   }
 
   private finishProjectCreation(): void {
+    // Project was already created when advancing from step 2
+    if (this.createdProjectId && !this.isEditMode) {
+      this.isSubmitting = false;
+      if (!this.analysisResult) {
+        this.submitSuccess = 'Projeto criado com sucesso!';
+        setTimeout(() => this.router.navigate(['/projects']), 1500);
+      }
+      return;
+    }
+
     const raw = this.form.getRawValue();
     const toIso = (v: string) => v ? new Date(v).toISOString() : null;
 

@@ -169,9 +169,9 @@
                             >
                               Ações
                             </button>
-                            <div *ngIf="openActionsForId === project.id" class="dropdown-menu show actions-menu"
-                              [style.top.px]="dropdownPos?.top"
-                              [style.left.px]="dropdownPos?.left">
+                            <div *ngIf="openActionsForId === project.id"
+                              class="dropdown-menu show actions-menu"
+                              [class.dropup-menu]="dropdownPos?.dropup">
                               <button type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
                               <button
                                 type="button"

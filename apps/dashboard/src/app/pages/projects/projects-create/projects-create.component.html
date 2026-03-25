@@ -31,6 +31,17 @@
 
                 <div *ngIf="submitSuccess" class="alert alert-success">{{ submitSuccess }}</div>
 
+                <div *ngIf="isEditMode && hasDraft && !isLoading" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mt-1">
+                  <span>
+                    <strong>Rascunho não salvo</strong> — Você tem alterações pendentes de
+                    {{ draftSavedAt | date:'dd/MM/yyyy HH:mm' }}.
+                  </span>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-warning" (click)="restoreDraft()">Restaurar rascunho</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="discardDraft()">Descartar</button>
+                  </div>
+                </div>
+
                 <!-- TELA 1: DADOS BÁSICOS -->
                 <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!isLoading && !loadError && currentStep === 1">
                   <div class="row">
@@ -212,7 +223,7 @@
                 <form [formGroup]="form" *ngIf="currentStep === 2 && !analysisResult && !isLoading && !loadError">
                   <div class="step-section mb-3">
                     <h5 class="mb-2">Seção 1: Confirmar dados da empresa</h5>
-                    <div class="row">
+                    <div class="row align-items-end">
                       <div class="col-12 col-md-6">
                         <div class="form-group">
                           <label for="projects-create-company-name">Nome da empresa</label>
@@ -697,15 +708,27 @@
                       <div class="d-flex flex-wrap radio-group">
                         <label class="radio-option">
                           <input type="radio" formControlName="detailLevel" value="macro" />
-                          <span><strong>Macro</strong> <span class="text-muted">(10–15 tarefas)</span></span>
+                          <span><strong>Macro</strong>
+                            <i class="ft-info ml-1 text-muted" style="cursor:pointer; font-size: 0.85rem;"
+                               ngbTooltip="Plano de alto nível com 10 a 15 tarefas. Ideal para projetos simples ou fases iniciais de planejamento."
+                               placement="top" container="body"></i>
+                          </span>
                         </label>
                         <label class="radio-option">
                           <input type="radio" formControlName="detailLevel" value="balanced" />
-                          <span><strong>Balanceado</strong> <span class="text-muted">(30–50 tarefas)</span></span>
+                          <span><strong>Balanceado</strong>
+                            <i class="ft-info ml-1 text-muted" style="cursor:pointer; font-size: 0.85rem;"
+                               ngbTooltip="Plano intermediário com 30 a 50 tarefas. Recomendado para a maioria dos projetos."
+                               placement="top" container="body"></i>
+                          </span>
                         </label>
                         <label class="radio-option">
                           <input type="radio" formControlName="detailLevel" value="granular" />
-                          <span><strong>Granular</strong> <span class="text-muted">(80–150 tarefas)</span></span>
+                          <span><strong>Granular</strong>
+                            <i class="ft-info ml-1 text-muted" style="cursor:pointer; font-size: 0.85rem;"
+                               ngbTooltip="Plano detalhado com 80 a 150 tarefas. Indicado para projetos complexos que exigem rastreabilidade total."
+                               placement="top" container="body"></i>
+                          </span>
                         </label>
                       </div>
                     </div>
@@ -885,7 +908,7 @@
                           {{ f['previousExperience'].value === 'never' ? 'Nunca fizemos' : (f['previousExperience'].value === 'similar' ? 'Algo similar' : 'Exatamente isso') }}
                         </div>
                         <div class="col-12 col-md-4"><span class="text-muted">Detalhe:</span>
-                          {{ f['detailLevel'].value === 'macro' ? 'Macro (10–15)' : (f['detailLevel'].value === 'granular' ? 'Granular (80–150)' : 'Balanceado (30–50)') }}
+                          {{ f['detailLevel'].value === 'macro' ? 'Macro' : (f['detailLevel'].value === 'granular' ? 'Granular' : 'Balanceado') }}
                         </div>
                         <div class="col-12 col-md-4"><span class="text-muted">Revisão:</span>
                           {{ f['reviewFrequency'].value === 'weekly' ? 'Semanal' : (f['reviewFrequency'].value === 'biweekly' ? 'Quinzenal' : 'Mensal') }}
@@ -932,8 +955,23 @@
                   </div>
                   <div class="card mb-3 border-0 shadow-sm">
                     <div class="card-body">
-                      <h6 class="text-warning mb-1">Riscos Identificados</h6>
-                      <p class="mb-0">{{ analysisResult.risks }}</p>
+                      <h6 class="text-warning mb-3"><i class="ft-alert-triangle mr-1"></i> Riscos Identificados</h6>
+                      <ng-container *ngFor="let riskGroup of parsedRisks">
+                        <div class="mb-3">
+                          <span class="badge mr-2 mb-1" [ngClass]="{
+                            'badge-danger': riskGroup.level === 'CRITICO',
+                            'badge-warning': riskGroup.level === 'ALTO',
+                            'badge-info': riskGroup.level === 'MEDIO',
+                            'badge-secondary': riskGroup.level === 'BAIXO'
+                          }" style="font-size: 0.78rem; padding: 0.35em 0.65em;">
+                            Risco {{ riskGroup.label }}
+                          </span>
+                          <ul class="mb-0 mt-1 pl-3">
+                            <li *ngFor="let item of riskGroup.items" class="mb-1">{{ item }}</li>
+                          </ul>
+                        </div>
+                      </ng-container>
+                      <p *ngIf="parsedRisks.length === 0" class="mb-0 text-muted">Nenhum risco identificado.</p>
                     </div>
                   </div>
                   <div class="card mb-3 border-0 shadow-sm">
