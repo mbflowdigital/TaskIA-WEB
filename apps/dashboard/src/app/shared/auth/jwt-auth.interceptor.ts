@@ -1,7 +1,7 @@
-import { HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { AuthRefreshService } from './auth-refresh.service';
@@ -32,12 +32,28 @@ export class JwtAuthInterceptor implements HttpInterceptor {
         }
 
         const authorizedRequest = req.clone({
-          setHeaders: {
-            Authorization: `Bearer ${token}`
-          }
+          setHeaders: { Authorization: `Bearer ${token}` }
         });
 
-        return next.handle(authorizedRequest);
+        return next.handle(authorizedRequest).pipe(
+          catchError((err: HttpErrorResponse) => {
+            if (err.status === 401) {
+              // Token may have just expired — force refresh and retry once
+              return this.authRefresh.forceRefresh().pipe(
+                switchMap((newToken) => {
+                  if (!newToken) {
+                    return throwError(() => err);
+                  }
+                  const retryReq = req.clone({
+                    setHeaders: { Authorization: `Bearer ${newToken}` }
+                  });
+                  return next.handle(retryReq);
+                })
+              );
+            }
+            return throwError(() => err);
+          })
+        );
       })
     );
   }

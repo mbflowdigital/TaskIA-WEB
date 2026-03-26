@@ -17,6 +17,7 @@ export interface TeamMemberAnalysis {
   role: string;
   dedication: string;
   isApprover: boolean;
+  roleDescription?: string;
 }
 
 export interface ProjectAnalysisRequest {
@@ -29,6 +30,48 @@ export interface ProjectAnalysisRequest {
   department: string;
   projectType: string;
   teamMembers: TeamMemberAnalysis[];
+  // Step 3
+  hasExternalDependencies?: string;
+  externalDependencies?: ExternalDependencyInput[];
+  budgetType?: string;
+  budgetValue?: string;
+  workSchedule?: string;
+  downtimePolicy?: string;
+  downtimeLimitHours?: string;
+  hasIntegrations?: string;
+  integrations?: IntegrationInput[];
+  compliance?: string[];
+  complianceApprovers?: string[];
+  unavailablePeriods?: UnavailablePeriodInput[];
+  // Step 4
+  priorityRanking?: string[];
+  biggestRisk?: string;
+  previousExperience?: string;
+  whatWentWell?: string;
+  whatWentWrong?: string;
+  detailLevel?: string;
+  reviewFrequency?: string;
+  finalObservations?: string;
+}
+
+export interface ExternalDependencyInput {
+  name: string;
+  whatIsNeeded: string;
+  deadline?: string;
+  criticality: string;
+}
+
+export interface IntegrationInput {
+  systemName: string;
+  type: string;
+  criticality: string;
+  status: string;
+}
+
+export interface UnavailablePeriodInput {
+  startDate: string;
+  endDate: string;
+  reason?: string;
 }
 
 export interface ProjectAnalysisResult {

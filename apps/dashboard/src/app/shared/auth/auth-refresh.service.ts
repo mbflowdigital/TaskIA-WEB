@@ -12,8 +12,8 @@ import { AuthSessionService } from './auth-session.service';
 export class AuthRefreshService {
   private readonly http: HttpClient;
   private refreshRequest$?: Observable<string | null>;
-  private readonly refreshThresholdMs = 120000; // 2 minutos (refresh reativo quando expira)
-  private readonly proactiveRefreshIntervalMs = 15 * 60 * 1000; // 15 minutos (refresh proativo)
+  private readonly refreshThresholdMs = 5 * 60 * 1000; // 5 minutos antes de expirar
+  private readonly proactiveRefreshIntervalMs = 30 * 60 * 1000; // 30 minutos
   private refreshMonitorId?: number;
   private lastRefreshTime = 0;
 
@@ -40,6 +40,11 @@ export class AuthRefreshService {
 
   resetRefreshTimer(): void {
     this.lastRefreshTime = Date.now();
+  }
+
+  /** Force a token refresh regardless of expiry (used for 401 retry). */
+  forceRefresh(): Observable<string | null> {
+    return this.refreshToken();
   }
 
   refreshIfNeeded(): Observable<string | null> {
