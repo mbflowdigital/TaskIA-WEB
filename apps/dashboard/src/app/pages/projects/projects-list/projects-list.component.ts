@@ -29,7 +29,7 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
   filteredProjects: ProjectDto[] = [];
 
   openActionsForId?: string;
-  dropdownPos: { top: number; left: number } | null = null;
+  dropdownPos: { top: number; left: number; dropup?: boolean } | null = null;
   deletingProjectId?: string;
   actionError?: string;
 
@@ -90,7 +90,18 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
     this.dropdownPos = null;
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.openActionsForId) return;
+    const target = event.target as HTMLElement;
+    if (!target.closest('.position-relative.d-inline-block')) {
+      this.openActionsForId = undefined;
+      this.dropdownPos = null;
+    }
+  }
+
   toggleActions(projectId: string, event: MouseEvent): void {
+    event.stopPropagation();
     if (this.openActionsForId === projectId) {
       this.openActionsForId = undefined;
       this.dropdownPos = null;
@@ -98,7 +109,8 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
       this.openActionsForId = projectId;
       const btn = event.currentTarget as HTMLElement;
       const rect = btn.getBoundingClientRect();
-      this.dropdownPos = { top: rect.bottom + window.scrollY, left: rect.right - 140 + window.scrollX };
+      const spaceBelow = window.innerHeight - rect.bottom;
+      this.dropdownPos = { top: 0, left: 0, dropup: spaceBelow < 120 };
     }
     this.actionError = undefined;
   }

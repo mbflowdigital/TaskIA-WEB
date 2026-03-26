@@ -1,7 +1,14 @@
 .actions-menu {
-  position: fixed;
+  position: absolute;
+  top: 100%;
+  right: 0;
   z-index: 1055;
   min-width: 140px;
+
+  &.dropup-menu {
+    top: auto;
+    bottom: 100%;
+  }
 }
 
 .avatar-icon {
