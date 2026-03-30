@@ -78,6 +78,7 @@ export interface ProjectAnalysisResult {
   overview: string;
   risks: string;
   recommendations: string;
+  promptSent?: string;
 }
 
 /** Serviço para chamadas à Claude AI API */

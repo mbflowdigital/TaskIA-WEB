@@ -59,6 +59,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   submitErrors: string[] = [];
   submitSuccess?: string;
   analysisResult?: ProjectAnalysisResult;
+  showRecommendations = false;
 
   get parsedRisks(): { level: string; label: string; items: string[] }[] {
     if (!this.analysisResult?.risks) return [];
@@ -80,6 +81,14 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         return { level, label: levelMap[level] ?? level, items };
       })
       .filter((g): g is { level: string; label: string; items: string[] } => g !== null && g.items.length > 0);
+  }
+
+  get parsedRecommendations(): string[] {
+    if (!this.analysisResult?.recommendations) return [];
+    return this.analysisResult.recommendations
+      .split(';')
+      .map(r => r.trim())
+      .filter(r => r.length > 0);
   }
 
   formSubmitted = false;
@@ -1367,6 +1376,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           this.generationStep = 4;
           if (result?.isSuccess && result.data) {
             this.analysisResult = result.data;
+            this.showRecommendations = false;
           }
           this.finishProjectCreation();
         },
