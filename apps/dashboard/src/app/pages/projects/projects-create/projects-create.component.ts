@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -12,7 +12,6 @@ import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from '../../../shared/api/claude-api.service';
-import { BoardApiService, BoardTaskDto, BOARD_STATUSES, BoardStatus } from '../../../shared/api/board-api.service';
 
 @Component({
   selector: 'app-projects-create',
@@ -62,24 +61,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   analysisResult?: ProjectAnalysisResult;
   showRecommendations = false;
 
-  // ── Kanban Board ─────────────────────────────────────────────────────────
-  boardTasks: BoardTaskDto[] = [];
-  boardLoading = false;
-  boardError?: string;
-  readonly kanbanStatuses: BoardStatus[] = BOARD_STATUSES;
-  taskActionLoading: Record<string, boolean> = {};
-  taskActionFeedback: Record<string, { type: 'success' | 'error'; message: string }> = {};
-  editingResponsible: Record<string, boolean> = {};
-  editingResponsibleModal = false;
-  editingPrazoModal = false;
-  prazoModalValue: number | null = null;
-  selectedTask: BoardTaskDto | null = null;
-  readonly kanbanPageSize = 10;
-  columnVisibleCount: Record<string, number> = { 'A Fazer': 10, 'Em Andamento': 10, 'Concluído': 10 };
-
-  private readonly priorityOrder: Record<string, number> = {
-    crítica: 0, critica: 0, alta: 1, média: 2, media: 2, baixa: 3
-  };
+  // ── Step 5 state ─────────────────────────────────────────────────────────
 
   get parsedRisks(): { level: string; label: string; items: string[] }[] {
     if (!this.analysisResult?.risks) return [];
@@ -114,183 +96,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   formSubmitted = false;
 
   priorityItems: string[] = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
-
-  // ── Kanban helpers ──────────────────────────────────────────────────────
-  getTasksByStatus(status: BoardStatus): BoardTaskDto[] {
-    return this.boardTasks
-      .filter(t => t.status === status)
-      .sort((a, b) => {
-        const pa = this.priorityOrder[a.priority?.toLowerCase()] ?? 99;
-        const pb = this.priorityOrder[b.priority?.toLowerCase()] ?? 99;
-        return pa !== pb ? pa - pb : a.ordemNoBoard - b.ordemNoBoard;
-      });
-  }
-
-  getVisibleTasksByStatus(status: BoardStatus): BoardTaskDto[] {
-    return this.getTasksByStatus(status).slice(0, this.columnVisibleCount[status] ?? this.kanbanPageSize);
-  }
-
-  getHiddenCount(status: BoardStatus): number {
-    return Math.max(0, this.getTasksByStatus(status).length - (this.columnVisibleCount[status] ?? this.kanbanPageSize));
-  }
-
-  loadMoreTasks(status: BoardStatus): void {
-    this.columnVisibleCount[status] = (this.columnVisibleCount[status] ?? this.kanbanPageSize) + this.kanbanPageSize;
-  }
-
-  getConnectedLists(): string[] {
-    return this.kanbanStatuses.map(s => `kanban-col-${s}`);
-  }
-
-  fetchBoardTasks(): void {
-    if (!this.createdProjectId) return;
-    this.boardLoading = true;
-    this.boardError = undefined;
-    this.boardApi.getByProject(this.createdProjectId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result) => {
-          this.boardLoading = false;
-          if (result && result.isSuccess && result.data) {
-            this.boardTasks = result.data;
-            this.columnVisibleCount = { 'A Fazer': 10, 'Em Andamento': 10, 'Concluído': 10 };
-          } else {
-            this.boardError = (result && result.message) ? result.message : 'Erro ao carregar tarefas.';
-          }
-        },
-        error: () => {
-          this.boardLoading = false;
-          this.boardError = 'Erro de conexão ao carregar tarefas.';
-        }
-      });
-  }
-
-  onChangeTaskStatus(task: BoardTaskDto, newStatus: string): void {
-    if (task.status === newStatus || this.taskActionLoading[task.id]) return;
-    this.taskActionLoading[task.id] = true;
-    this.clearFeedback(task.id);
-    this.boardApi.updateStatus(task.id, newStatus)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result) => {
-          this.taskActionLoading[task.id] = false;
-          if (result && result.isSuccess && result.data) {
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = result.data;
-            this.boardTasks = [...this.boardTasks];
-            this.showFeedback(task.id, 'success', 'Status atualizado!');
-          } else {
-            this.showFeedback(task.id, 'error', (result && result.message) ? result.message : 'Erro ao atualizar status.');
-          }
-        },
-        error: () => {
-          this.taskActionLoading[task.id] = false;
-          this.showFeedback(task.id, 'error', 'Erro de conexão.');
-        }
-      });
-  }
-
-  onAssignResponsavel(task: BoardTaskDto, userId: string): void {
-    if (this.taskActionLoading[task.id]) return;
-    this.taskActionLoading[task.id] = true;
-    this.clearFeedback(task.id);
-    const id = userId || null;
-    this.boardApi.assignResponsavel(task.id, id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result) => {
-          this.taskActionLoading[task.id] = false;
-          if (result && result.isSuccess && result.data) {
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = result.data;
-            this.boardTasks = [...this.boardTasks];
-            this.editingResponsible[task.id] = false;
-            this.showFeedback(task.id, 'success', 'Responsável atualizado!');
-          } else {
-            this.showFeedback(task.id, 'error', (result && result.message) ? result.message : 'Erro ao atualizar responsável.');
-          }
-        },
-        error: () => {
-          this.taskActionLoading[task.id] = false;
-          this.showFeedback(task.id, 'error', 'Erro de conexão.');
-        }
-      });
-  }
-
-  onKanbanDrop(event: CdkDragDrop<BoardTaskDto[]>, targetStatus: BoardStatus): void {
-    if (event.previousContainer === event.container) {
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-    } else {
-      const task = event.previousContainer.data[event.previousIndex];
-      transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
-      this.onChangeTaskStatus(task, targetStatus);
-    }
-  }
-
-  getPriorityClass(priority: string): string {
-    switch (priority?.toLowerCase()) {
-      case 'alta': return 'priority-alta';
-      case 'média':
-      case 'media': return 'priority-media';
-      case 'baixa': return 'priority-baixa';
-      case 'crítica':
-      case 'critica': return 'priority-critica';
-      default: return 'priority-media';
-    }
-  }
-
-  getPriorityLabel(priority: string): string {
-    const map: Record<string, string> = { alta: 'Alta', média: 'Média', media: 'Média', baixa: 'Baixa', crítica: 'Crítica', critica: 'Crítica' };
-    return map[priority?.toLowerCase()] ?? priority;
-  }
-
-  get teamMembersForBoard(): Array<{ id: string; name: string }> {
-    return this.availableUsers
-      .filter(u => {
-        const selected = this.teamMembersArray.controls.find(c => c.get('userId')?.value === u.id);
-        return !!selected?.get('selected')?.value;
-      })
-      .map(u => ({ id: u.id, name: u.name }));
-  }
-
-  private showFeedback(taskId: string, type: 'success' | 'error', message: string): void {
-    this.taskActionFeedback[taskId] = { type, message };
-    setTimeout(() => this.clearFeedback(taskId), 3000);
-  }
-
-  private clearFeedback(taskId: string): void {
-    delete this.taskActionFeedback[taskId];
-  }
-
-  onUpdatePrazo(task: BoardTaskDto, dias: number): void {
-    const value = Number(dias);
-    if (!value || value < 1 || this.taskActionLoading[task.id]) return;
-    this.taskActionLoading[task.id] = true;
-    this.clearFeedback(task.id);
-    this.boardApi.updatePrazo(task.id, value)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result) => {
-          this.taskActionLoading[task.id] = false;
-          if (result && result.isSuccess && result.data) {
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = result.data;
-            this.boardTasks = [...this.boardTasks];
-            if (this.selectedTask && this.selectedTask.id === task.id) {
-              this.selectedTask = result.data;
-            }
-            this.editingPrazoModal = false;
-            this.showFeedback(task.id, 'success', 'Prazo atualizado!');
-          } else {
-            this.showFeedback(task.id, 'error', (result && result.message) ? result.message : 'Erro ao atualizar prazo.');
-          }
-        },
-        error: () => {
-          this.taskActionLoading[task.id] = false;
-          this.showFeedback(task.id, 'error', 'Erro de conexão.');
-        }
-      });
-  }
 
   // Step 5: generation animation (0=idle, 1=analyzing, 2=phases, 3=tasks, 4=done)
   generationStep = 0;
@@ -451,7 +256,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     private readonly companiesApi: CompaniesApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
-    private readonly boardApi: BoardApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
