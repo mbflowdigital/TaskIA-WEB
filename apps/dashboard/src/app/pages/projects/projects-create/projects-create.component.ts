@@ -1380,7 +1380,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
             this.analysisResult = result.data;
             this.showRecommendations = true;
             if (this.createdProjectId) {
-              setTimeout(() => this.router.navigate(['/projects', this.createdProjectId, 'board']), 1200);
               return;
             }
           }
@@ -1392,6 +1391,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           this.finishProjectCreation();
         }
       });
+  }
+
+  navigateToBoard(): void {
+    this.authSession.clearOnboardingFlag();
+    this.router.navigate(['/projects', this.createdProjectId, 'board']);
   }
 
   private finishProjectCreation(): void {

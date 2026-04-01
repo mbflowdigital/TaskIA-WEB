@@ -139,15 +139,7 @@
                             <span class="text-muted" style="font-size:0.78rem;">{{ task.prazoEmDias }}d</span>
                           </span>
 
-                          <div class="kanban-status-select mr-3">
-                            <select
-                              class="kanban-select"
-                              [value]="task.status"
-                              [disabled]="taskActionLoading[task.id]"
-                              (change)="onChangeTaskStatus(task, $any($event.target).value)">
-                              <option *ngFor="let s of kanbanStatuses" [value]="s">{{ s }}</option>
-                            </select>
-                          </div>
+
                         </div>
 
                         <!-- Responsible -->
@@ -266,17 +258,7 @@
           </div>
         </div>
 
-        <!-- Status -->
-        <div class="kanban-modal-meta-item">
-          <span class="kanban-modal-label"><i class="ft-layers mr-1"></i>Status</span>
-          <select
-            class="kanban-select"
-            [value]="selectedTask.status"
-            [disabled]="taskActionLoading[selectedTask.id]"
-            (change)="onChangeTaskStatus(selectedTask, $any($event.target).value)">
-            <option *ngFor="let s of kanbanStatuses" [value]="s">{{ s }}</option>
-          </select>
-        </div>
+
 
         <!-- Responsável -->
         <div class="kanban-modal-meta-item">
