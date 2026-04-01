@@ -172,6 +172,8 @@
                             <div *ngIf="openActionsForId === project.id"
                               class="dropdown-menu show actions-menu"
                               [class.dropup-menu]="dropdownPos?.dropup">
+                              <a class="dropdown-item" [routerLink]="['/projects', project.id, 'board']">Tarefas</a>
+                              <div class="dropdown-divider"></div>
                               <button type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
                               <button
                                 type="button"
