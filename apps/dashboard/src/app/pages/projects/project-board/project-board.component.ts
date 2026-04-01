@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -11,7 +12,7 @@ import { UsersApiService } from '../../../shared/api/users-api.service';
 @Component({
   selector: 'app-project-board',
   standalone: true,
-  imports: [CommonModule, RouterModule, DragDropModule],
+  imports: [CommonModule, FormsModule, RouterModule, DragDropModule],
   templateUrl: './project-board.component.html',
   styleUrls: ['./project-board.component.scss']
 })
@@ -38,6 +39,14 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   columnVisibleCount: Record<string, number> = { 'A Fazer': 10, 'Em Andamento': 10, 'Concluído': 10 };
 
   teamMembers: Array<{ id: string; name: string }> = [];
+
+  activeTab: 'backlog' | 'board' = 'backlog';
+
+  backlogSortField: 'priority' | 'status' | 'prazoEmDias' | 'name' = 'priority';
+  backlogSortDir: 'asc' | 'desc' = 'asc';
+  backlogFilter = '';
+  backlogPage = 1;
+  readonly backlogPageSize = 15;
 
   private readonly priorityOrder: Record<string, number> = {
     crítica: 0, critica: 0, alta: 1, média: 2, media: 2, baixa: 3
@@ -259,6 +268,88 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
       alta: 'Alta', média: 'Média', media: 'Média', baixa: 'Baixa', crítica: 'Crítica', critica: 'Crítica'
     };
     return map[priority?.toLowerCase()] ?? priority;
+  }
+
+  // ── Backlog helpers ───────────────────────────────────────────────────────
+
+  get backlogFilteredTasks(): BoardTaskDto[] {
+    const term = this.backlogFilter.toLowerCase();
+    let tasks = this.boardTasks.filter(t =>
+      !term ||
+      t.name?.toLowerCase().includes(term) ||
+      t.description?.toLowerCase().includes(term) ||
+      (t.responsavelName?.toLowerCase().includes(term) ?? false)
+    );
+
+    const dir = this.backlogSortDir === 'asc' ? 1 : -1;
+    tasks = [...tasks].sort((a, b) => {
+      if (this.backlogSortField === 'priority') {
+        const pa = this.priorityOrder[a.priority?.toLowerCase()] ?? 99;
+        const pb = this.priorityOrder[b.priority?.toLowerCase()] ?? 99;
+        return (pa - pb) * dir;
+      }
+      if (this.backlogSortField === 'prazoEmDias') {
+        return ((a.prazoEmDias ?? 0) - (b.prazoEmDias ?? 0)) * dir;
+      }
+      const va = String((a as any)[this.backlogSortField] ?? '').toLowerCase();
+      const vb = String((b as any)[this.backlogSortField] ?? '').toLowerCase();
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+
+    return tasks;
+  }
+
+  get backlogTasks(): BoardTaskDto[] {
+    const start = (this.backlogPage - 1) * this.backlogPageSize;
+    return this.backlogFilteredTasks.slice(start, start + this.backlogPageSize);
+  }
+
+  get backlogTotalPages(): number {
+    return Math.max(1, Math.ceil(this.backlogFilteredTasks.length / this.backlogPageSize));
+  }
+
+  get backlogPageEnd(): number {
+    return Math.min(this.backlogPage * this.backlogPageSize, this.backlogFilteredTasks.length);
+  }
+
+  get backlogPages(): number[] {
+    const total = this.backlogTotalPages;
+    const current = this.backlogPage;
+    const delta = 2;
+    const range: number[] = [];
+    for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+      range.push(i);
+    }
+    return range;
+  }
+
+  backlogGoToPage(page: number): void {
+    if (page < 1 || page > this.backlogTotalPages) return;
+    this.backlogPage = page;
+  }
+
+  setBacklogSort(field: typeof this.backlogSortField): void {
+    if (this.backlogSortField === field) {
+      this.backlogSortDir = this.backlogSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.backlogSortField = field;
+      this.backlogSortDir = 'asc';
+    }
+    this.backlogPage = 1;
+  }
+
+  backlogSortIcon(field: typeof this.backlogSortField): string {
+    if (this.backlogSortField !== field) return 'ft-chevron-up';
+    return this.backlogSortDir === 'asc' ? 'ft-chevron-up' : 'ft-chevron-down';
+  }
+
+  getStatusBadgeClass(status: string): string {
+    switch (status) {
+      case 'A Fazer':      return 'bl-badge-todo';
+      case 'Em Andamento': return 'bl-badge-doing';
+      case 'Concluído':    return 'bl-badge-done';
+      default:             return 'bl-badge-todo';
+    }
   }
 
   private showFeedback(taskId: string, type: 'success' | 'error', message: string): void {

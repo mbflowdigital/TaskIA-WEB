@@ -33,6 +33,24 @@
 
                 <hr />
 
+                <!-- Tabs -->
+                <div class="board-tabs mb-3">
+                  <button
+                    type="button"
+                    class="board-tab"
+                    [class.board-tab-active]="activeTab === 'backlog'"
+                    (click)="activeTab = 'backlog'">
+                    <i class="ft-list mr-1"></i> Backlog
+                  </button>
+                  <button
+                    type="button"
+                    class="board-tab"
+                    [class.board-tab-active]="activeTab === 'board'"
+                    (click)="activeTab = 'board'">
+                    <i class="ft-grid mr-1"></i> Board
+                  </button>
+                </div>
+
                 <!-- Loading -->
                 <div *ngIf="boardLoading" class="text-center py-5">
                   <div class="spinner-border text-primary" role="status">
@@ -55,8 +73,140 @@
                   <small class="text-muted">As tarefas são geradas automaticamente pela IA ao criar o projeto.</small>
                 </div>
 
+                <!-- Backlog View -->
+                <ng-container *ngIf="activeTab === 'backlog' && !boardLoading && !boardError && boardTasks.length > 0">
+                  <div class="backlog-toolbar mb-3 d-flex align-items-center" style="gap:0.75rem;">
+                    <div class="backlog-search-wrap">
+                      <i class="ft-search backlog-search-icon"></i>
+                      <input
+                        type="text"
+                        class="backlog-search"
+                        placeholder="Buscar tarefas..."
+                        [(ngModel)]="backlogFilter"
+                        (ngModelChange)="backlogPage = 1" />
+                    </div>
+                    <span class="text-muted ml-auto" style="font-size:0.82rem; white-space:nowrap;">
+                      {{ backlogFilteredTasks.length }} tarefa{{ backlogFilteredTasks.length !== 1 ? 's' : '' }}
+                    </span>
+                  </div>
+
+                  <div class="backlog-table-wrap">
+                    <table class="backlog-table">
+                      <thead>
+                        <tr>
+                          <th class="bl-col-priority" (click)="setBacklogSort('priority')">
+                            Prioridade <i [class]="'ml-1 ' + backlogSortIcon('priority')"></i>
+                          </th>
+                          <th class="bl-col-name" (click)="setBacklogSort('name')">
+                            Tarefa <i [class]="'ml-1 ' + backlogSortIcon('name')"></i>
+                          </th>
+                          <th class="bl-col-status" (click)="setBacklogSort('status')">
+                            Status <i [class]="'ml-1 ' + backlogSortIcon('status')"></i>
+                          </th>
+                          <th class="bl-col-prazo" (click)="setBacklogSort('prazoEmDias')">
+                            Prazo <i [class]="'ml-1 ' + backlogSortIcon('prazoEmDias')"></i>
+                          </th>
+                          <th class="bl-col-responsible">Responsável</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          *ngFor="let task of backlogTasks"
+                          class="bl-row"
+                          [class.bl-row-loading]="taskActionLoading[task.id]"
+                          (click)="selectedTask = task; editingResponsibleModal = false">
+                          <td class="bl-col-priority">
+                            <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                              {{ getPriorityLabel(task.priority) }}
+                            </span>
+                          </td>
+                          <td class="bl-col-name">
+                            <span class="bl-task-name">{{ task.name }}</span>
+                            <p *ngIf="task.description" class="bl-task-desc text-muted mb-0">{{ task.description }}</p>
+                            <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mt-1" [ngClass]="{
+                              'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
+                              'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
+                            }">
+                              <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
+                              {{ taskActionFeedback[task.id].message }}
+                            </div>
+                          </td>
+                          <td class="bl-col-status" (click)="$event.stopPropagation()">
+                            <span class="bl-status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
+                          </td>
+                          <td class="bl-col-prazo">
+                            <span class="text-muted" style="font-size:0.82rem;"><i class="ft-clock mr-1"></i>{{ task.prazoEmDias }}d</span>
+                          </td>
+                          <td class="bl-col-responsible" (click)="$event.stopPropagation()">
+                            <div class="d-flex align-items-center">
+                              <span
+                                *ngIf="!editingResponsible[task.id]"
+                                class="text-muted bl-responsible-name"
+                                (click)="editingResponsible[task.id] = true">
+                                <i class="ft-user mr-1" style="font-size:0.78rem;"></i>{{ task.responsavelName || 'Sem responsável' }}
+                                <i class="ft-edit-2 ml-1" style="font-size:0.7rem;"></i>
+                              </span>
+                              <select
+                                *ngIf="editingResponsible[task.id]"
+                                class="kanban-select"
+                                [value]="task.responsavelId || ''"
+                                [disabled]="taskActionLoading[task.id]"
+                                (change)="onAssignResponsavel(task, $any($event.target).value)"
+                                (blur)="editingResponsible[task.id] = false">
+                                <option value="">Sem responsável</option>
+                                <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
+                              </select>
+                            </div>
+                            <small
+                              *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName"
+                              class="text-info d-block"
+                              style="font-size:0.72rem;">
+                              <i class="ft-zap mr-1"></i>IA: {{ task.sugestaoResponsavelName }}
+                            </small>
+                          </td>
+                        </tr>
+                        <tr *ngIf="backlogTasks.length === 0">
+                          <td colspan="5" class="text-center text-muted py-4">Nenhuma tarefa encontrada.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Pagination -->
+                  <div *ngIf="backlogTotalPages > 1" class="backlog-pagination d-flex align-items-center justify-content-between mt-3">
+                    <span class="bl-page-info text-muted">
+                      Página {{ backlogPage }} de {{ backlogTotalPages }}
+                      &nbsp;·&nbsp;
+                      {{ (backlogPage - 1) * backlogPageSize + 1 }}–{{ backlogPageEnd }}
+                      de {{ backlogFilteredTasks.length }}
+                    </span>
+                    <div class="bl-page-controls d-flex align-items-center" style="gap:0.25rem;">
+                      <button type="button" class="bl-page-btn" (click)="backlogGoToPage(1)" [disabled]="backlogPage === 1" title="Primeira">
+                        <i class="ft-chevrons-left"></i>
+                      </button>
+                      <button type="button" class="bl-page-btn" (click)="backlogGoToPage(backlogPage - 1)" [disabled]="backlogPage === 1" title="Anterior">
+                        <i class="ft-chevron-left"></i>
+                      </button>
+                      <button
+                        *ngFor="let p of backlogPages"
+                        type="button"
+                        class="bl-page-btn"
+                        [class.bl-page-btn-active]="p === backlogPage"
+                        (click)="backlogGoToPage(p)">
+                        {{ p }}
+                      </button>
+                      <button type="button" class="bl-page-btn" (click)="backlogGoToPage(backlogPage + 1)" [disabled]="backlogPage === backlogTotalPages" title="Próxima">
+                        <i class="ft-chevron-right"></i>
+                      </button>
+                      <button type="button" class="bl-page-btn" (click)="backlogGoToPage(backlogTotalPages)" [disabled]="backlogPage === backlogTotalPages" title="Última">
+                        <i class="ft-chevrons-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                </ng-container>
+
                 <!-- Kanban Columns -->
-                <div *ngIf="!boardLoading && !boardError && boardTasks.length > 0" class="kanban-board d-flex">
+                <div *ngIf="activeTab === 'board' && !boardLoading && !boardError && boardTasks.length > 0" class="kanban-board d-flex">
                   <div
                     *ngFor="let colStatus of kanbanStatuses"
                     class="kanban-column"
