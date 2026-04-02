@@ -5,7 +5,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from 
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
-import { BoardApiService, BoardTaskDto, BoardStatus, BOARD_STATUSES } from '../../../shared/api/board-api.service';
+import { BoardApiService, BoardTaskDto, BoardStatus, BOARD_STATUSES, UpdateBoardRequest } from '../../../shared/api/board-api.service';
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
 import { UsersApiService } from '../../../shared/api/users-api.service';
 
@@ -36,6 +36,10 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   editingPrazoModal = false;
   prazoModalValue: number | null = null;
   selectedTask: BoardTaskDto | null = null;
+  taskNameEdit = '';
+  taskDescEdit = '';
+  taskStatusEdit = '';
+  saveTaskLoading = false;
   columnVisibleCount: Record<string, number> = { 'A Fazer': 10, 'Em Andamento': 10, 'Concluído': 10 };
 
   teamMembers: Array<{ id: string; name: string }> = [];
@@ -171,6 +175,9 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
             const idx = this.boardTasks.findIndex(t => t.id === task.id);
             if (idx !== -1) this.boardTasks[idx] = result.data;
             this.boardTasks = [...this.boardTasks];
+            if (this.selectedTask && this.selectedTask.id === task.id) {
+              this.selectedTask = result.data;
+            }
             this.showFeedback(task.id, 'success', 'Status atualizado!');
           } else {
             this.showFeedback(task.id, 'error', (result && result.message) ? result.message : 'Erro ao atualizar status.');
@@ -239,6 +246,29 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
       });
   }
 
+  onDeleteTask(task: BoardTaskDto): void {
+    if (!confirm(`Excluir a tarefa "${task.name}"? Esta ação não pode ser desfeita.`)) return;
+    this.taskActionLoading[task.id] = true;
+    this.clearFeedback(task.id);
+    this.boardApi.delete(task.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.taskActionLoading[task.id] = false;
+          if (result && result.isSuccess === false) {
+            this.showFeedback(task.id, 'error', result.message ?? 'Erro ao excluir tarefa.');
+            return;
+          }
+          this.boardTasks = this.boardTasks.filter(t => t.id !== task.id);
+          this.selectedTask = null;
+        },
+        error: () => {
+          this.taskActionLoading[task.id] = false;
+          this.showFeedback(task.id, 'error', 'Erro de conexão ao excluir tarefa.');
+        }
+      });
+  }
+
   onKanbanDrop(event: CdkDragDrop<BoardTaskDto[]>, targetStatus: BoardStatus): void {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
@@ -273,10 +303,11 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   // ── Backlog helpers ───────────────────────────────────────────────────────
 
   get backlogFilteredTasks(): BoardTaskDto[] {
-    const term = this.backlogFilter.toLowerCase();
+    const term = this.backlogFilter.toLowerCase().trim();
     let tasks = this.boardTasks.filter(t =>
       !term ||
       t.name?.toLowerCase().includes(term) ||
+      t.id?.toLowerCase().includes(term) ||
       t.description?.toLowerCase().includes(term) ||
       (t.responsavelName?.toLowerCase().includes(term) ?? false)
     );
@@ -352,6 +383,79 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     }
   }
 
+  openModal(task: BoardTaskDto): void {
+    this.selectedTask = task;
+    this.taskNameEdit = task.name;
+    this.taskDescEdit = task.description ?? '';
+    this.taskStatusEdit = task.status;
+    this.editingResponsibleModal = false;
+    this.editingPrazoModal = false;
+  }
+
+  onSaveTask(): void {
+    if (!this.selectedTask || this.saveTaskLoading) return;
+    const trimmedName = this.taskNameEdit.trim();
+    if (!trimmedName) return;
+    const task = this.selectedTask;
+    this.saveTaskLoading = true;
+    this.clearFeedback(task.id);
+    const req: UpdateBoardRequest = {
+      name: trimmedName,
+      description: this.taskDescEdit.trim() || undefined,
+      priority: task.priority,
+      prazoEmDias: task.prazoEmDias,
+      ordemNoBoard: task.ordemNoBoard
+    };
+    const statusChanged = this.taskStatusEdit !== task.status;
+    this.boardApi.update(task.id, req)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          if (!result?.isSuccess) {
+            this.saveTaskLoading = false;
+            this.showFeedback(task.id, 'error', result?.message ?? 'Erro ao salvar tarefa.');
+            return;
+          }
+          const updated = result.data!;
+          if (!statusChanged) {
+            this.saveTaskLoading = false;
+            const idx = this.boardTasks.findIndex(t => t.id === task.id);
+            if (idx !== -1) this.boardTasks[idx] = updated;
+            this.boardTasks = [...this.boardTasks];
+            this.selectedTask = updated;
+            this.taskNameEdit = updated.name;
+            this.taskDescEdit = updated.description ?? '';
+            this.showFeedback(task.id, 'success', 'Tarefa salva!');
+            return;
+          }
+          this.boardApi.updateStatus(task.id, this.taskStatusEdit)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: (statusResult) => {
+                this.saveTaskLoading = false;
+                const final = (statusResult?.isSuccess && statusResult.data) ? statusResult.data : updated;
+                const idx = this.boardTasks.findIndex(t => t.id === task.id);
+                if (idx !== -1) this.boardTasks[idx] = final;
+                this.boardTasks = [...this.boardTasks];
+                this.selectedTask = final;
+                this.taskNameEdit = final.name;
+                this.taskDescEdit = final.description ?? '';
+                this.taskStatusEdit = final.status;
+                this.showFeedback(task.id, 'success', 'Tarefa salva!');
+              },
+              error: () => {
+                this.saveTaskLoading = false;
+                this.showFeedback(task.id, 'error', 'Erro de conexão ao atualizar status.');
+              }
+            });
+        },
+        error: () => {
+          this.saveTaskLoading = false;
+          this.showFeedback(task.id, 'error', 'Erro de conexão.');
+        }
+      });
+  }
+
   private showFeedback(taskId: string, type: 'success' | 'error', message: string): void {
     this.taskActionFeedback[taskId] = { type, message };
     setTimeout(() => this.clearFeedback(taskId), 3000);
@@ -359,5 +463,18 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
 
   private clearFeedback(taskId: string): void {
     delete this.taskActionFeedback[taskId];
+  }
+
+  copiedTaskId = false;
+
+  trackByTaskId(_index: number, task: BoardTaskDto): string {
+    return task.id;
+  }
+
+  copyTaskId(id: string): void {
+    navigator.clipboard.writeText(id).then(() => {
+      this.copiedTaskId = true;
+      setTimeout(() => { this.copiedTaskId = false; }, 1800);
+    });
   }
 }

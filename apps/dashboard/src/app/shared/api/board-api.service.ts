@@ -40,6 +40,14 @@ export interface UpdateBoardStatusRequest {
   status: string;
 }
 
+export interface UpdateBoardRequest {
+  name: string;
+  description?: string;
+  priority: string;
+  prazoEmDias: number;
+  ordemNoBoard: number;
+}
+
 export interface AssignResponsavelRequest {
   responsavelId: string | null;
 }
@@ -69,6 +77,12 @@ export class BoardApiService {
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<BoardTaskDto>)));
   }
 
+  update(id: string, req: UpdateBoardRequest): Observable<ApiResult<BoardTaskDto>> {
+    return this.http
+      .put<ApiResult<BoardTaskDto>>(`${this.baseUrl}/api/Board/${id}`, req)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<BoardTaskDto>)));
+  }
+
   assignResponsavel(id: string, responsavelId: string | null): Observable<ApiResult<BoardTaskDto>> {
     return this.http
       .put<ApiResult<BoardTaskDto>>(`${this.baseUrl}/api/Board/${id}/assign-responsavel`, { responsavelId })
@@ -85,6 +99,12 @@ export class BoardApiService {
     return this.http
       .put<ApiResult<BoardTaskDto>>(`${this.baseUrl}/api/Board/${id}/prazo`, { prazoEmDias })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<BoardTaskDto>)));
+  }
+
+  delete(id: string): Observable<ApiResult<void>> {
+    return this.http
+      .delete<ApiResult<void>>(`${this.baseUrl}/api/Board/${id}`)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<void>)));
   }
 
   getStatistics(projectId: string): Observable<ApiResult<unknown>> {

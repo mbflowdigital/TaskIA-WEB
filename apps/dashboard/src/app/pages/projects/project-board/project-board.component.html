@@ -111,10 +111,10 @@
                       </thead>
                       <tbody>
                         <tr
-                          *ngFor="let task of backlogTasks"
+                          *ngFor="let task of backlogTasks; trackBy: trackByTaskId"
                           class="bl-row"
                           [class.bl-row-loading]="taskActionLoading[task.id]"
-                          (click)="selectedTask = task; editingResponsibleModal = false">
+                          (click)="openModal(task)">
                           <td class="bl-col-priority">
                             <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
                               {{ getPriorityLabel(task.priority) }}
@@ -267,7 +267,7 @@
                         </div>
 
                         <!-- Task name -->
-                        <h6 class="kanban-card-title mb-1" (click)="selectedTask = task; editingResponsibleModal = false">{{ task.name }}</h6>
+                        <h6 class="kanban-card-title mb-1" (click)="openModal(task)">{{ task.name }}</h6>
 
                         <!-- Description -->
                         <p *ngIf="task.description" class="kanban-card-desc text-muted mb-1">{{ task.description }}</p>
@@ -361,11 +361,17 @@
         <span class="kanban-priority-badge" [ngClass]="getPriorityClass(selectedTask.priority)">
           {{ getPriorityLabel(selectedTask.priority) }}
         </span>
-        <h5 class="kanban-modal-title mb-0">{{ selectedTask.name }}</h5>
+        <input
+          class="kanban-modal-title-input"
+          type="text"
+          [(ngModel)]="taskNameEdit"
+          [disabled]="saveTaskLoading"
+          placeholder="Nome da tarefa"
+          maxlength="200" />
       </div>
       <button type="button" class="kanban-modal-close" (click)="selectedTask = null" aria-label="Fechar">
-        <i class="ft-x"></i>
-      </button>
+          <i class="ft-x"></i>
+        </button>
     </div>
 
     <!-- Modal Body -->
@@ -379,6 +385,17 @@
 
       <!-- Meta grid 2 cols -->
       <div class="kanban-modal-meta">
+
+        <!-- Status -->
+        <div class="kanban-modal-meta-item">
+          <span class="kanban-modal-label"><i class="ft-layers mr-1"></i>Status</span>
+          <select
+            class="kanban-select"
+            [(ngModel)]="taskStatusEdit"
+            [disabled]="saveTaskLoading">
+            <option *ngFor="let s of kanbanStatuses" [value]="s">{{ s }}</option>
+          </select>
+        </div>
 
         <!-- Prazo -->
         <div class="kanban-modal-meta-item">
@@ -460,7 +477,34 @@
 
     <!-- Modal Footer -->
     <div class="kanban-modal-footer">
-      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="selectedTask = null">Fechar</button>
+      <div class="d-flex align-items-center" style="gap:0.3rem;">
+        <span class="text-muted" style="font-size:0.72rem; font-weight:600;">ID:</span>
+        <code class="kanban-task-id-code" style="font-size:0.7rem;" title="ID da tarefa">{{ selectedTask.id }}</code>
+        <button
+          type="button"
+          class="btn-copy-id"
+          (click)="copyTaskId(selectedTask.id)"
+          [title]="copiedTaskId ? 'Copiado!' : 'Copiar ID'">
+          <i [class]="copiedTaskId ? 'ft-check' : 'ft-copy'"></i>
+        </button>
+      </div>
+      <div class="d-flex align-items-center" style="gap:0.5rem;">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-danger"
+          (click)="onDeleteTask(selectedTask)"
+          [disabled]="taskActionLoading[selectedTask.id] || saveTaskLoading"
+          title="Excluir tarefa">
+          <i class="ft-trash-2 mr-1"></i>Excluir
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-primary"
+          (click)="onSaveTask()"
+          [disabled]="saveTaskLoading || !taskNameEdit.trim()">
+          <i class="ft-save mr-1"></i>{{ saveTaskLoading ? 'Salvando...' : 'Salvar' }}
+        </button>
+      </div>
     </div>
 
   </div>
