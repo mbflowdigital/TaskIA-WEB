@@ -110,61 +110,115 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <tr
-                          *ngFor="let task of backlogTasks; trackBy: trackByTaskId"
-                          class="bl-row"
-                          [class.bl-row-loading]="taskActionLoading[task.id]"
-                          (click)="openModal(task)">
-                          <td class="bl-col-priority">
-                            <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
-                              {{ getPriorityLabel(task.priority) }}
-                            </span>
-                          </td>
-                          <td class="bl-col-name">
-                            <span class="bl-task-name">{{ task.name }}</span>
-                            <p *ngIf="task.description" class="bl-task-desc text-muted mb-0">{{ task.description }}</p>
-                            <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mt-1" [ngClass]="{
-                              'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
-                              'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
-                            }">
-                              <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
-                              {{ taskActionFeedback[task.id].message }}
-                            </div>
-                          </td>
-                          <td class="bl-col-status" (click)="$event.stopPropagation()">
-                            <span class="bl-status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
-                          </td>
-                          <td class="bl-col-prazo">
-                            <span class="text-muted" style="font-size:0.82rem;"><i class="ft-clock mr-1"></i>{{ task.prazoEmDias }}d</span>
-                          </td>
-                          <td class="bl-col-responsible" (click)="$event.stopPropagation()">
-                            <div class="d-flex align-items-center">
-                              <span
-                                *ngIf="!editingResponsible[task.id]"
-                                class="text-muted bl-responsible-name"
-                                (click)="editingResponsible[task.id] = true">
-                                <i class="ft-user mr-1" style="font-size:0.78rem;"></i>{{ task.responsavelName || 'Sem responsável' }}
-                                <i class="ft-edit-2 ml-1" style="font-size:0.7rem;"></i>
+
+                        <!-- Grupo: Tarefas Críticas -->
+                        <ng-container *ngIf="backlogCriticalTasks.length > 0">
+                          <tr class="bl-group-header bl-group-critical">
+                            <td colspan="5">
+                              <i class="ft-alert-triangle mr-1"></i>Críticas
+                              <span class="bl-group-count">{{ backlogCriticalTasks.length }}</span>
+                            </td>
+                          </tr>
+                          <tr
+                            *ngFor="let task of backlogCriticalTasks; trackBy: trackByTaskId"
+                            class="bl-row bl-row-critical"
+                            [class.bl-row-loading]="taskActionLoading[task.id]"
+                            (click)="openModal(task)">
+                            <td class="bl-col-priority">
+                              <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                                {{ getPriorityLabel(task.priority) }}
                               </span>
-                              <select
-                                *ngIf="editingResponsible[task.id]"
-                                class="kanban-select"
-                                [value]="task.responsavelId || ''"
-                                [disabled]="taskActionLoading[task.id]"
-                                (change)="onAssignResponsavel(task, $any($event.target).value)"
-                                (blur)="editingResponsible[task.id] = false">
-                                <option value="">Sem responsável</option>
-                                <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
-                              </select>
-                            </div>
-                            <small
-                              *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName"
-                              class="text-info d-block"
-                              style="font-size:0.72rem;">
-                              <i class="ft-zap mr-1"></i>IA: {{ task.sugestaoResponsavelName }}
-                            </small>
-                          </td>
-                        </tr>
+                            </td>
+                            <td class="bl-col-name">
+                              <span class="bl-task-name">{{ task.name }}</span>
+                              <p *ngIf="task.description" class="bl-task-desc text-muted mb-0">{{ task.description }}</p>
+                              <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mt-1" [ngClass]="{
+                                'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
+                                'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
+                              }">
+                                <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
+                                {{ taskActionFeedback[task.id].message }}
+                              </div>
+                            </td>
+                            <td class="bl-col-status" (click)="$event.stopPropagation()">
+                              <span class="bl-status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
+                            </td>
+                            <td class="bl-col-prazo">
+                              <span class="text-muted" style="font-size:0.82rem;"><i class="ft-clock mr-1"></i>{{ task.prazoEmDias }}d</span>
+                            </td>
+                            <td class="bl-col-responsible" (click)="$event.stopPropagation()">
+                              <div class="d-flex align-items-center">
+                                <span *ngIf="!editingResponsible[task.id]" class="text-muted bl-responsible-name" (click)="editingResponsible[task.id] = true">
+                                  <i class="ft-user mr-1" style="font-size:0.78rem;"></i>{{ task.responsavelName || 'Sem responsável' }}
+                                  <i class="ft-edit-2 ml-1" style="font-size:0.7rem;"></i>
+                                </span>
+                                <select *ngIf="editingResponsible[task.id]" class="kanban-select" [value]="task.responsavelId || ''" [disabled]="taskActionLoading[task.id]"
+                                  (change)="onAssignResponsavel(task, $any($event.target).value)" (blur)="editingResponsible[task.id] = false">
+                                  <option value="">Sem responsável</option>
+                                  <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
+                                </select>
+                              </div>
+                              <small *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName" class="text-info d-block" style="font-size:0.72rem;">
+                                <i class="ft-zap mr-1"></i>IA: {{ task.sugestaoResponsavelName }}
+                              </small>
+                            </td>
+                          </tr>
+                        </ng-container>
+
+                        <!-- Grupo: Demais Tarefas -->
+                        <ng-container *ngIf="backlogNonCriticalTasks.length > 0">
+                          <tr class="bl-group-header bl-group-normal" [class.bl-group-has-critical]="backlogCriticalTasks.length > 0">
+                            <td colspan="5">
+                              <i class="ft-list mr-1"></i>Demais tarefas
+                              <span class="bl-group-count">{{ backlogNonCriticalTasks.length }}</span>
+                            </td>
+                          </tr>
+                          <tr
+                            *ngFor="let task of backlogNonCriticalTasks; trackBy: trackByTaskId"
+                            class="bl-row"
+                            [class.bl-row-loading]="taskActionLoading[task.id]"
+                            (click)="openModal(task)">
+                            <td class="bl-col-priority">
+                              <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                                {{ getPriorityLabel(task.priority) }}
+                              </span>
+                            </td>
+                            <td class="bl-col-name">
+                              <span class="bl-task-name">{{ task.name }}</span>
+                              <p *ngIf="task.description" class="bl-task-desc text-muted mb-0">{{ task.description }}</p>
+                              <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mt-1" [ngClass]="{
+                                'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
+                                'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
+                              }">
+                                <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
+                                {{ taskActionFeedback[task.id].message }}
+                              </div>
+                            </td>
+                            <td class="bl-col-status" (click)="$event.stopPropagation()">
+                              <span class="bl-status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
+                            </td>
+                            <td class="bl-col-prazo">
+                              <span class="text-muted" style="font-size:0.82rem;"><i class="ft-clock mr-1"></i>{{ task.prazoEmDias }}d</span>
+                            </td>
+                            <td class="bl-col-responsible" (click)="$event.stopPropagation()">
+                              <div class="d-flex align-items-center">
+                                <span *ngIf="!editingResponsible[task.id]" class="text-muted bl-responsible-name" (click)="editingResponsible[task.id] = true">
+                                  <i class="ft-user mr-1" style="font-size:0.78rem;"></i>{{ task.responsavelName || 'Sem responsável' }}
+                                  <i class="ft-edit-2 ml-1" style="font-size:0.7rem;"></i>
+                                </span>
+                                <select *ngIf="editingResponsible[task.id]" class="kanban-select" [value]="task.responsavelId || ''" [disabled]="taskActionLoading[task.id]"
+                                  (change)="onAssignResponsavel(task, $any($event.target).value)" (blur)="editingResponsible[task.id] = false">
+                                  <option value="">Sem responsável</option>
+                                  <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
+                                </select>
+                              </div>
+                              <small *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName" class="text-info d-block" style="font-size:0.72rem;">
+                                <i class="ft-zap mr-1"></i>IA: {{ task.sugestaoResponsavelName }}
+                              </small>
+                            </td>
+                          </tr>
+                        </ng-container>
+
                         <tr *ngIf="backlogTasks.length === 0">
                           <td colspan="5" class="text-center text-muted py-4">Nenhuma tarefa encontrada.</td>
                         </tr>
@@ -204,6 +258,15 @@
                     </div>
                   </div>
                 </ng-container>
+
+                <!-- Global critical warning banner -->
+                <div *ngIf="criticalWarningTaskId" class="critical-warning-banner">
+                  <i class="ft-alert-triangle" style="font-size:1.1rem; color:#e67e22; flex-shrink:0;"></i>
+                  <span class="critical-warning-banner-text">
+                    <strong>Atenção:</strong> Existem tarefas <strong>Críticas</strong> pendentes. Conclua-as antes de iniciar outras tarefas.
+                  </span>
+                  <button type="button" class="critical-warning-banner-close" (click)="criticalWarningTaskId = null" title="Fechar">×</button>
+                </div>
 
                 <!-- Kanban Columns -->
                 <div *ngIf="activeTab === 'board' && !boardLoading && !boardError && boardTasks.length > 0" class="kanban-board d-flex">
@@ -250,81 +313,137 @@
                         </div>
                       </ng-container>
 
-                      <!-- Task Card -->
-                      <div
-                        *ngFor="let task of getVisibleTasksByStatus(colStatus)"
-                        cdkDrag
-                        [cdkDragData]="task"
-                        class="kanban-card"
-                        [class.kanban-card-loading]="taskActionLoading[task.id]">
-
-                        <!-- Priority badge -->
-                        <div class="d-flex align-items-start justify-content-between mb-2">
-                          <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
-                            {{ getPriorityLabel(task.priority) }}
-                          </span>
-                          <div *ngIf="taskActionLoading[task.id]" class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                      <!-- BLOCO: Tarefas Críticas -->
+                      <ng-container *ngIf="getCriticalByStatus(colStatus).length > 0">
+                        <div class="kanban-block-label kanban-block-critical">
+                          <i class="ft-alert-triangle mr-1"></i>Críticas
+                          <span class="kanban-block-count">{{ getCriticalByStatus(colStatus).length }}</span>
                         </div>
 
-                        <!-- Task name -->
-                        <h6 class="kanban-card-title mb-1" (click)="openModal(task)">{{ task.name }}</h6>
+                        <div
+                          *ngFor="let task of getCriticalByStatus(colStatus)"
+                          cdkDrag
+                          [cdkDragData]="task"
+                          class="kanban-card kanban-card-critical"
+                          [class.kanban-card-loading]="taskActionLoading[task.id]">
 
-                        <!-- Description -->
-                        <p *ngIf="task.description" class="kanban-card-desc text-muted mb-1">{{ task.description }}</p>
-
-
-                        <!-- Feedback -->
-                        <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mb-2" [ngClass]="{
-                          'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
-                          'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
-                        }">
-                          <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
-                          {{ taskActionFeedback[task.id].message }}
-                        </div>
-
-                        <!-- Meta info -->
-                        <div class="kanban-card-meta d-flex flex-wrap align-items-center mt-2">
-                          <span class="kanban-meta-item mr-3" title="Prazo estimado">
-                            <i class="ft-clock mr-1 text-muted"></i>
-                            <span class="text-muted" style="font-size:0.78rem;">{{ task.prazoEmDias }}d</span>
-                          </span>
-
-
-                        </div>
-
-                        <!-- Responsible -->
-                        <div class="kanban-responsible mt-2">
-                          <div class="d-flex align-items-center">
-                            <i class="ft-user mr-1 text-muted" style="font-size:0.82rem;"></i>
-                            <span
-                              *ngIf="!editingResponsible[task.id]"
-                              class="text-muted"
-                              style="font-size:0.82rem; cursor:pointer;"
-                              (click)="editingResponsible[task.id] = true">
-                              {{ task.responsavelName || 'Sem responsável' }}
-                              <i class="ft-edit-2 ml-1" style="font-size:0.72rem;"></i>
+                          <div class="d-flex align-items-start justify-content-between mb-2">
+                            <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                              {{ getPriorityLabel(task.priority) }}
                             </span>
-                            <select
-                              *ngIf="editingResponsible[task.id]"
-                              class="kanban-select"
-                              [value]="task.responsavelId || ''"
-                              [disabled]="taskActionLoading[task.id]"
-                              (change)="onAssignResponsavel(task, $any($event.target).value)"
-                              (blur)="editingResponsible[task.id] = false">
-                              <option value="">Sem responsável</option>
-                              <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
-                            </select>
+                            <div *ngIf="taskActionLoading[task.id]" class="spinner-border spinner-border-sm text-primary" role="status"></div>
                           </div>
-                          <small
-                            *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName"
-                            class="text-info d-block mt-1"
-                            style="font-size:0.75rem;">
-                            <i class="ft-zap mr-1"></i>Sugestão IA: {{ task.sugestaoResponsavelName }}
-                          </small>
+
+                          <h6 class="kanban-card-title mb-1" (click)="openModal(task)">{{ task.name }}</h6>
+                          <p *ngIf="task.description" class="kanban-card-desc text-muted mb-1">{{ task.description }}</p>
+
+                          <!-- Critical warning -->
+                          <div *ngIf="criticalWarningTaskId === task.id" class="kanban-critical-warning mt-2">
+                            <i class="ft-alert-circle mr-1"></i>
+                            Conclua as tarefas críticas antes de iniciar outras.
+                            <button type="button" class="kanban-warning-dismiss" (click)="criticalWarningTaskId = null">×</button>
+                          </div>
+
+                          <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mb-2" [ngClass]="{
+                            'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
+                            'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
+                          }">
+                            <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
+                            {{ taskActionFeedback[task.id].message }}
+                          </div>
+
+                          <div class="kanban-card-meta d-flex flex-wrap align-items-center mt-2">
+                            <span class="kanban-meta-item mr-3" title="Prazo estimado">
+                              <i class="ft-clock mr-1 text-muted"></i>
+                              <span class="text-muted" style="font-size:0.78rem;">{{ task.prazoEmDias }}d</span>
+                            </span>
+                          </div>
+
+                          <div class="kanban-responsible mt-2">
+                            <div class="d-flex align-items-center">
+                              <i class="ft-user mr-1 text-muted" style="font-size:0.82rem;"></i>
+                              <span *ngIf="!editingResponsible[task.id]" class="text-muted" style="font-size:0.82rem; cursor:pointer;" (click)="editingResponsible[task.id] = true">
+                                {{ task.responsavelName || 'Sem responsável' }}<i class="ft-edit-2 ml-1" style="font-size:0.72rem;"></i>
+                              </span>
+                              <select *ngIf="editingResponsible[task.id]" class="kanban-select" [value]="task.responsavelId || ''" [disabled]="taskActionLoading[task.id]"
+                                (change)="onAssignResponsavel(task, $any($event.target).value)" (blur)="editingResponsible[task.id] = false">
+                                <option value="">Sem responsável</option>
+                                <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
+                              </select>
+                            </div>
+                            <small *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName" class="text-info d-block mt-1" style="font-size:0.75rem;">
+                              <i class="ft-zap mr-1"></i>Sugestão IA: {{ task.sugestaoResponsavelName }}
+                            </small>
+                          </div>
+                        </div>
+                      </ng-container>
+                      <!-- fim bloco críticas -->
+
+                      <!-- BLOCO: Demais Tarefas -->
+                      <ng-container *ngIf="getNonCriticalByStatus(colStatus).length > 0">
+                        <div class="kanban-block-label kanban-block-normal" [class.kanban-block-has-critical]="getCriticalByStatus(colStatus).length > 0">
+                          <i class="ft-list mr-1"></i>Demais tarefas
+                          <span class="kanban-block-count">{{ getNonCriticalByStatus(colStatus).length }}</span>
                         </div>
 
-                      </div>
-                      <!-- end task card -->
+                        <div
+                          *ngFor="let task of getNonCriticalByStatus(colStatus)"
+                          cdkDrag
+                          [cdkDragData]="task"
+                          class="kanban-card"
+                          [class.kanban-card-loading]="taskActionLoading[task.id]">
+
+                          <div class="d-flex align-items-start justify-content-between mb-2">
+                            <span class="kanban-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                              {{ getPriorityLabel(task.priority) }}
+                            </span>
+                            <div *ngIf="taskActionLoading[task.id]" class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                          </div>
+
+                          <h6 class="kanban-card-title mb-1" (click)="openModal(task)">{{ task.name }}</h6>
+                          <p *ngIf="task.description" class="kanban-card-desc text-muted mb-1">{{ task.description }}</p>
+
+                          <!-- Critical warning for non-critical tasks -->
+                          <div *ngIf="criticalWarningTaskId === task.id" class="kanban-critical-warning mt-2">
+                            <i class="ft-alert-circle mr-1"></i>
+                            Conclua as tarefas críticas antes de iniciar esta tarefa.
+                            <button type="button" class="kanban-warning-dismiss" (click)="criticalWarningTaskId = null">×</button>
+                          </div>
+
+                          <div *ngIf="taskActionFeedback[task.id]" class="kanban-feedback mb-2" [ngClass]="{
+                            'kanban-feedback-success': taskActionFeedback[task.id].type === 'success',
+                            'kanban-feedback-error': taskActionFeedback[task.id].type === 'error'
+                          }">
+                            <i class="ft-{{ taskActionFeedback[task.id].type === 'success' ? 'check' : 'x' }} mr-1"></i>
+                            {{ taskActionFeedback[task.id].message }}
+                          </div>
+
+                          <div class="kanban-card-meta d-flex flex-wrap align-items-center mt-2">
+                            <span class="kanban-meta-item mr-3" title="Prazo estimado">
+                              <i class="ft-clock mr-1 text-muted"></i>
+                              <span class="text-muted" style="font-size:0.78rem;">{{ task.prazoEmDias }}d</span>
+                            </span>
+                          </div>
+
+                          <div class="kanban-responsible mt-2">
+                            <div class="d-flex align-items-center">
+                              <i class="ft-user mr-1 text-muted" style="font-size:0.82rem;"></i>
+                              <span *ngIf="!editingResponsible[task.id]" class="text-muted" style="font-size:0.82rem; cursor:pointer;" (click)="editingResponsible[task.id] = true">
+                                {{ task.responsavelName || 'Sem responsável' }}<i class="ft-edit-2 ml-1" style="font-size:0.72rem;"></i>
+                              </span>
+                              <select *ngIf="editingResponsible[task.id]" class="kanban-select" [value]="task.responsavelId || ''" [disabled]="taskActionLoading[task.id]"
+                                (change)="onAssignResponsavel(task, $any($event.target).value)" (blur)="editingResponsible[task.id] = false">
+                                <option value="">Sem responsável</option>
+                                <option *ngFor="let u of teamMembers" [value]="u.id">{{ u.name }}</option>
+                              </select>
+                            </div>
+                            <small *ngIf="task.sugestaoResponsavelName && task.sugestaoResponsavelName !== task.responsavelName" class="text-info d-block mt-1" style="font-size:0.75rem;">
+                              <i class="ft-zap mr-1"></i>Sugestão IA: {{ task.sugestaoResponsavelName }}
+                            </small>
+                          </div>
+                        </div>
+                      </ng-container>
+                      <!-- fim bloco demais -->
 
                       <!-- Load More Button -->
                       <div *ngIf="getHiddenCount(colStatus) > 0" class="kanban-load-more mt-2">
@@ -376,6 +495,15 @@
 
     <!-- Modal Body -->
     <div class="kanban-modal-body">
+
+      <!-- Critical warning inside modal (shown in backlog or when warning is active for this task) -->
+      <div *ngIf="criticalWarningTaskId === selectedTask.id || (activeTab === 'backlog' && hasPendingCriticals() && !isCritical(selectedTask))" class="critical-warning-banner mb-3">
+        <i class="ft-alert-triangle" style="font-size:1.1rem; color:#e67e22; flex-shrink:0;"></i>
+        <span class="critical-warning-banner-text">
+          <strong>Atenção:</strong> Existem tarefas <strong>Críticas</strong> pendentes. Conclua-as antes de iniciar outras tarefas.
+        </span>
+        <button type="button" class="critical-warning-banner-close" (click)="criticalWarningTaskId = null" title="Fechar">×</button>
+      </div>
 
       <!-- Description -->
       <div *ngIf="selectedTask.description" class="kanban-modal-section">

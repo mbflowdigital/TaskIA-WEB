@@ -435,6 +435,27 @@
   }
 }
 
+.generation-progress {
+  width: 240px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+
+  .generation-progress-bar {
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, #003d82, #0069d9);
+    border-radius: 99px;
+    animation: progress-slide 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(700%); }
+}
+
 .generation-steps {
   display: flex;
   flex-direction: column;

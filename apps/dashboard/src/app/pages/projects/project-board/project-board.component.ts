@@ -42,6 +42,8 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   saveTaskLoading = false;
   columnVisibleCount: Record<string, number> = { 'A Fazer': 10, 'Em Andamento': 10, 'Concluído': 10 };
 
+  criticalWarningTaskId: string | null = null;
+
   teamMembers: Array<{ id: string; name: string }> = [];
 
   activeTab: 'backlog' | 'board' = 'backlog';
@@ -160,10 +162,31 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     return this.kanbanStatuses.map(s => `pb-col-${s}`);
   }
 
+  isCritical(task: BoardTaskDto): boolean {
+    const p = task.priority?.toLowerCase();
+    return p === 'crítica' || p === 'critica';
+  }
+
+  getCriticalByStatus(status: BoardStatus): BoardTaskDto[] {
+    return this.getTasksByStatus(status).filter(t => this.isCritical(t));
+  }
+
+  getNonCriticalByStatus(status: BoardStatus): BoardTaskDto[] {
+    return this.getTasksByStatus(status).filter(t => !this.isCritical(t));
+  }
+
+  hasPendingCriticals(): boolean {
+    return this.boardTasks.some(t => this.isCritical(t) && t.status === 'A Fazer');
+  }
+
   // ── Actions ───────────────────────────────────────────────────────────────
 
   onChangeTaskStatus(task: BoardTaskDto, newStatus: string): void {
     if (task.status === newStatus || this.taskActionLoading[task.id]) return;
+    if (newStatus === 'Em Andamento' && !this.isCritical(task) && this.hasPendingCriticals()) {
+      this.criticalWarningTaskId = task.id;
+      return;
+    }
     this.taskActionLoading[task.id] = true;
     this.clearFeedback(task.id);
     this.boardApi.updateStatus(task.id, newStatus)
@@ -274,6 +297,12 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
       const task = event.previousContainer.data[event.previousIndex];
+      if (targetStatus === 'Em Andamento' && !this.isCritical(task) && this.hasPendingCriticals()) {
+        // Revert the visual move
+        transferArrayItem(event.container.data, event.previousContainer.data, event.currentIndex, event.previousIndex);
+        this.criticalWarningTaskId = task.id;
+        return;
+      }
       transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
       this.onChangeTaskStatus(task, targetStatus);
     }
@@ -333,6 +362,14 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   get backlogTasks(): BoardTaskDto[] {
     const start = (this.backlogPage - 1) * this.backlogPageSize;
     return this.backlogFilteredTasks.slice(start, start + this.backlogPageSize);
+  }
+
+  get backlogCriticalTasks(): BoardTaskDto[] {
+    return this.backlogTasks.filter(t => this.isCritical(t));
+  }
+
+  get backlogNonCriticalTasks(): BoardTaskDto[] {
+    return this.backlogTasks.filter(t => !this.isCritical(t));
   }
 
   get backlogTotalPages(): number {
@@ -397,6 +434,11 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     const trimmedName = this.taskNameEdit.trim();
     if (!trimmedName) return;
     const task = this.selectedTask;
+    // Block non-critical tasks from moving to Em Andamento while criticals are pending
+    if (this.taskStatusEdit === 'Em Andamento' && !this.isCritical(task) && this.hasPendingCriticals()) {
+      this.criticalWarningTaskId = task.id;
+      return;
+    }
     this.saveTaskLoading = true;
     this.clearFeedback(task.id);
     const req: UpdateBoardRequest = {

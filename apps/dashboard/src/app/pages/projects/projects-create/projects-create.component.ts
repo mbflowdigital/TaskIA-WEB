@@ -102,7 +102,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   generationStep = 0;
   private generationInterval?: ReturnType<typeof setInterval>;
 
-  reviewOpenSections: Record<string, boolean> = { basic: true, team: false, context: false, priorities: false, files: false };
+  reviewOpenSections: Record<string, boolean> = { basic: true, team: true, context: true, priorities: true, files: true };
 
   // File upload state
   uploadedFiles: ExtractedTextResponse[] = [];
@@ -359,7 +359,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.teamMembersArray.updateValueAndValidity();
     this.priorityItems = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
     this.generationStep = 0;
-    this.reviewOpenSections = { basic: true, team: false, context: false, priorities: false, files: false };
+    this.reviewOpenSections = { basic: true, team: true, context: true, priorities: true, files: true };
     this.uploadedFiles = [];
     this.fileUploadError = undefined;
     this.uploadStage = 'idle';

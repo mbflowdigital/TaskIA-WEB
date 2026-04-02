@@ -784,7 +784,10 @@
                 <!-- Loading / geração -->
                 <div *ngIf="currentStep === 5 && isSubmitting && !analysisResult" class="generation-loading text-center py-5">
                   <div class="generation-robot mb-3">🤖</div>
-                  <h5 class="fw-bold mb-4">Gerando plano com IA...</h5>
+                  <h5 class="fw-bold mb-3">Gerando plano com IA...</h5>
+                  <div class="generation-progress mb-4">
+                    <div class="generation-progress-bar"></div>
+                  </div>
                   <div class="generation-steps">
                     <div class="generation-step" [class.done]="generationStep > 1" [class.active]="generationStep === 1">
                       <span class="gen-icon">{{ generationStep > 1 ? '✅' : (generationStep === 1 ? '⏳' : '⬜') }}</span>
@@ -849,7 +852,6 @@
                         <strong>{{ member.get('userName')?.value }}</strong>
                         <span class="text-muted">{{ member.get('role')?.value }}</span>
                         <span class="text-muted">{{ member.get('dedication')?.value }}</span>
-                        <span *ngIf="member.get('isApprover')?.value" class="badge bg-primary-subtle text-primary">Aprovador</span>
                       </div>
                     </div>
                   </div>

@@ -13,6 +13,7 @@ export interface ProjectDto {
   userName?: string;
   createdAt: string;
   updatedAt?: string;
+  taskCount?: number;
 }
 
 export interface ProjectMemberRequest {

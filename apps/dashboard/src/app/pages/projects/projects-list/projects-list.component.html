@@ -137,7 +137,8 @@
                               <i class="ft-briefcase font-medium-3"></i>
                             </span>
                             <div class="cell-line-height" style="min-width: 0;">
-                              <div class="line-height-1 mb-0 font-weight-bold text-truncate" style="max-width: 260px;">
+                              <div class="line-height-1 mb-0 font-weight-bold text-truncate project-name-link" style="max-width: 260px;"
+                                [routerLink]="['/projects', project.id, 'board']">
                                 {{ project.name }}
                               </div>
                               <small class="text-muted text-truncate d-block" style="max-width: 260px;">
@@ -171,10 +172,10 @@
                             </button>
                             <div *ngIf="openActionsForId === project.id"
                               class="dropdown-menu show actions-menu"
-                              [class.dropup-menu]="dropdownPos?.dropup">
-                              <a class="dropdown-item" [routerLink]="['/projects', project.id, 'board']">Tarefas</a>
-                              <div class="dropdown-divider"></div>
-                              <button type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
+                              [style.top.px]="dropdownPos?.dropup ? dropdownPos?.top : dropdownPos?.top"
+                              [style.left.px]="(dropdownPos?.left ?? 0) - 140"
+                              [style.transform]="dropdownPos?.dropup ? 'translateY(-100%)' : 'none'">
+                              <button *ngIf="project.taskCount === 0" type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
                               <button
                                 type="button"
                                 class="dropdown-item"
