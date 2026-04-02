@@ -12,6 +12,7 @@ import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from '../../../shared/api/claude-api.service';
+import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
 
 @Component({
   selector: 'app-projects-create',
@@ -101,7 +102,14 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   generationStep = 0;
   private generationInterval?: ReturnType<typeof setInterval>;
 
-  reviewOpenSections: Record<string, boolean> = { basic: true, team: false, context: false, priorities: false };
+  reviewOpenSections: Record<string, boolean> = { basic: true, team: false, context: false, priorities: false, files: false };
+
+  // File upload state
+  uploadedFiles: ExtractedTextResponse[] = [];
+  isUploadingFile = false;
+  fileUploadError?: string;
+  private readonly MAX_FILE_SIZE_MB = 10;
+  private readonly MAX_FILE_SIZE_BYTES = this.MAX_FILE_SIZE_MB * 1024 * 1024;
 
   toggleReviewSection(key: string): void {
     this.reviewOpenSections[key] = !this.reviewOpenSections[key];
@@ -256,6 +264,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     private readonly companiesApi: CompaniesApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
+    private readonly documentsApi: DocumentsApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -347,7 +356,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.teamMembersArray.updateValueAndValidity();
     this.priorityItems = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
     this.generationStep = 0;
-    this.reviewOpenSections = { basic: true, team: false, context: false, priorities: false };
+    this.reviewOpenSections = { basic: true, team: false, context: false, priorities: false, files: false };
+    this.uploadedFiles = [];
+    this.fileUploadError = undefined;
     this.formSubmitted = false;
     this.submitError = undefined;
     this.submitErrors = [];
@@ -1338,6 +1349,17 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     if (approvers.dpo) selectedApprovers.push('DPO');
     if (approvers.complianceTeam) selectedApprovers.push('Compliance');
 
+    // Concatenar contexto adicional dos arquivos enviados
+    let additionalContext = raw.finalObservations || '';
+    if (this.uploadedFiles.length > 0) {
+      const filesContext = this.uploadedFiles
+        .map(file => `\n\n--- Conteúdo de ${file.fileName} ---\n${file.extractedText}`)
+        .join('\n');
+      additionalContext = additionalContext 
+        ? `${additionalContext}\n\n=== DOCUMENTOS ANEXADOS ===${filesContext}`
+        : `=== DOCUMENTOS ANEXADOS ===${filesContext}`;
+    }
+
     const payload: ProjectAnalysisRequest = {
       projectName: raw.name,
       objective: raw.objective,
@@ -1367,7 +1389,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       whatWentWrong: raw.previousExperience === 'similar' ? raw.whatWentWrong : undefined,
       detailLevel: raw.detailLevel,
       reviewFrequency: raw.reviewFrequency,
-      finalObservations: raw.finalObservations || undefined
+      finalObservations: additionalContext || undefined
     };
 
     this.claudeApi.analyzeProject(payload)
@@ -1501,5 +1523,68 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         this.submitError = 'Erro inesperado ao salvar o projeto.';
       }
     });
+  }
+
+  // ── File upload management ──────────────────────────────────────────────
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    
+    // Reset input para permitir selecionar o mesmo arquivo novamente
+    input.value = '';
+
+    // Validar tamanho
+    if (file.size > this.MAX_FILE_SIZE_BYTES) {
+      this.fileUploadError = `O arquivo excede o limite de ${this.MAX_FILE_SIZE_MB}MB. Tamanho: ${this.formatFileSize(file.size)}`;
+      return;
+    }
+
+    // Validar tipo
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExtensions.includes(fileExtension)) {
+      this.fileUploadError = 'Tipo de arquivo não suportado. Use: PDF, Word, Excel ou TXT.';
+      return;
+    }
+
+    this.uploadFile(file);
+  }
+
+  private uploadFile(file: File): void {
+    this.isUploadingFile = true;
+    this.fileUploadError = undefined;
+
+    this.documentsApi.extractText(file)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.isUploadingFile = false;
+          if (!result?.isSuccess || !result.data) {
+            this.fileUploadError = result?.message ?? 'Erro ao processar o arquivo.';
+            return;
+          }
+          this.uploadedFiles.push(result.data);
+          this.fileUploadError = undefined;
+        },
+        error: () => {
+          this.isUploadingFile = false;
+          this.fileUploadError = 'Erro inesperado ao fazer upload do arquivo.';
+        }
+      });
+  }
+
+  removeUploadedFile(index: number): void {
+    this.uploadedFiles.splice(index, 1);
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
 }

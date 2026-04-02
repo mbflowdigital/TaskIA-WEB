@@ -918,6 +918,65 @@
                     </div>
                   </div>
 
+                  <!-- Contexto adicional via arquivos -->
+                  <div class="review-card mb-3">
+                    <div class="review-card-header" (click)="toggleReviewSection('files')">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="review-step-badge">📎</span>
+                        <span class="fw-semibold">Enviar documentos (opcional)</span>
+                        <span class="review-summary text-muted ms-2" *ngIf="uploadedFiles.length">{{ uploadedFiles.length }} arquivo(s) anexado(s)</span>
+                      </div>
+                      <span class="review-chevron" [class.open]="reviewOpenSections['files']">›</span>
+                    </div>
+                    <div class="review-card-body" *ngIf="reviewOpenSections['files']">
+                      <p class="text-muted mb-2">
+                        Envie documentos (PDF, Word, Excel, TXT) para fornecer mais contexto à IA. 
+                        <strong>Limite: 10MB por arquivo.</strong>
+                      </p>
+
+                      <div class="mb-3">
+                        <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                          <input 
+                            type="file" 
+                            class="d-none" 
+                            (change)="onFileSelected($event)" 
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                            [disabled]="isUploadingFile"
+                          />
+                          <i class="ft-upload mr-1"></i> Selecionar arquivo
+                        </label>
+                        <small class="text-muted d-block mt-1">Formatos aceitos: PDF, Word, Excel, TXT</small>
+                      </div>
+
+                      <div *ngIf="fileUploadError" class="alert alert-danger alert-sm">
+                        {{ fileUploadError }}
+                      </div>
+
+                      <div *ngIf="isUploadingFile" class="alert alert-info alert-sm d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm mr-2" role="status">
+                          <span class="sr-only">Carregando...</span>
+                        </div>
+                        Carregando documento...
+                      </div>
+
+                      <div *ngIf="uploadedFiles.length" class="uploaded-files-list">
+                        <div class="uploaded-file-item d-flex align-items-center justify-content-between mb-2 p-2 border rounded" 
+                             *ngFor="let file of uploadedFiles; let i = index">
+                          <div class="d-flex align-items-center gap-2 flex-grow-1">
+                            <i class="ft-file-text text-primary"></i>
+                            <div class="flex-grow-1">
+                              <div class="fw-semibold">{{ file.fileName }}</div>
+                              <small class="text-muted">{{ formatFileSize(file.fileSize) }}</small>
+                            </div>
+                          </div>
+                          <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removeUploadedFile(i)">
+                            <i class="ft-x"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Botões passo 5 -->
                   <div class="wizard-buttons mt-2 d-flex flex-sm-row flex-column justify-content-between align-items-center">
                     <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
