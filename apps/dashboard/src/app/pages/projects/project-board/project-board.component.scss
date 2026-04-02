@@ -106,7 +106,58 @@
     &:hover { background: #f8f9fa; }
     &.bl-row-loading { opacity: .6; pointer-events: none; }
 
+    &.bl-row-critical {
+      border-left: 3px solid #e74c3c;
+    }
+
     td { padding: 0.65rem 1rem; vertical-align: middle; }
+  }
+
+  // Group header rows
+  .bl-group-header {
+    td {
+      padding: 0.3rem 1rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      user-select: none;
+      cursor: default;
+
+      .bl-group-count {
+        display: inline-block;
+        margin-left: 0.4rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0.05rem 0.35rem;
+        border-radius: 20px;
+        vertical-align: middle;
+      }
+    }
+
+    &.bl-group-critical td {
+      background: #fff0f0;
+      color: #c0392b;
+
+      .bl-group-count {
+        background: #e74c3c;
+        color: #fff;
+      }
+    }
+
+    &.bl-group-normal td {
+      background: #f3f5f9;
+      color: #556a85;
+
+      .bl-group-count {
+        background: #8ba4c0;
+        color: #fff;
+      }
+    }
+
+    &.bl-group-has-critical td {
+      border-top: 2px dashed #d0daea;
+    }
   }
 
   .bl-col-priority { width: 110px; }
@@ -389,6 +440,24 @@
   line-height: 1.35;
 }
 
+.kanban-modal-title-input {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a2a3a;
+  line-height: 1.35;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.15rem 0.35rem;
+  background: transparent;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover { border-color: #dee2e6; background: #f8f9fa; }
+  &:focus { border-color: #86b7fe; background: #fff; box-shadow: 0 0 0 2px rgba(13,110,253,.15); }
+  &:disabled { opacity: 0.7; cursor: not-allowed; }
+}
+
 .kanban-modal-close {
   background: none;
   border: none;
@@ -423,12 +492,55 @@
   display: block;
 }
 
+.kanban-modal-task-id {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .kanban-modal-label {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+}
+
+.kanban-task-id-code {
+  font-size: 0.73rem;
+  color: #495057;
+  background: #f1f3f5;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  user-select: all;
+  cursor: text;
+  word-break: break-all;
+}
+
 .kanban-modal-desc {
   font-size: 0.88rem;
   line-height: 1.6;
   color: #2c3e50;
   white-space: pre-wrap;
   margin: 0;
+}
+
+.kanban-modal-desc-input {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #2c3e50;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  width: 100%;
+  resize: vertical;
+  outline: none;
+  background: #f8f9fa;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: inherit;
+
+  &:focus { border-color: #86b7fe; background: #fff; box-shadow: 0 0 0 2px rgba(13,110,253,.15); }
+  &:disabled { opacity: 0.7; cursor: not-allowed; }
+  &::placeholder { color: #adb5bd; }
 }
 
 .kanban-modal-meta {
@@ -476,7 +588,29 @@
   padding: 0.85rem 1.5rem;
   border-top: 1px solid #e8edf3;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-copy-id {
+  background: none;
+  border: none;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
+  color: #adb5bd;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+
+  &:hover {
+    color: #003d82;
+    background: #e8f0fb;
+  }
+
+  i.ft-check {
+    color: #198754;
+  }
 }
 
 @keyframes fadeIn {
@@ -576,7 +710,131 @@
   }
 }
 
-// Spinner
+// ─── Critical tasks blocks ────────────────────────────────────────────────────
+.kanban-block-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+
+  .kanban-block-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.05rem 0.4rem;
+    border-radius: 20px;
+  }
+
+  &.kanban-block-critical {
+    background: #fff0f0;
+    color: #c0392b;
+    border: 1px solid #f5c6c6;
+
+    .kanban-block-count {
+      background: #e74c3c;
+      color: #fff;
+    }
+  }
+
+  &.kanban-block-normal {
+    background: #f3f5f9;
+    color: #556a85;
+    border: 1px solid #dce3ec;
+    margin-top: 0;
+
+    &.kanban-block-has-critical {
+      margin-top: 1rem;
+      border-top: 2px dashed #d0daea;
+      padding-top: 0.75rem;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .kanban-block-count {
+      background: #8ba4c0;
+      color: #fff;
+    }
+  }
+}
+
+// highlight card border for critical tasks
+.kanban-card-critical {
+  border-left: 3px solid #e74c3c !important;
+}
+
+// Per-card inline warning (inside the card itself)
+.kanban-critical-warning {
+  font-size: 0.76rem;
+  color: #c0392b;
+  background: #fff0f0;
+  border: 1px solid #f5c6c6;
+  border-radius: 5px;
+  padding: 0.3rem 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+
+  .kanban-warning-dismiss {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #c0392b;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+
+    &:hover {
+      color: #922b21;
+    }
+  }
+}
+
+// ─── Global warning banner ────────────────────────────────────────────────────
+.critical-warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.83rem;
+  color: #664d03;
+  animation: fade-in 0.2s ease;
+
+  .critical-warning-banner-text {
+    flex: 1;
+  }
+
+  .critical-warning-banner-close {
+    background: none;
+    border: none;
+    color: #664d03;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ─── Spinner ──────────────────────────────────────────────────────────────────
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }

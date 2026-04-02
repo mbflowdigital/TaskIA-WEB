@@ -110,7 +110,12 @@ export class ProjectsListComponent implements OnInit, OnDestroy {
       const btn = event.currentTarget as HTMLElement;
       const rect = btn.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      this.dropdownPos = { top: 0, left: 0, dropup: spaceBelow < 120 };
+      const dropup = spaceBelow < 120;
+      this.dropdownPos = {
+        top: dropup ? rect.top : rect.bottom,
+        left: rect.right,
+        dropup
+      };
     }
     this.actionError = undefined;
   }
