@@ -1,14 +1,16 @@
-.actions-menu {
-  position: absolute;
-  top: 100%;
-  right: -40px;
-  z-index: 1055;
-  min-width: 140px;
+.project-name-link {
+  cursor: pointer;
+  color: #1a2a3a;
 
-  &.dropup-menu {
-    top: auto;
-    bottom: 100%;
+  &:hover {
+    text-decoration: underline;
   }
+}
+
+.actions-menu {
+  position: fixed;
+  z-index: 1080;
+  min-width: 140px;
 }
 
 .avatar-icon {

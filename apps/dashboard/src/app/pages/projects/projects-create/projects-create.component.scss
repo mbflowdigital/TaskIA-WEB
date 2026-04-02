@@ -435,6 +435,27 @@
   }
 }
 
+.generation-progress {
+  width: 240px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+
+  .generation-progress-bar {
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, #003d82, #0069d9);
+    border-radius: 99px;
+    animation: progress-slide 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(700%); }
+}
+
 .generation-steps {
   display: flex;
   flex-direction: column;
@@ -763,6 +784,123 @@
   transition: border-color 0.15s;
 
   &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// ─── File upload — drag & drop zone ──────────────────────────────────────────
+.file-drop-zone {
+  border: 2px dashed #b0c8e8;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 2rem 1rem;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+
+  .drop-zone-icon {
+    font-size: 2.2rem;
+    color: #6c9fcf;
+    display: block;
+  }
+
+  .drop-zone-hint {
+    font-size: 0.78rem;
+    color: #8a9ab5;
+  }
+
+  &.drag-over {
+    border-color: #003d82;
+    background: #eef4ff;
+    box-shadow: 0 0 0 4px rgba(0, 61, 130, 0.1);
+    border-style: solid;
+
+    .drop-zone-icon {
+      color: #003d82;
+      transform: scale(1.12);
+    }
+  }
+
+  &.uploading {
+    border-color: #0d6efd;
+    background: #f0f7ff;
+    cursor: wait;
+  }
+}
+
+// ─── Upload stage indicators ──────────────────────────────────────────────────
+.upload-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 220px;
+  text-align: left;
+}
+
+.upload-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  color: #9aabb8;
+  transition: color 0.2s;
+
+  .stage-indicator {
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d0dce8;
+    display: inline-block;
+  }
+
+  &.active {
+    color: #003d82;
+    font-weight: 600;
+  }
+
+  &.done {
+    color: #198754;
+  }
+}
+
+// ─── Upload success flash ─────────────────────────────────────────────────────
+.upload-success-flash {
+  font-size: 0.88rem;
+  color: #198754;
+  font-weight: 500;
+  animation: fade-in-up 0.3s ease;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ─── File type badge ──────────────────────────────────────────────────────────
+.file-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: #e0ebff;
+  color: #003d82;
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: center;
 }
 
 .kanban-modal-value {

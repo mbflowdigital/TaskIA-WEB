@@ -782,9 +782,12 @@
                 <!-- TELA 5: REVISÃO E GERAÇÃO -->
 
                 <!-- Loading / geração -->
-                <div *ngIf="currentStep === 5 && isSubmitting" class="generation-loading text-center py-5">
+                <div *ngIf="currentStep === 5 && isSubmitting && !analysisResult" class="generation-loading text-center py-5">
                   <div class="generation-robot mb-3">🤖</div>
-                  <h5 class="fw-bold mb-4">Gerando plano com IA...</h5>
+                  <h5 class="fw-bold mb-3">Gerando plano com IA...</h5>
+                  <div class="generation-progress mb-4">
+                    <div class="generation-progress-bar"></div>
+                  </div>
                   <div class="generation-steps">
                     <div class="generation-step" [class.done]="generationStep > 1" [class.active]="generationStep === 1">
                       <span class="gen-icon">{{ generationStep > 1 ? '✅' : (generationStep === 1 ? '⏳' : '⬜') }}</span>
@@ -849,7 +852,6 @@
                         <strong>{{ member.get('userName')?.value }}</strong>
                         <span class="text-muted">{{ member.get('role')?.value }}</span>
                         <span class="text-muted">{{ member.get('dedication')?.value }}</span>
-                        <span *ngIf="member.get('isApprover')?.value" class="badge bg-primary-subtle text-primary">Aprovador</span>
                       </div>
                     </div>
                   </div>
@@ -915,6 +917,114 @@
                         </div>
                         <div class="col-12" *ngIf="f['biggestRisk'].value"><span class="text-muted">Maior risco:</span> {{ f['biggestRisk'].value }}</div>
                       </div>
+                    </div>
+                  </div>
+
+                  <!-- Contexto adicional via arquivos -->
+                  <div class="review-card mb-3">
+                    <div class="review-card-header" (click)="toggleReviewSection('files')">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="review-step-badge">📎</span>
+                        <span class="fw-semibold">Documentos e contexto adicional (opcional)</span>
+                        <span class="review-summary text-muted ms-2" *ngIf="uploadedFiles.length">{{ uploadedFiles.length }} arquivo(s) anexado(s)</span>
+                      </div>
+                      <span class="review-chevron" [class.open]="reviewOpenSections['files']">›</span>
+                    </div>
+                    <div class="review-card-body" *ngIf="reviewOpenSections['files']">
+
+                      <!-- Drop zone -->
+                      <div
+                        class="file-drop-zone"
+                        [class.drag-over]="isDragOver"
+                        [class.uploading]="isUploadingFile"
+                        (dragover)="onDragOver($event)"
+                        (dragleave)="onDragLeave($event)"
+                        (drop)="onDrop($event)"
+                      >
+                        <ng-container *ngIf="!isUploadingFile">
+                          <i class="ft-upload-cloud drop-zone-icon"></i>
+                          <p class="mb-1 fw-semibold">Arraste um arquivo aqui ou</p>
+                          <label class="btn btn-sm btn-outline-primary cursor-pointer mb-0">
+                            <input
+                              type="file"
+                              class="d-none"
+                              (change)="onFileSelected($event)"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                              [disabled]="isUploadingFile"
+                            />
+                            selecione do computador
+                          </label>
+                          <p class="drop-zone-hint mt-2 mb-0">PDF, Word, Excel ou TXT · máximo 20 MB</p>
+                        </ng-container>
+
+                        <!-- Upload stages feedback -->
+                        <ng-container *ngIf="isUploadingFile">
+                          <div class="upload-stages">
+                            <div class="upload-stage" [class.active]="uploadStage === 'uploading'" [class.done]="uploadStage === 'processing' || uploadStage === 'done'">
+                              <span class="stage-indicator">
+                                <span *ngIf="uploadStage === 'uploading'" class="spinner-border spinner-border-sm" role="status"></span>
+                                <i *ngIf="uploadStage !== 'uploading'" class="ft-check-circle text-success"></i>
+                              </span>
+                              <span>Enviando arquivo...</span>
+                            </div>
+                            <div class="upload-stage" [class.active]="uploadStage === 'processing'" [class.done]="uploadStage === 'done'">
+                              <span class="stage-indicator">
+                                <span *ngIf="uploadStage === 'processing'" class="spinner-border spinner-border-sm" role="status"></span>
+                                <i *ngIf="uploadStage === 'done'" class="ft-check-circle text-success"></i>
+                                <span *ngIf="uploadStage === 'uploading'" class="stage-dot"></span>
+                              </span>
+                              <span>Extraindo conteúdo com IA...</span>
+                            </div>
+                          </div>
+                        </ng-container>
+                      </div>
+
+                      <!-- Success flash -->
+                      <div *ngIf="uploadStage === 'done' && !isUploadingFile" class="upload-success-flash d-flex align-items-center gap-2 mt-2">
+                        <i class="ft-check-circle text-success"></i>
+                        <span>Arquivo processado e pronto para análise!</span>
+                      </div>
+
+                      <!-- Error -->
+                      <div *ngIf="fileUploadError" class="alert alert-danger alert-sm mt-2 d-flex align-items-center gap-2">
+                        <i class="ft-alert-circle"></i>
+                        <span>{{ fileUploadError }}</span>
+                      </div>
+
+                      <!-- Uploaded files list -->
+                      <div *ngIf="uploadedFiles.length" class="uploaded-files-list mt-3">
+                        <p class="text-muted small mb-2 fw-semibold">Arquivos anexados:</p>
+                        <div class="uploaded-file-item d-flex align-items-center justify-content-between mb-2 p-2 border rounded"
+                             *ngFor="let file of uploadedFiles; let i = index">
+                          <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                            <span class="file-type-badge">{{ getFileTypeName(file.fileName) }}</span>
+                            <div class="flex-grow-1 min-w-0">
+                              <div class="fw-semibold text-truncate" style="max-width: 260px;" [title]="file.fileName">{{ file.fileName }}</div>
+                              <small class="text-muted">{{ formatFileSize(file.fileSize) }}</small>
+                            </div>
+                          </div>
+                          <button type="button" class="btn btn-sm btn-link text-danger p-0 flex-shrink-0" (click)="removeUploadedFile(i)" title="Remover arquivo">
+                            <i class="ft-x"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Additional context textarea -->
+                      <div class="mt-3">
+                        <label class="form-label fw-semibold d-block mb-1" style="font-size: 0.88rem;">
+                          Contexto adicional para a IA <span class="text-muted fw-normal">(opcional)</span>
+                        </label>
+                        <textarea
+                          class="form-control"
+                          rows="3"
+                          maxlength="1000"
+                          placeholder="Descreva informações extras que a IA deve considerar, como restrições específicas, convenções internas, riscos já conhecidos, etc."
+                          [(ngModel)]="additionalContext"
+                          [ngModelOptions]="{standalone: true}"
+                        ></textarea>
+                        <div class="char-count text-end">{{ additionalContext.length }}/1000</div>
+                      </div>
+
                     </div>
                   </div>
 

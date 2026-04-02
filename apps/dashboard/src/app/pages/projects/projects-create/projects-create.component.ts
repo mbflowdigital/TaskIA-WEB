@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { AbstractControl, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormsModule, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, forkJoin, takeUntil, debounceTime } from 'rxjs';
 
@@ -12,11 +12,12 @@ import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from '../../../shared/api/claude-api.service';
+import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
 
 @Component({
   selector: 'app-projects-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, DragDropModule, NgbTooltipModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, DragDropModule, NgbTooltipModule],
   templateUrl: './projects-create.component.html',
   styleUrls: ['./projects-create.component.scss']
 })
@@ -101,7 +102,17 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   generationStep = 0;
   private generationInterval?: ReturnType<typeof setInterval>;
 
-  reviewOpenSections: Record<string, boolean> = { basic: true, team: false, context: false, priorities: false };
+  reviewOpenSections: Record<string, boolean> = { basic: true, team: true, context: true, priorities: true, files: true };
+
+  // File upload state
+  uploadedFiles: ExtractedTextResponse[] = [];
+  isUploadingFile = false;
+  fileUploadError?: string;
+  uploadStage: 'idle' | 'uploading' | 'processing' | 'done' = 'idle';
+  isDragOver = false;
+  additionalContext = '';
+  private readonly MAX_FILE_SIZE_MB = 20;
+  private readonly MAX_FILE_SIZE_BYTES = this.MAX_FILE_SIZE_MB * 1024 * 1024;
 
   toggleReviewSection(key: string): void {
     this.reviewOpenSections[key] = !this.reviewOpenSections[key];
@@ -256,6 +267,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     private readonly companiesApi: CompaniesApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
+    private readonly documentsApi: DocumentsApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -347,7 +359,12 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.teamMembersArray.updateValueAndValidity();
     this.priorityItems = ['Prazo', 'Qualidade', 'Custo', 'Escopo', 'Documentação'];
     this.generationStep = 0;
-    this.reviewOpenSections = { basic: true, team: false, context: false, priorities: false };
+    this.reviewOpenSections = { basic: true, team: true, context: true, priorities: true, files: true };
+    this.uploadedFiles = [];
+    this.fileUploadError = undefined;
+    this.uploadStage = 'idle';
+    this.isDragOver = false;
+    this.additionalContext = '';
     this.formSubmitted = false;
     this.submitError = undefined;
     this.submitErrors = [];
@@ -1338,6 +1355,28 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     if (approvers.dpo) selectedApprovers.push('DPO');
     if (approvers.complianceTeam) selectedApprovers.push('Compliance');
 
+    // Montar bloco de documentos + contexto adicional do step 5
+    let additionalContext = raw.finalObservations || '';
+
+    if (this.uploadedFiles.length > 0 || this.additionalContext?.trim()) {
+      let documentBlock = '=== DOCUMENTOS E CONTEXTO ADICIONAL ===';
+
+      if (this.uploadedFiles.length > 0) {
+        const filesContext = this.uploadedFiles
+          .map(file => `\n\n--- Conteúdo de ${file.fileName} ---\n${file.extractedText}`)
+          .join('\n');
+        documentBlock += filesContext;
+      }
+
+      if (this.additionalContext?.trim()) {
+        documentBlock += `\n\n--- Contexto adicional informado pelo usuário ---\n${this.additionalContext.trim()}`;
+      }
+
+      additionalContext = additionalContext
+        ? `${additionalContext}\n\n${documentBlock}`
+        : documentBlock;
+    }
+
     const payload: ProjectAnalysisRequest = {
       projectName: raw.name,
       objective: raw.objective,
@@ -1367,7 +1406,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       whatWentWrong: raw.previousExperience === 'similar' ? raw.whatWentWrong : undefined,
       detailLevel: raw.detailLevel,
       reviewFrequency: raw.reviewFrequency,
-      finalObservations: raw.finalObservations || undefined
+      finalObservations: additionalContext || undefined
     };
 
     this.claudeApi.analyzeProject(payload)
@@ -1501,5 +1540,146 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         this.submitError = 'Erro inesperado ao salvar o projeto.';
       }
     });
+  }
+
+  // ── File upload management ──────────────────────────────────────────────
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    
+    // Reset input para permitir selecionar o mesmo arquivo novamente
+    input.value = '';
+
+    // Validar tamanho
+    if (file.size > this.MAX_FILE_SIZE_BYTES) {
+      this.fileUploadError = `Arquivo muito grande (${this.formatFileSize(file.size)}). O limite é ${this.MAX_FILE_SIZE_MB}MB.`;
+      return;
+    }
+
+    // Validar tipo
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+    const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExtensions.includes(fileExtension)) {
+      this.fileUploadError = `Formato "${fileExtension}" não suportado. Use: PDF, Word, Excel ou TXT.`;
+      return;
+    }
+
+    this.uploadFile(file);
+  }
+
+  private uploadFile(file: File): void {
+    this.isUploadingFile = true;
+    this.uploadStage = 'uploading';
+    this.fileUploadError = undefined;
+
+    // Transition to processing stage after brief delay to signal upload completed
+    const processingTimer = setTimeout(() => {
+      if (this.isUploadingFile) this.uploadStage = 'processing';
+    }, 600);
+
+    this.documentsApi.extractText(file)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          clearTimeout(processingTimer);
+          this.isUploadingFile = false;
+          if (!result?.isSuccess || !result.data) {
+            this.uploadStage = 'idle';
+            this.fileUploadError = result?.message ?? 'Erro ao processar o arquivo. Verifique se o arquivo não está corrompido.';
+            return;
+          }
+          this.uploadedFiles.push(result.data);
+          this.uploadStage = 'done';
+          this.fileUploadError = undefined;
+          // Reset stage after brief success feedback
+          setTimeout(() => { this.uploadStage = 'idle'; }, 2000);
+        },
+        error: () => {
+          clearTimeout(processingTimer);
+          this.isUploadingFile = false;
+          this.uploadStage = 'idle';
+          this.fileUploadError = 'Não foi possível enviar o arquivo. Verifique sua conexão e tente novamente.';
+        }
+      });
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.isUploadingFile) this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+    if (this.isUploadingFile) return;
+
+    const files = event.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    this.fileUploadError = undefined;
+
+    if (file.size > this.MAX_FILE_SIZE_BYTES) {
+      this.fileUploadError = `Arquivo muito grande (${this.formatFileSize(file.size)}). O limite é ${this.MAX_FILE_SIZE_MB}MB.`;
+      return;
+    }
+
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      this.fileUploadError = `Formato "${ext}" não suportado. Use: PDF, Word, Excel ou TXT.`;
+      return;
+    }
+
+    this.uploadFile(file);
+  }
+
+  getFileIcon(fileName: string): string {
+    const ext = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+    const icons: Record<string, string> = {
+      '.pdf': 'ft-file-text',
+      '.doc': 'ft-file',
+      '.docx': 'ft-file',
+      '.xls': 'ft-grid',
+      '.xlsx': 'ft-grid',
+      '.txt': 'ft-align-left'
+    };
+    return icons[ext] ?? 'ft-file';
+  }
+
+  getFileTypeName(fileName: string): string {
+    const ext = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+    const types: Record<string, string> = {
+      '.pdf': 'PDF',
+      '.doc': 'Word',
+      '.docx': 'Word',
+      '.xls': 'Excel',
+      '.xlsx': 'Excel',
+      '.txt': 'Texto'
+    };
+    return types[ext] ?? ext.replace('.', '').toUpperCase();
+  }
+
+  removeUploadedFile(index: number): void {
+    this.uploadedFiles.splice(index, 1);
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
 }
