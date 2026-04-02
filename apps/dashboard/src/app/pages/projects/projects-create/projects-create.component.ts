@@ -61,6 +61,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   analysisResult?: ProjectAnalysisResult;
   showRecommendations = false;
 
+  // ── Step 5 state ─────────────────────────────────────────────────────────
+
   get parsedRisks(): { level: string; label: string; items: string[] }[] {
     if (!this.analysisResult?.risks) return [];
     const levelMap: Record<string, string> = {
@@ -1376,7 +1378,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           this.generationStep = 4;
           if (result?.isSuccess && result.data) {
             this.analysisResult = result.data;
-            this.showRecommendations = false;
+            this.showRecommendations = true;
+            if (this.createdProjectId) {
+              return;
+            }
           }
           this.finishProjectCreation();
         },
@@ -1386,6 +1391,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           this.finishProjectCreation();
         }
       });
+  }
+
+  navigateToBoard(): void {
+    this.authSession.clearOnboardingFlag();
+    this.router.navigate(['/projects', this.createdProjectId, 'board']);
   }
 
   private finishProjectCreation(): void {
