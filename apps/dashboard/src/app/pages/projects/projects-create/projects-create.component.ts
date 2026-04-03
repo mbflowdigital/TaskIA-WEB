@@ -63,6 +63,36 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   showRecommendations = false;
   isGeneratingTasks = false;
   generateTasksError?: string;
+  currentTaskMessage = '';
+  private taskMessageInterval?: ReturnType<typeof setInterval>;
+
+  private readonly taskMessages = [
+    '🚀 Segura aí, as tarefas estão ficando prontas...',
+    '🤖 A IA está destrinchando seu projeto em tarefas...',
+    '⚙️ Montando o backlog com carinho e inteligência...',
+    '🧠 Pensando nas melhores subtarefas para o seu time...',
+    '📋 Organizando tudo em prioridades certeiras...',
+    '✨ Quase lá! Finalizando os detalhes de cada tarefa...',
+    '🎯 Ajustando prazos e responsáveis sugeridos...',
+    '💡 Aplicando as melhores práticas de gestão de projetos...',
+    '🔍 Revisando a coerência das tarefas geradas...',
+    '📦 Empacotando as tarefas para o seu kanban...',
+    '🏗️ Estruturando as dependências entre as tarefas...',
+    '📊 Calculando o esforço estimado de cada entrega...',
+    '🗂️ Classificando as tarefas por área e responsabilidade...',
+    '🔗 Conectando as tarefas com os objetivos do projeto...',
+    '🧩 Quebrando as entregas grandes em partes menores...',
+    '📅 Distribuindo as tarefas ao longo do cronograma...',
+    '🌐 Validando as integrações e dependências externas...',
+    '🛡️ Verificando se os riscos estão cobertos pelas tarefas...',
+    '📝 Adicionando descrições detalhadas em cada item...',
+    '🎨 Finalizando os últimos ajustes antes de entregar...',
+    '⏳ Isso pode levar um minutinho, mas vai valer a pena...',
+    '☕ Pode pegar um café, estamos quase terminando...',
+    '🏆 Gerando um backlog digno do seu projeto...',
+    '💪 Trabalhando duro aqui pra te poupar horas de planejamento...',
+    '🔮 Prevendo os próximos passos do seu projeto...',
+  ];
 
   // ── Step 5 state ─────────────────────────────────────────────────────────
 
@@ -1485,10 +1515,27 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       });
   }
 
+  private startTaskMessages(): void {
+    this.currentTaskMessage = this.taskMessages[0];
+    let idx = 1;
+    this.taskMessageInterval = setInterval(() => {
+      this.currentTaskMessage = this.taskMessages[idx % this.taskMessages.length];
+      idx++;
+    }, 4000);
+  }
+
+  private stopTaskMessages(): void {
+    if (this.taskMessageInterval) {
+      clearInterval(this.taskMessageInterval);
+      this.taskMessageInterval = undefined;
+    }
+  }
+
   onGenerateTasks(): void {
     if (!this.createdProjectId) return;
     this.isGeneratingTasks = true;
     this.generateTasksError = undefined;
+    this.startTaskMessages();
 
     this.claudeApi.generateTasks(this.createdProjectId)
       .pipe(takeUntil(this.destroy$))
@@ -1497,11 +1544,13 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           if (res?.isSuccess && res.data?.jobId) {
             this.pollJobStatus(res.data.jobId);
           } else {
+            this.stopTaskMessages();
             this.isGeneratingTasks = false;
             this.generateTasksError = res?.message ?? 'Erro ao iniciar geração de tarefas.';
           }
         },
         error: () => {
+          this.stopTaskMessages();
           this.isGeneratingTasks = false;
           this.generateTasksError = 'Erro ao iniciar geração de tarefas.';
         }
@@ -1523,15 +1572,18 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         next: (r) => {
           const status = r?.data?.status as GenerateTasksJobStatus['status'] | undefined;
           if (status === 'Completed') {
+            this.stopTaskMessages();
             this.isGeneratingTasks = false;
             this.authSession.clearOnboardingFlag();
             this.router.navigate(['/projects', this.createdProjectId, 'board']);
           } else if (status === 'Failed') {
+            this.stopTaskMessages();
             this.isGeneratingTasks = false;
             this.generateTasksError = r?.data?.errorMessage ?? 'Erro ao gerar tarefas. Tente novamente.';
           }
         },
         error: () => {
+          this.stopTaskMessages();
           this.isGeneratingTasks = false;
           this.generateTasksError = 'Erro ao verificar status da geração. Tente novamente.';
         }
