@@ -97,6 +97,16 @@ export interface GenerateTasksJobStatus {
   errorMessage?: string;
 }
 
+export interface AnalyzeProjectJob {
+  jobId: string;
+}
+
+export interface AnalyzeProjectJobStatus {
+  status: 'Pending' | 'Running' | 'Completed' | 'Failed';
+  result?: ProjectAnalysisResult;
+  errorMessage?: string;
+}
+
 /** Serviço para chamadas à Claude AI API */
 @Injectable({
   providedIn: 'root'
@@ -116,12 +126,22 @@ export class ClaudeApiService {
       );
   }
 
-  analyzeProject(payload: ProjectAnalysisRequest): Observable<ApiResult<ProjectAnalysisResult>> {
+  analyzeProject(payload: ProjectAnalysisRequest): Observable<ApiResult<AnalyzeProjectJob>> {
     return this.http
-      .post<ApiResult<ProjectAnalysisResult>>(`${this.baseUrl}/api/claude/analyze-project`, payload)
+      .post<ApiResult<AnalyzeProjectJob>>(`${this.baseUrl}/api/claude/analyze-project`, payload)
       .pipe(
         catchError((err: HttpErrorResponse) =>
-          of(err.error as ApiResult<ProjectAnalysisResult>)
+          of(err.error as ApiResult<AnalyzeProjectJob>)
+        )
+      );
+  }
+
+  pollAnalyzeProjectStatus(jobId: string): Observable<ApiResult<AnalyzeProjectJobStatus>> {
+    return this.http
+      .get<ApiResult<AnalyzeProjectJobStatus>>(`${this.baseUrl}/api/claude/analyze-project/${jobId}/status`)
+      .pipe(
+        catchError((err: HttpErrorResponse) =>
+          of(err.error as ApiResult<AnalyzeProjectJobStatus>)
         )
       );
   }
