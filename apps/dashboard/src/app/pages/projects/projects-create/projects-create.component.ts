@@ -61,6 +61,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   submitSuccess?: string;
   analysisResult?: ProjectAnalysisResult;
   showRecommendations = false;
+  isGeneratingTasks = false;
+  generateTasksError?: string;
 
   // ── Step 5 state ─────────────────────────────────────────────────────────
 
@@ -632,6 +634,17 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       if (sorted.length === 5) {
         this.priorityItems = sorted.map(p => priorityLabelMap[p.priorityType] ?? p.priorityType);
       }
+    }
+
+    // Se o projeto já tem análise IA salva, exibir diretamente no passo 5
+    if (data.iaOverview) {
+      this.analysisResult = {
+        overview: data.iaOverview,
+        risks: data.iaRisks ?? '',
+        recommendations: data.iaRecommendations ?? ''
+      };
+      this.currentStep = 5;
+      this.showRecommendations = true;
     }
 
     this.checkForDraft();
@@ -1378,6 +1391,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     }
 
     const payload: ProjectAnalysisRequest = {
+      projectId: this.createdProjectId,
       projectName: raw.name,
       objective: raw.objective,
       startDate: raw.startDate,
@@ -1415,6 +1429,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
         next: (result) => {
           if (this.generationInterval) clearInterval(this.generationInterval);
           this.generationStep = 4;
+          this.isSubmitting = false;
           if (result?.isSuccess && result.data) {
             this.analysisResult = result.data;
             this.showRecommendations = true;
@@ -1430,6 +1445,35 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           this.finishProjectCreation();
         }
       });
+  }
+
+  onGenerateTasks(): void {
+    if (!this.createdProjectId) return;
+    this.isGeneratingTasks = true;
+    this.generateTasksError = undefined;
+    this.claudeApi.generateTasks(this.createdProjectId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.isGeneratingTasks = false;
+          if (result?.isSuccess) {
+            this.authSession.clearOnboardingFlag();
+            this.router.navigate(['/projects', this.createdProjectId, 'board']);
+          } else {
+            this.generateTasksError = result?.message ?? 'Erro ao gerar tarefas. Tente novamente.';
+          }
+        },
+        error: () => {
+          this.isGeneratingTasks = false;
+          this.generateTasksError = 'Erro inesperado ao gerar tarefas. Tente novamente.';
+        }
+      });
+  }
+
+  resetAnalysis(): void {
+    this.analysisResult = undefined;
+    this.isSubmitting = false;
+    this.generationStep = 0;
   }
 
   navigateToBoard(): void {
