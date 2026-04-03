@@ -21,6 +21,7 @@ export interface TeamMemberAnalysis {
 }
 
 export interface ProjectAnalysisRequest {
+  projectId?: string;
   projectName: string;
   objective: string;
   startDate: string;

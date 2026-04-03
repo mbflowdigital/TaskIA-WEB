@@ -1391,6 +1391,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     }
 
     const payload: ProjectAnalysisRequest = {
+      projectId: this.createdProjectId,
       projectName: raw.name,
       objective: raw.objective,
       startDate: raw.startDate,
