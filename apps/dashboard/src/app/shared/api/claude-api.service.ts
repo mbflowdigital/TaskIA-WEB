@@ -81,11 +81,6 @@ export interface ProjectAnalysisResult {
   promptSent?: string;
 }
 
-export interface GenerateTasksResult {
-  tasksCreated: number;
-  promptSent?: string;
-}
-
 /** Serviço para chamadas à Claude AI API */
 @Injectable({
   providedIn: 'root'
@@ -111,16 +106,6 @@ export class ClaudeApiService {
       .pipe(
         catchError((err: HttpErrorResponse) =>
           of(err.error as ApiResult<ProjectAnalysisResult>)
-        )
-      );
-  }
-
-  generateTasks(projectId: string): Observable<ApiResult<GenerateTasksResult>> {
-    return this.http
-      .post<ApiResult<GenerateTasksResult>>(`${this.baseUrl}/api/claude/generate-tasks`, { projectId })
-      .pipe(
-        catchError((err: HttpErrorResponse) =>
-          of(err.error as ApiResult<GenerateTasksResult>)
         )
       );
   }
