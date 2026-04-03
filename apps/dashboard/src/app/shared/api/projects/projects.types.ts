@@ -239,4 +239,7 @@ export interface ProjectCompleteDto {
   members: ProjectMemberCompleteDto[];
   details?: ProjectDetailsCompleteDto;
   executionSettings?: ProjectExecutionSettingsCompleteDto;
+  iaOverview?: string;
+  iaRisks?: string;
+  iaRecommendations?: string;
 }
