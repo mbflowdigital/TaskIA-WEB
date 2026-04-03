@@ -84,20 +84,22 @@
                     <div class="col-12 col-md-6">
                       <div class="form-group" *ngIf="isAdmMaster">
                         <div class="controls">
-                          <label for="users-create-company">Empresa</label>
+                          <label for="users-create-company">Empresa <small class="text-muted">(opcional)</small></label>
                           <select
                             id="users-create-company"
                             class="form-control"
                             formControlName="companyId"
-                            [class.is-invalid]="formSubmitted && f.companyId.invalid"
                           >
                             <option value="">Selecione uma empresa</option>
                             <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
                           </select>
-                          <div class="invalid-feedback" *ngIf="formSubmitted && f.companyId.invalid">
-                            Empresa é obrigatória para ADM_MASTER.
-                          </div>
                           <small *ngIf="companiesLoading" class="text-muted">Carregando empresas...</small>
+                          <small *ngIf="!companiesLoading && f.role.value === 'ADM' && f.companyId.value" class="text-success">
+                            Empresa já atribuída – este ADM só precisará trocar a senha no 1º acesso.
+                          </small>
+                          <small *ngIf="!companiesLoading && f.role.value === 'ADM' && !f.companyId.value" class="text-muted">
+                            Sem empresa selecionada – este ADM criará a própria empresa no 1º acesso.
+                          </small>
                         </div>
                       </div>
 
@@ -173,11 +175,12 @@
                             id="users-create-role"
                             class="form-control"
                             formControlName="role"
-                            disabled
+                            [attr.disabled]="isAdmMaster ? null : true"
                           >
                             <option value="USER">Usuário</option>
+                            <option value="ADM" *ngIf="isAdmMaster">Administrador (ADM)</option>
                           </select>
-                          <small class="text-muted">Perfil fixo: Usuário padrão (USER).</small>
+                          <small class="text-muted" *ngIf="!isAdmMaster">Perfil fixo: Usuário padrão (USER).</small>
                         </div>
                       </div>
                     </div>
