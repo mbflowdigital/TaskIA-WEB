@@ -87,6 +87,16 @@ export interface GenerateTasksResult {
   promptSent?: string;
 }
 
+export interface GenerateTasksJob {
+  jobId: string;
+}
+
+export interface GenerateTasksJobStatus {
+  status: 'Pending' | 'Running' | 'Completed' | 'Failed';
+  tasksCreated: number;
+  errorMessage?: string;
+}
+
 /** Serviço para chamadas à Claude AI API */
 @Injectable({
   providedIn: 'root'
@@ -116,12 +126,22 @@ export class ClaudeApiService {
       );
   }
 
-  generateTasks(projectId: string): Observable<ApiResult<GenerateTasksResult>> {
+  generateTasks(projectId: string): Observable<ApiResult<GenerateTasksJob>> {
     return this.http
-      .post<ApiResult<GenerateTasksResult>>(`${this.baseUrl}/api/claude/generate-tasks`, { projectId })
+      .post<ApiResult<GenerateTasksJob>>(`${this.baseUrl}/api/claude/generate-tasks`, { projectId })
       .pipe(
         catchError((err: HttpErrorResponse) =>
-          of(err.error as ApiResult<GenerateTasksResult>)
+          of(err.error as ApiResult<GenerateTasksJob>)
+        )
+      );
+  }
+
+  pollGenerateTasksStatus(jobId: string): Observable<ApiResult<GenerateTasksJobStatus>> {
+    return this.http
+      .get<ApiResult<GenerateTasksJobStatus>>(`${this.baseUrl}/api/claude/generate-tasks/${jobId}/status`)
+      .pipe(
+        catchError((err: HttpErrorResponse) =>
+          of(err.error as ApiResult<GenerateTasksJobStatus>)
         )
       );
   }
