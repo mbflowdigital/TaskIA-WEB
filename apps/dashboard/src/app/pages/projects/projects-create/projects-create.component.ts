@@ -3,7 +3,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, FormsModule, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subject, forkJoin, takeUntil, debounceTime } from 'rxjs';
+import { Subject, forkJoin, takeUntil, debounceTime, interval, switchMap, takeWhile, startWith } from 'rxjs';
 
 import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
@@ -11,7 +11,7 @@ import { ProjectMemberRequest, ProjectDetailsRequest, ProjectExecutionSettingsRe
 import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
-import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult } from '../../../shared/api/claude-api.service';
+import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus } from '../../../shared/api/claude-api.service';
 import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
 
 @Component({
@@ -1451,21 +1451,51 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     if (!this.createdProjectId) return;
     this.isGeneratingTasks = true;
     this.generateTasksError = undefined;
+
     this.claudeApi.generateTasks(this.createdProjectId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (result) => {
-          this.isGeneratingTasks = false;
-          if (result?.isSuccess) {
-            this.authSession.clearOnboardingFlag();
-            this.router.navigate(['/projects', this.createdProjectId, 'board']);
+        next: (res) => {
+          if (res?.isSuccess && res.data?.jobId) {
+            this.pollJobStatus(res.data.jobId);
           } else {
-            this.generateTasksError = result?.message ?? 'Erro ao gerar tarefas. Tente novamente.';
+            this.isGeneratingTasks = false;
+            this.generateTasksError = res?.message ?? 'Erro ao iniciar geração de tarefas.';
           }
         },
         error: () => {
           this.isGeneratingTasks = false;
-          this.generateTasksError = 'Erro inesperado ao gerar tarefas. Tente novamente.';
+          this.generateTasksError = 'Erro ao iniciar geração de tarefas.';
+        }
+      });
+  }
+
+  private pollJobStatus(jobId: string): void {
+    interval(3000)
+      .pipe(
+        startWith(0),
+        switchMap(() => this.claudeApi.pollGenerateTasksStatus(jobId)),
+        takeWhile(
+          (r) => r?.data?.status === 'Pending' || r?.data?.status === 'Running',
+          true /* inclusive — emite o valor que quebrou a condição */
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (r) => {
+          const status = r?.data?.status as GenerateTasksJobStatus['status'] | undefined;
+          if (status === 'Completed') {
+            this.isGeneratingTasks = false;
+            this.authSession.clearOnboardingFlag();
+            this.router.navigate(['/projects', this.createdProjectId, 'board']);
+          } else if (status === 'Failed') {
+            this.isGeneratingTasks = false;
+            this.generateTasksError = r?.data?.errorMessage ?? 'Erro ao gerar tarefas. Tente novamente.';
+          }
+        },
+        error: () => {
+          this.isGeneratingTasks = false;
+          this.generateTasksError = 'Erro ao verificar status da geração. Tente novamente.';
         }
       });
   }
