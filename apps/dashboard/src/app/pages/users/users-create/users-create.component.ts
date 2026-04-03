@@ -69,10 +69,8 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.isAdmMaster) {
-      this.form.controls['companyId'].setValidators([Validators.required]);
-      this.form.controls['companyId'].updateValueAndValidity({ emitEvent: false });
-    }
+    // companyId é sempre opcional para ADM_MASTER (sem Validators.required)
+    // A lógica de empresa é tratada no backend conforme a role do novo usuário
 
     this.loadReferenceData();
 
@@ -220,11 +218,9 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.isAdmMaster && !companyId) {
-      this.isSubmitting = false;
-      this.submitError = 'Selecione a empresa do usuário.';
-      return;
-    }
+    const role = String(this.form.getRawValue().role ?? 'USER').trim() || 'USER';
+
+    // companyId é opcional — backend resolve empresa conforme perfil do ator e do novo usuário
 
     if (this.isEditMode) {
       const id = this.editingUserId;
@@ -263,7 +259,6 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     }
 
     const email = String(this.form.getRawValue().email ?? '').trim();
-    const role = 'USER';
 
     this.usersApi
       .create({ name, email, phone, cpf, birthDate, role, companyId, positionId })
