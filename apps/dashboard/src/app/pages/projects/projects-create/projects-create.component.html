@@ -1052,43 +1052,86 @@
                   </div>
                 </div>
 
-                <!-- Resultado da análise — Visão geral + Riscos -->
-                <div *ngIf="currentStep === 5 && analysisResult" class="mt-3">
-                  <div class="alert alert-success mb-3">
-                    <strong>Projeto criado e análise concluída!</strong>
-                  </div>
-                  <div class="card mb-3 border-0 shadow-sm">
-                    <div class="card-body">
-                      <h6 class="text-primary mb-1">Análise Geral</h6>
-                      <p class="mb-0">{{ analysisResult.overview }}</p>
+                <!-- Resultado da análise IA -->
+                <div *ngIf="currentStep === 5 && analysisResult" class="analysis-result mt-2">
+
+                  <!-- Banner de sucesso -->
+                  <div class="analysis-success-banner d-flex align-items-center gap-3 mb-4">
+                    <div class="analysis-success-icon">✅</div>
+                    <div>
+                      <div class="fw-bold fs-6">Plano gerado com sucesso!</div>
+                      <div class="text-muted" style="font-size:0.85rem;">Revise os insights da IA antes de gerar as tarefas.</div>
                     </div>
                   </div>
-                  <div class="card mb-3 border-0 shadow-sm">
-                    <div class="card-body">
-                      <h6 class="text-warning mb-3"><i class="ft-alert-triangle mr-1"></i> Riscos Identificados</h6>
+
+                  <!-- Visão Geral -->
+                  <div class="analysis-card mb-3">
+                    <div class="analysis-card-header">
+                      <span class="analysis-card-icon">📋</span>
+                      <span class="fw-semibold">Visão Geral</span>
+                    </div>
+                    <div class="analysis-card-body">
+                      <p class="mb-0 analysis-overview-text">{{ analysisResult.overview }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Riscos Identificados -->
+                  <div class="analysis-card mb-3">
+                    <div class="analysis-card-header">
+                      <span class="analysis-card-icon">⚠️</span>
+                      <span class="fw-semibold">Riscos Identificados</span>
+                      <span class="analysis-count-badge ms-auto" *ngIf="parsedRisks.length > 0">{{ parsedRisks.length }} categoria{{ parsedRisks.length !== 1 ? 's' : '' }}</span>
+                    </div>
+                    <div class="analysis-card-body">
                       <ng-container *ngFor="let riskGroup of parsedRisks">
-                        <div class="mb-3">
-                          <span class="badge mr-2 mb-1" [ngClass]="{
-                            'badge-danger': riskGroup.level === 'CRITICO',
-                            'badge-warning': riskGroup.level === 'ALTO',
-                            'badge-info': riskGroup.level === 'MEDIO',
-                            'badge-secondary': riskGroup.level === 'BAIXO'
-                          }" style="font-size: 0.78rem; padding: 0.35em 0.65em;">
-                            Risco {{ riskGroup.label }}
-                          </span>
-                          <ul class="mb-0 mt-1 pl-3">
-                            <li *ngFor="let item of riskGroup.items" class="mb-1">{{ item }}</li>
+                        <div class="risk-group mb-3">
+                          <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="risk-level-badge" [ngClass]="{
+                              'risk-critico': riskGroup.level === 'CRITICO',
+                              'risk-alto':    riskGroup.level === 'ALTO',
+                              'risk-medio':   riskGroup.level === 'MEDIO',
+                              'risk-baixo':   riskGroup.level === 'BAIXO'
+                            }">{{ riskGroup.label }}</span>
+                          </div>
+                          <ul class="risk-items-list mb-0">
+                            <li *ngFor="let item of riskGroup.items">{{ item }}</li>
                           </ul>
                         </div>
                       </ng-container>
                       <p *ngIf="parsedRisks.length === 0" class="mb-0 text-muted">Nenhum risco identificado.</p>
                     </div>
                   </div>
-                  <div class="d-flex justify-content-end">
-                    <button type="button" class="btn btn-primary" (click)="navigateToBoard()">
-                      Ver Tarefas <i class="ft-arrow-right ml-1"></i>
-                    </button>
+
+                  <!-- Recomendações -->
+                  <div class="analysis-card mb-4" *ngIf="parsedRecommendations.length > 0">
+                    <div class="analysis-card-header">
+                      <span class="analysis-card-icon">💡</span>
+                      <span class="fw-semibold">Recomendações</span>
+                      <span class="analysis-count-badge ms-auto">{{ parsedRecommendations.length }}</span>
+                    </div>
+                    <div class="analysis-card-body">
+                      <ol class="recommendations-list mb-0">
+                        <li *ngFor="let rec of parsedRecommendations" class="recommendation-item">{{ rec }}</li>
+                      </ol>
+                    </div>
                   </div>
+
+                  <!-- Ações -->
+                  <div class="d-flex justify-content-between align-items-center mt-3 pt-2" style="border-top: 1px solid #e8edf3;">
+                    <button type="button" class="btn btn-outline-secondary" (click)="resetAnalysis()" [disabled]="isGeneratingTasks">
+                      ← Rever plano
+                    </button>
+                    <div class="d-flex flex-column align-items-end gap-2">
+                      <button type="button" class="btn btn-primary btn-generate" (click)="onGenerateTasks()" [disabled]="isGeneratingTasks">
+                        <span *ngIf="isGeneratingTasks" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span *ngIf="!isGeneratingTasks">✨ </span>
+                        {{ isGeneratingTasks ? 'Gerando tarefas...' : 'Gerar tarefas' }}
+                        <i *ngIf="!isGeneratingTasks" class="ft-arrow-right ms-1"></i>
+                      </button>
+                      <small *ngIf="generateTasksError" class="text-danger">{{ generateTasksError }}</small>
+                    </div>
+                  </div>
+
                 </div>
 
               </div>
