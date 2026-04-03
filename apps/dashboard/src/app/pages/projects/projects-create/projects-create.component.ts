@@ -11,7 +11,7 @@ import { ProjectMemberRequest, ProjectDetailsRequest, ProjectExecutionSettingsRe
 import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
-import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus } from '../../../shared/api/claude-api.service';
+import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus, AnalyzeProjectJobStatus } from '../../../shared/api/claude-api.service';
 import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
 
 @Component({
@@ -1426,22 +1426,60 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.claudeApi.analyzeProject(payload)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (result) => {
-          if (this.generationInterval) clearInterval(this.generationInterval);
-          this.generationStep = 4;
-          this.isSubmitting = false;
-          if (result?.isSuccess && result.data) {
-            this.analysisResult = result.data;
-            this.showRecommendations = true;
-            if (this.createdProjectId) {
-              return;
-            }
+        next: (res) => {
+          if (res?.isSuccess && res.data?.jobId) {
+            this.pollAnalyzeStatus(res.data.jobId);
+          } else {
+            if (this.generationInterval) clearInterval(this.generationInterval);
+            this.generationStep = 0;
+            this.isSubmitting = false;
+            this.finishProjectCreation();
           }
-          this.finishProjectCreation();
         },
         error: () => {
           if (this.generationInterval) clearInterval(this.generationInterval);
           this.generationStep = 0;
+          this.isSubmitting = false;
+          this.finishProjectCreation();
+        }
+      });
+  }
+
+  private pollAnalyzeStatus(jobId: string): void {
+    interval(3000)
+      .pipe(
+        startWith(0),
+        switchMap(() => this.claudeApi.pollAnalyzeProjectStatus(jobId)),
+        takeWhile(
+          (r) => r?.data?.status === 'Pending' || r?.data?.status === 'Running',
+          true
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (r) => {
+          const status = r?.data?.status as AnalyzeProjectJobStatus['status'] | undefined;
+          if (status === 'Completed') {
+            if (this.generationInterval) clearInterval(this.generationInterval);
+            this.generationStep = 4;
+            this.isSubmitting = false;
+            if (r.data?.result) {
+              this.analysisResult = r.data.result;
+              this.showRecommendations = true;
+            } else {
+              this.finishProjectCreation();
+            }
+          } else if (status === 'Failed') {
+            if (this.generationInterval) clearInterval(this.generationInterval);
+            this.generationStep = 0;
+            this.isSubmitting = false;
+            this.finishProjectCreation();
+          }
+        },
+        error: () => {
+          if (this.generationInterval) clearInterval(this.generationInterval);
+          this.generationStep = 0;
+          this.isSubmitting = false;
           this.finishProjectCreation();
         }
       });
