@@ -254,6 +254,7 @@ $bg-light:    hsl(220, 20%, 98%);
   color: $text;
   transition: all 0.2s ease;
   background: white;
+  color-scheme: light;
 
   &:focus {
     outline: none;
@@ -266,6 +267,11 @@ $bg-light:    hsl(220, 20%, 98%);
   &.input-error {
     border-color: $error;
     &:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1); }
+  }
+
+  option {
+    background: white;
+    color: $text;
   }
 }
 

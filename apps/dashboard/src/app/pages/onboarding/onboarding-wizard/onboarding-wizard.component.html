@@ -103,6 +103,8 @@
                 class="form-input"
                 formControlName="cnpj"
                 placeholder="00.000.000/0000-00"
+                maxlength="18"
+                (input)="onCnpjInput($event)"
                 [class.input-error]="companySubmitted && cf['cnpj'].invalid"
               />
               <div class="input-error-message" *ngIf="companySubmitted && cf['cnpj'].invalid">

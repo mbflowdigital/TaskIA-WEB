@@ -25,6 +25,15 @@ function isValidBasicCnpj(value: string | null | undefined): boolean {
   return normalizeCnpj(value).length === 14;
 }
 
+function applyMaskCnpj(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 14);
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
 @Component({
   selector: 'app-onboarding-wizard',
   standalone: true,
@@ -158,6 +167,13 @@ export class OnboardingWizardComponent implements OnInit {
         control.enable({ emitEvent: false });
       }
     }
+  }
+
+  onCnpjInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const masked = applyMaskCnpj(input.value);
+    input.value = masked;
+    this.companyForm.controls['cnpj'].setValue(masked, { emitEvent: false });
   }
 
   onZipBlur(): void {
