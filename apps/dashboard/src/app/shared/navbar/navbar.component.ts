@@ -30,8 +30,11 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
   hideSidebar: boolean = true;
   public isCollapsed = true;
   userName = 'Usuario';
+  userAvatar: string | null = null;
   layoutSub: Subscription;
   configSub: Subscription;
+  avatarSub: Subscription;
+  nameSub: Subscription;
 
   @ViewChild('search') searchElement: ElementRef;
   @ViewChildren('searchResults') searchResults: QueryList<any>;
@@ -69,7 +72,19 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.listItems = LISTITEMS;
-    this.userName = this.authSessionService.getUser()?.name?.trim() || 'Usuario';
+    const sessionUser = this.authSessionService.getUser();
+    if (sessionUser?.userId) {
+      this.authSessionService.loadAvatar(sessionUser.userId);
+    }
+    this.authSessionService.loadUserName();
+    this.avatarSub = this.authSessionService.avatarUrl$.subscribe(url => {
+      this.userAvatar = url;
+      this.cdr.markForCheck();
+    });
+    this.nameSub = this.authSessionService.userName$.subscribe(name => {
+      this.userName = name || 'Usuario';
+      this.cdr.markForCheck();
+    });
 
     if (this.innerWidth < 1200) {
       this.isSmallScreen = true;
@@ -97,6 +112,12 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.configSub) {
       this.configSub.unsubscribe();
+    }
+    if (this.avatarSub) {
+      this.avatarSub.unsubscribe();
+    }
+    if (this.nameSub) {
+      this.nameSub.unsubscribe();
     }
   }
 

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 
 import { LoginData } from '../api/auth/auth.types';
 
@@ -22,6 +23,36 @@ const TOKEN_EXPIRATION_STORAGE_KEY = 'auth_token_expiration';
 @Injectable({ providedIn: 'root' })
 export class AuthSessionService {
 
+  private readonly _avatarUrl$ = new BehaviorSubject<string | null>(null);
+  readonly avatarUrl$ = this._avatarUrl$.asObservable();
+
+  private readonly _userName$ = new BehaviorSubject<string>('');
+  readonly userName$ = this._userName$.asObservable();
+
+  private avatarKey(userId: string): string { return `profile-photo-${userId}`; }
+
+  /** Emit novo avatar para todos os subscribers (navbar, etc.) */
+  setAvatar(userId: string, dataUrl: string | null): void {
+    if (dataUrl) {
+      localStorage.setItem(this.avatarKey(userId), dataUrl);
+    } else {
+      localStorage.removeItem(this.avatarKey(userId));
+    }
+    this._avatarUrl$.next(dataUrl);
+  }
+
+  /** Carrega avatar do localStorage e emite */
+  loadAvatar(userId: string): void {
+    const stored = localStorage.getItem(this.avatarKey(userId));
+    this._avatarUrl$.next(stored);
+  }
+
+  /** Emite o nome atual da sessão sem reescrever no localStorage */
+  loadUserName(): void {
+    const name = this.getUser()?.name?.trim() || '';
+    this._userName$.next(name);
+  }
+
   setSession(data: LoginData): void {
     this.setUser({
       userId: data.userId,
@@ -42,6 +73,7 @@ export class AuthSessionService {
 
   setUser(user: AuthUser): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    this._userName$.next(user.name?.trim() || '');
   }
 
   getUser(): AuthUser | null {

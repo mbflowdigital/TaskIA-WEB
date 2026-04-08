@@ -58,5 +58,9 @@ export const Full_ROUTES: Routes = [
   {
     path: 'projects/:id',
     loadComponent: () => import('../../pages/projects/project-detail/project-detail.component').then(m => m.ProjectDetailComponent)
+  },
+  {
+    path: 'profile',
+    loadComponent: () => import('../../pages/profile/my-profile.component').then(m => m.MyProfileComponent)
   }
 ];

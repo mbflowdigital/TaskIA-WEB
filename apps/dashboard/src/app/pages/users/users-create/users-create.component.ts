@@ -33,6 +33,8 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
 
   formSubmitted = false;
   isAdmMaster = false;
+  admCompanyId?: string;
+  admCompanyName?: string;
   companiesLoading = false;
   positionsLoading = false;
 
@@ -69,8 +71,11 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // companyId é sempre opcional para ADM_MASTER (sem Validators.required)
-    // A lógica de empresa é tratada no backend conforme a role do novo usuário
+    if (!this.isAdmMaster) {
+      const sessionUser = this.authSession.getUser();
+      this.admCompanyId = sessionUser?.companyId ?? undefined;
+      this.admCompanyName = sessionUser?.companyName ?? undefined;
+    }
 
     this.loadReferenceData();
 
@@ -207,7 +212,10 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     const phone = String(this.form.getRawValue().phone ?? '').trim() || undefined;
     const cpf = String(this.form.getRawValue().cpf ?? '').trim();
     const birthDateRaw = String(this.form.getRawValue().birthDate ?? '').trim();
-    const companyId = String(this.form.getRawValue().companyId ?? '').trim() || undefined;
+    // For non-ADM_MASTER: always use the ADM's own company from session
+    const companyId = this.isAdmMaster
+      ? (String(this.form.getRawValue().companyId ?? '').trim() || undefined)
+      : this.admCompanyId;
     const positionId = Number(this.form.getRawValue().positionId ?? 0);
     // Send date as-is (yyyy-MM-dd) to avoid UTC timezone shifting
     const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : null;

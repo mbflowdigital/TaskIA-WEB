@@ -30,15 +30,25 @@ export class CompanyDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
-    if (role !== 'ADM_MASTER') {
+    const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    if (!isAdmin) {
       this.router.navigate(['/page']);
       return;
     }
 
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
-      this.router.navigate(['/companies']);
+      this.router.navigate(['/page']);
       return;
+    }
+
+    // ADM só pode ver a própria empresa
+    if (role === 'ADM') {
+      const sessionCompanyId = this.authSession.getUser()?.companyId;
+      if (!sessionCompanyId || id !== sessionCompanyId) {
+        this.router.navigate(['/page']);
+        return;
+      }
     }
 
     this.load(id);

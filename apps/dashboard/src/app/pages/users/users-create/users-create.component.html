@@ -103,6 +103,14 @@
                         </div>
                       </div>
 
+                      <div class="form-group" *ngIf="!isAdmMaster && admCompanyName">
+                        <label>Empresa</label>
+                        <div class="form-control bg-light text-muted" style="cursor: default;">
+                          {{ admCompanyName }}
+                        </div>
+                        <small class="text-muted">O usuário será adicionado à sua empresa automaticamente.</small>
+                      </div>
+
                       <div class="form-group">
                         <div class="controls">
                           <label for="users-create-cpf">CPF</label>

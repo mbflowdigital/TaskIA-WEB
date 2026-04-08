@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { AbstractControl, FormsModule, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, forkJoin, takeUntil, debounceTime, interval, switchMap, takeWhile, startWith } from 'rxjs';
@@ -10,6 +10,7 @@ import { ProjectsApiService } from '../../../shared/api/projects-api.service';
 import { ProjectMemberRequest, ProjectDetailsRequest, ProjectExecutionSettingsRequest, UpdateProjectDetailsRequest, ProjectCompleteDto, ProjectMemberCompleteDto } from '../../../shared/api/projects/projects.types';
 import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
+import { UsersApiService } from '../../../shared/api/users-api.service';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus, AnalyzeProjectJobStatus } from '../../../shared/api/claude-api.service';
 import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
@@ -214,11 +215,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   form = new UntypedFormGroup({
     // TELA 1: DADOS BÁSICOS
-    name: new UntypedFormControl('', [
-      Validators.required,
-      Validators.minLength(10),
-      Validators.maxLength(200)
-    ]),
+    name: new UntypedFormControl('', Validators.required),
     objective: new UntypedFormControl('', [
       Validators.required,
       Validators.minLength(20)
@@ -294,12 +291,14 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   ];
   readonly dedicationOptions = ['Integral', 'Parcial 50%', 'Parcial 25%', 'Consultor Pontual'];
 
+  private readonly documentsApi = inject(DocumentsApiService);
+
   constructor(
     private readonly projectsApi: ProjectsApiService,
     private readonly companiesApi: CompaniesApiService,
+    private readonly usersApi: UsersApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
-    private readonly documentsApi: DocumentsApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -314,9 +313,26 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     const sessionRole = this.authSession.getRole().trim().toUpperCase();
     const companyId = (sessionUser?.companyId ?? '').trim();
 
-    this.companyDisplayName = sessionUser?.companyName ?? 'Empresa';
-    if (sessionRole !== 'ADM_MASTER' && this.isValidGuid(companyId)) {
-      this.loadTeamData(companyId);
+    this.companyDisplayName = sessionUser?.companyName || 'Empresa';
+    if (this.isValidGuid(companyId)) {
+      this.initCompanyAndTeam(companyId, sessionRole);
+    } else if (sessionUser?.userId) {
+      // companyId não está na sessão: busca o perfil atualizado do usuário na API
+      this.usersApi.getById(sessionUser.userId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (r) => {
+            if (r?.isSuccess && r.data) {
+              const freshCompanyId = (r.data.companyId ?? '').trim();
+              this.companyDisplayName = r.data.companyName || 'Empresa';
+              // Atualiza a sessão com os dados mais recentes
+              this.authSession.setUser({ ...sessionUser, companyId: freshCompanyId, companyName: r.data.companyName });
+              if (this.isValidGuid(freshCompanyId)) {
+                this.initCompanyAndTeam(freshCompanyId, sessionRole);
+              }
+            }
+          }
+        });
     }
 
 
@@ -898,8 +914,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
-          if (result?.isSuccess && result.data?.name) {
-            this.companyDisplayName = result.data.name;
+          if (result?.isSuccess && result.data) {
+            this.companyDisplayName = result.data.name || 'Empresa';
           }
         }
       });
@@ -929,6 +945,17 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
+  private initCompanyAndTeam(companyId: string, sessionRole: string): void {
+    if (sessionRole !== 'ADM_MASTER') {
+      this.loadTeamData(companyId);
+    } else {
+      // ADM_MASTER: apenas busca o nome da empresa (não tem equipe própria)
+      this.companiesApi.getById(companyId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({ next: (r) => { if (r?.isSuccess && r.data) this.companyDisplayName = r.data.name || 'Empresa'; } });
+    }
+  }
+
   private isStep2Valid(): boolean {
     this.f['department']?.markAsTouched();
     this.f['projectType']?.markAsTouched();
@@ -941,6 +968,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
     if (this.f['department']?.invalid || this.f['projectType']?.invalid) {
       return false;
+    }
+
+    // Sem usuários disponíveis: permite avançar sem membros na equipe
+    if (!this.loadingTeamData && this.availableUsers.length === 0) {
+      return true;
     }
 
     return !this.teamMembersArray.errors;

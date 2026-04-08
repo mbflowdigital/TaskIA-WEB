@@ -87,13 +87,13 @@
                 <span class="text-right">{{ userName }}</span><span
                   class="text-right text-muted font-small-3">Available</span>
               </div>
-              <img class="avatar" src="assets/img/portrait/small/avatar-s-1.png" alt="avatar" height="35" width="35" />
+              <img class="avatar" [src]="userAvatar || 'assets/img/portrait/small/avatar-s-1.png'" alt="avatar" height="35" width="35" style="object-fit:cover;border-radius:50%;" />
             </a>
             <div class="dropdown-menu text-left dropdown-menu-right m-0 pb-0" aria-labelledby="dropdownBasic2"
               ngbDropdownMenu>
-              <a class="dropdown-item" href="javascript:;">
+              <a class="dropdown-item" routerLink="/profile">
                 <div class="d-flex align-items-center">
-                  <i class="ft-edit mr-2"></i><span>Edit Profile</span>
+                  <i class="ft-user mr-2"></i><span>Meu Perfil</span>
                 </div>
               </a>
               <div class="dropdown-divider"></div>
