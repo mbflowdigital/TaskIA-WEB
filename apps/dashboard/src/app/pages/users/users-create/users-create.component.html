@@ -120,6 +120,7 @@
                             class="form-control"
                             placeholder="000.000.000-00"
                             formControlName="cpf"
+                            (input)="onCpfInput($event)"
                             [class.is-invalid]="formSubmitted && f.cpf.invalid"
                           />
                           <div class="invalid-feedback" *ngIf="formSubmitted && f.cpf.invalid">

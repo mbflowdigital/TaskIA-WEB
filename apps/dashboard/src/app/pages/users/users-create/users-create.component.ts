@@ -10,6 +10,14 @@ import { UsersApiService } from '../../../shared/api/users-api.service';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 import { PositionDto } from 'app/shared/api/positions/positions.types';
 
+function applyMaskCpf(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1-$2');
+}
+
 @Component({
   selector: 'app-users-create',
   standalone: true,
@@ -294,6 +302,13 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
               : 'Erro inesperado ao criar o usuário';
         }
       });
+  }
+
+  onCpfInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const masked = applyMaskCpf(input.value);
+    input.value = masked;
+    this.form.controls['cpf'].setValue(masked, { emitEvent: false });
   }
 
   onReset(): void {

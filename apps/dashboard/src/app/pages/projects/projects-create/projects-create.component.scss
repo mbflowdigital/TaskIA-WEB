@@ -79,6 +79,7 @@
   border-radius: 12px;
   padding: 1.25rem 1.25rem 1rem;
   background: #fbfcfe;
+  overflow: visible; // Permite que dropdowns apareçam fora da seção
 
   // Section number + title heading
   h5 {
@@ -135,6 +136,9 @@
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 61, 130, 0.06);
   transition: box-shadow 0.2s ease;
+  position: relative;
+  overflow: visible; // Permite que dropdowns apareçam fora do card
+  margin-bottom: 1rem; // Espaço entre cards para dropdowns
 
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 61, 130, 0.12);
@@ -143,6 +147,43 @@
   .member-card-header {
     border-bottom: 1px solid #edf2f8;
     padding-bottom: 0.5rem;
+  }
+
+  .member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #e8f0fb;
+    background: #f0f6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .avatar-initials {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #003d82;
+      background: linear-gradient(135deg, #e8f0fb 0%, #d0e3f8 100%);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
   }
 
   .member-name-badge {
@@ -178,6 +219,133 @@
 
   .cursor-pointer {
     cursor: pointer;
+  }
+
+  // Garante dropdowns a abrirem para baixo
+  select.form-control {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    -moz-appearance: menulist;
+  }
+
+  // Adiciona espaçamento inferior para dar espaço aos dropdowns
+  .row.gx-2.gy-2 {
+    margin-bottom: 1rem;
+  }
+}
+
+// Custom Select Dropdown com scroll
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+
+  .custom-select-button {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    background: #fff;
+    text-align: left;
+    font-size: 0.875rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+    &:hover {
+      border-color: #80bdff;
+    }
+
+    &.active {
+      border-color: #80bdff;
+      outline: 0;
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    i {
+      font-size: 0.75rem;
+      color: #6c757d;
+      transition: transform 0.2s;
+    }
+
+    &.active i {
+      transform: rotate(180deg);
+    }
+  }
+
+  .custom-select-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    max-height: none; // Garante que não há limitação no container
+  }
+
+  .custom-select-search {
+    padding: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+    flex-shrink: 0;
+
+    input {
+      font-size: 0.875rem;
+    }
+  }
+
+  .custom-select-options {
+    overflow-y: auto;
+    max-height: 140px; // Altura para exibir no máximo 4 itens
+    min-height: auto;
+    
+    // Estilização da scrollbar (webkit)
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+      
+      &:hover {
+        background: #a8a8a8;
+      }
+    }
+  }
+
+  .custom-select-option {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: #f8f9fa;
+    }
+
+    &.selected {
+      background-color: #e7f3ff;
+      color: #0056b3;
+      font-weight: 500;
+    }
+  }
+
+  .custom-select-empty {
+    padding: 0.75rem;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.875rem;
   }
 }
 
@@ -419,6 +587,43 @@
 
   &:last-child {
     border-bottom: none;
+  }
+
+  .member-avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #e8f0fb;
+    background: #f0f6ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .avatar-initials {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #003d82;
+      background: linear-gradient(135deg, #e8f0fb 0%, #d0e3f8 100%);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
   }
 }
 
@@ -1040,6 +1245,22 @@
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+// Estilos para dropdowns do Step 2
+// Nota: dropdowns nativos do navegador já implementam scroll automaticamente quando há muitas opções
+// O comportamento de abrir para cima ou para baixo é controlado pelo navegador baseado no espaço disponível
+.form-group {
+  overflow: visible !important;
+}
+
+.row {
+  overflow: visible !important;
+}
+
+// Garante que o container de membros permita dropdowns
+[formArrayName="teamMembers"] {
+  overflow: visible !important;
 }
 
 .analysis-success-banner {

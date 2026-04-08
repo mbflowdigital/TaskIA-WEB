@@ -17,6 +17,7 @@ import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 })
 export class UsersListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
+  private profileImageCache = new Map<string, string>();
 
   isLoading = false;
   loadError?: string;
@@ -53,6 +54,14 @@ export class UsersListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Limpar URLs de objetos criados para evitar memory leak
+    this.profileImageCache.forEach(url => {
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
+    this.profileImageCache.clear();
+
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -92,6 +101,40 @@ export class UsersListComponent implements OnInit, OnDestroy {
     this.searchValue = '';
     this.limit = 10;
     this.applyFilter();
+  }
+
+  getUserProfileImageUrl(userId: string): string | null {
+    if (this.profileImageCache.has(userId)) {
+      return this.profileImageCache.get(userId) || null;
+    }
+
+    // Carregar imagem de forma assíncrona
+    this.usersApi.getProfileImageBlob(userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (blob) => {
+          if (blob && blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            this.profileImageCache.set(userId, url);
+          } else {
+            this.profileImageCache.set(userId, '');
+          }
+        },
+        error: () => {
+          this.profileImageCache.set(userId, '');
+        }
+      });
+
+    return null;
+  }
+
+  getUserInitials(name: string): string {
+    if (!name) return '??';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
   getAvatarSrc(index: number): string {

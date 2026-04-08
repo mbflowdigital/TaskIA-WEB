@@ -8,6 +8,14 @@ import { AuthRefreshService } from 'app/shared/auth/auth-refresh.service';
 import { LoginData } from 'app/shared/api/auth/auth.types';
 import { OnboardingService } from 'app/shared/onboarding/onboarding.service';
 
+function applyMaskCpf(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1-$2');
+}
+
 @Component({
   selector: 'app-login-page',
   templateUrl: './login-page.component.html',
@@ -53,6 +61,13 @@ export class LoginPageComponent {
 
   get lf() { return this.loginForm.controls; }
   get faf() { return this.firstAccessForm.controls; }
+
+  onCpfInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const masked = applyMaskCpf(input.value);
+    input.value = masked;
+    this.loginForm.controls['cpf'].setValue(masked, { emitEvent: false });
+  }
 
   private persistSessionAndRedirect(data: LoginData): void {
     this.authSession.setSession(data);

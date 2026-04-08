@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ChangeDetectorRef, HostListener } from '@angular/core';
 import { AbstractControl, FormsModule, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, forkJoin, takeUntil, debounceTime, interval, switchMap, takeWhile, startWith } from 'rxjs';
@@ -24,7 +24,7 @@ import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/
 })
 export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-  private readonly leadershipRoles = ['Gerente de Projeto', 'Tech Lead'];
+  private readonly leadershipRoles = ['Gerente de Projeto', 'Coordenador', 'Supervisor'];
 
   // Wizard
   currentStep = 1;
@@ -146,6 +146,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   additionalContext = '';
   private readonly MAX_FILE_SIZE_MB = 20;
   private readonly MAX_FILE_SIZE_BYTES = this.MAX_FILE_SIZE_MB * 1024 * 1024;
+
+  // Cache de imagens de perfil (userId -> ObjectURL)
+  private profileImageCache = new Map<string, string>();
 
   toggleReviewSection(key: string): void {
     this.reviewOpenSections[key] = !this.reviewOpenSections[key];
@@ -278,20 +281,25 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return !!(c?.get('lgpd')?.value || c?.get('pciDss')?.value || c?.get('hipaa')?.value || c?.get('iso27001')?.value || c?.get('sox')?.value);
   }
 
-  readonly departmentOptions = ['TI', 'Marketing', 'RH', 'Operações', 'Financeiro', 'Produto', 'Comercial'];
-  readonly projectTypeOptions = ['Migração', 'Implantação', 'Melhoria', 'Desenvolvimento', 'Integração'];
+  readonly departmentOptions = ['Produção', 'Manutenção', 'Qualidade', 'Operações', 'Engenharia', 'Logística', 'Administrativo', 'Financeiro', 'RH', 'Comercial', 'TI'];
+  readonly projectTypeOptions = ['Implantação', 'Melhoria', 'Expansão', 'Modernização', 'Adequação', 'Otimização', 'Desenvolvimento'];
   readonly roleOptions = [
     'Gerente de Projeto',
-    'Tech Lead',
-    'Desenvolvedor',
+    'Coordenador',
+    'Supervisor',
+    'Engenheiro',
+    'Técnico',
+    'Especialista',
     'Analista',
-    'Designer',
-    'QA',
-    'DevOps'
+    'Operador',
+    'Assistente',
+    'Administrador',
+    'Consultor'
   ];
   readonly dedicationOptions = ['Integral', 'Parcial 50%', 'Parcial 25%', 'Consultor Pontual'];
 
   private readonly documentsApi = inject(DocumentsApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor(
     private readonly projectsApi: ProjectsApiService,
@@ -379,6 +387,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Libera todas as ObjectURLs do cache
+    this.profileImageCache.forEach(url => URL.revokeObjectURL(url));
+    this.profileImageCache.clear();
   }
 
   onReset(): void {
@@ -497,7 +509,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       role: new UntypedFormControl(''),
       dedication: new UntypedFormControl(''),
       isApprover: new UntypedFormControl(false),
-      roleDescription: new UntypedFormControl('')
+      roleDescription: new UntypedFormControl(''),
+      roleDropdownOpen: new UntypedFormControl(false),
+      roleSearchTerm: new UntypedFormControl('')
     });
   }
 
@@ -512,7 +526,57 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       role: new UntypedFormControl(data.role),
       dedication: new UntypedFormControl(data.dedication),
       isApprover: new UntypedFormControl(data.isApprover),
-      roleDescription: new UntypedFormControl(data.roleDescription)
+      roleDescription: new UntypedFormControl(data.roleDescription),
+      roleDropdownOpen: new UntypedFormControl(false),
+      roleSearchTerm: new UntypedFormControl('')
+    });
+  }
+
+  toggleRoleDropdown(index: number, event: Event): void {
+    event.stopPropagation();
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    const isOpen = member.get('roleDropdownOpen')?.value;
+    
+    // Fecha todos os outros dropdowns
+    this.teamMembersArray.controls.forEach((ctrl, i) => {
+      if (i !== index) {
+        ctrl.get('roleDropdownOpen')?.setValue(false);
+      }
+    });
+    
+    // Toggle o dropdown atual
+    member.get('roleDropdownOpen')?.setValue(!isOpen);
+    if (!isOpen) {
+      member.get('roleSearchTerm')?.setValue('');
+    }
+  }
+
+  selectRole(index: number, role: string): void {
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    member.get('role')?.setValue(role);
+    member.get('roleDropdownOpen')?.setValue(false);
+    member.get('roleSearchTerm')?.setValue('');
+  }
+
+  updateRoleSearchTerm(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    member.get('roleSearchTerm')?.setValue(input.value);
+  }
+
+  getFilteredRoles(searchTerm: string | null): string[] {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return this.roleOptions;
+    }
+    const term = searchTerm.toLowerCase();
+    return this.roleOptions.filter(role => role.toLowerCase().includes(term));
+  }
+
+  // Fecha dropdowns ao clicar fora
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    this.teamMembersArray.controls.forEach(ctrl => {
+      ctrl.get('roleDropdownOpen')?.setValue(false);
     });
   }
 
@@ -830,6 +894,53 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   get unselectedUsers(): UserDto[] {
     const selectedIds = new Set(this.teamMembersArray.controls.map(c => c.get('userId')?.value));
     return this.availableUsers.filter(u => !selectedIds.has(u.id));
+  }
+
+  /**
+   * Obtém a URL da imagem de perfil do usuário (carrega como blob se necessário)
+   * @param userId ID do usuário
+   * @returns URL da imagem ou string vazia se não houver userId
+   */
+  getUserProfileImageUrl(userId: string | null | undefined): string {
+    if (!userId) return '';
+    
+    // Verifica se já está no cache
+    if (this.profileImageCache.has(userId)) {
+      return this.profileImageCache.get(userId)!;
+    }
+    
+    // Carrega a imagem como blob
+    this.usersApi.getProfileImageBlob(userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (blob) => {
+          if (blob && blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            this.profileImageCache.set(userId, url);
+            // Força detecção de mudanças para atualizar a view
+            this.cdr.markForCheck();
+          }
+        },
+        error: () => {
+          // Ignora erro - o fallback de iniciais será exibido
+        }
+      });
+    
+    return ''; // Retorna vazio inicialmente, será atualizado quando carregar
+  }
+
+  /**
+   * Obtém as iniciais do nome do usuário para exibir no avatar
+   * @param userName Nome do usuário
+   * @returns Iniciais (máximo 2 caracteres)
+   */
+  getUserInitials(userName: string | null | undefined): string {
+    if (!userName) return '??';
+    const names = userName.trim().split(/\s+/);
+    if (names.length === 1) {
+      return names[0].substring(0, 2).toUpperCase();
+    }
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
   }
 
   addMemberFromSelect(event: Event): void {

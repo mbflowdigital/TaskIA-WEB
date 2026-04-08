@@ -11,6 +11,14 @@ import { PositionsApiService } from 'app/shared/api/positions-api.service';
 import { PositionDto } from 'app/shared/api/positions/positions.types';
 import { UsersApiService } from 'app/shared/api/users-api.service';
 
+function applyMaskCpf(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1-$2');
+}
+
 @Component({
   selector: 'app-company-onboarding',
   standalone: true,
@@ -333,5 +341,12 @@ export class CompanyOnboardingComponent implements OnInit {
 
     this.onboarding.clearEmployeeOnboardingPending(user.userId);
     this.router.navigate(['/page']);
+  }
+
+  onCpfInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const masked = applyMaskCpf(input.value);
+    input.value = masked;
+    this.employeeForm.controls['cpf'].setValue(masked, { emitEvent: false });
   }
 }

@@ -8,6 +8,15 @@ import { UsersApiService } from '../../shared/api/users-api.service';
 import { AuthSessionService } from '../../shared/auth/auth-session.service';
 import { UserDto } from '../../shared/api/users/users.types';
 
+function formatCpf(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1-$2');
+}
+
 @Component({
   selector: 'app-my-profile',
   standalone: true,
@@ -29,6 +38,11 @@ export class MyProfileComponent implements OnInit, OnDestroy {
   avatarUrl: string | null = null;
   isDragOver = false;
   private readonly MAX_PHOTO_MB = 5;
+  isUploadingPhoto = false;
+  isRemovingPhoto = false;
+  uploadPhotoError?: string;
+  selectedFile?: File;
+  private currentBlobUrl?: string;
 
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', Validators.required),
@@ -40,6 +54,10 @@ export class MyProfileComponent implements OnInit, OnDestroy {
     return this.authSession.getUserId() ?? '';
   }
 
+  get formattedCpf(): string {
+    return formatCpf(this.user?.cpf);
+  }
+
   private bioKey(): string { return `profile-bio-${this.userId}`; }
 
   constructor(
@@ -48,8 +66,8 @@ export class MyProfileComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.avatarUrl = localStorage.getItem(`profile-photo-${this.userId}`);
-    this.authSession.loadAvatar(this.userId);
+    // Carrega a imagem do backend como blob
+    this.loadProfileImage();
 
     this.usersApi.getById(this.userId)
       .pipe(takeUntil(this.destroy$))
@@ -77,6 +95,11 @@ export class MyProfileComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Libera a ObjectURL para evitar memory leak
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+    }
   }
 
   onFileSelected(event: Event): void {
@@ -84,6 +107,30 @@ export class MyProfileComponent implements OnInit, OnDestroy {
     const file = input?.files?.[0];
     if (file) this.processPhotoFile(file);
     input.value = '';
+  }
+
+  private loadProfileImage(): void {
+    // Libera ObjectURL anterior se existir
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = undefined;
+    }
+
+    this.usersApi.getProfileImageBlob(this.userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (blob) => {
+          if (blob && blob.size > 0) {
+            this.currentBlobUrl = URL.createObjectURL(blob);
+            this.avatarUrl = this.currentBlobUrl;
+          } else {
+            this.avatarUrl = null;
+          }
+        },
+        error: () => {
+          this.avatarUrl = null;
+        }
+      });
   }
 
   onDragOver(event: DragEvent): void {
@@ -104,26 +151,89 @@ export class MyProfileComponent implements OnInit, OnDestroy {
 
   private processPhotoFile(file: File): void {
     if (!file.type.startsWith('image/')) {
-      this.submitError = 'Apenas imagens são permitidas (JPG, PNG, WEBP).';
+      this.uploadPhotoError = 'Apenas imagens são permitidas (JPG, PNG, WEBP).';
+      setTimeout(() => this.uploadPhotoError = undefined, 5000);
       return;
     }
     if (file.size > this.MAX_PHOTO_MB * 1024 * 1024) {
-      this.submitError = `A foto deve ter no máximo ${this.MAX_PHOTO_MB} MB.`;
+      this.uploadPhotoError = `A foto deve ter no máximo ${this.MAX_PHOTO_MB} MB.`;
+      setTimeout(() => this.uploadPhotoError = undefined, 5000);
       return;
     }
-    this.submitError = undefined;
-
+    
+    this.selectedFile = file;
+    this.uploadPhotoError = undefined;
+    
+    // Preview da imagem enquanto faz upload
     const reader = new FileReader();
     reader.onload = (e) => {
       this.avatarUrl = e.target?.result as string;
-      this.authSession.setAvatar(this.userId, this.avatarUrl);
     };
     reader.readAsDataURL(file);
+    
+    // Faz upload para o backend
+    this.uploadPhoto();
+  }
+
+  uploadPhoto(): void {
+    if (!this.selectedFile) return;
+
+    this.isUploadingPhoto = true;
+    this.uploadPhotoError = undefined;
+
+    this.usersApi.uploadProfileImage(this.userId, this.selectedFile)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (r) => {
+          this.isUploadingPhoto = false;
+          if (!r?.isSuccess) {
+            this.uploadPhotoError = r?.message ?? 'Erro ao enviar foto.';
+            this.avatarUrl = null;
+            setTimeout(() => this.uploadPhotoError = undefined, 5000);
+            return;
+          }
+          // Recarrega a imagem do servidor
+          this.loadProfileImage();
+          this.submitSuccess = 'Foto de perfil atualizada com sucesso!';
+          setTimeout(() => this.submitSuccess = undefined, 3000);
+        },
+        error: () => {
+          this.isUploadingPhoto = false;
+          this.uploadPhotoError = 'Erro ao enviar foto. Tente novamente.';
+          this.avatarUrl = null;
+          setTimeout(() => this.uploadPhotoError = undefined, 5000);
+        }
+      });
   }
 
   removePhoto(): void {
-    this.avatarUrl = null;
-    this.authSession.setAvatar(this.userId, null);
+    if (!confirm('Tem certeza que deseja remover sua foto de perfil?')) {
+      return;
+    }
+
+    this.isRemovingPhoto = true;
+    this.uploadPhotoError = undefined;
+
+    this.usersApi.deleteProfileImage(this.userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (r) => {
+          this.isRemovingPhoto = false;
+          if (!r?.isSuccess) {
+            this.uploadPhotoError = r?.message ?? 'Erro ao remover foto.';
+            setTimeout(() => this.uploadPhotoError = undefined, 5000);
+            return;
+          }
+          this.avatarUrl = null;
+          this.submitSuccess = 'Foto de perfil removida com sucesso!';
+          setTimeout(() => this.submitSuccess = undefined, 3000);
+        },
+        error: () => {
+          this.isRemovingPhoto = false;
+          this.uploadPhotoError = 'Erro ao remover foto. Tente novamente.';
+          setTimeout(() => this.uploadPhotoError = undefined, 5000);
+        }
+      });
   }
 
   onSave(): void {
@@ -138,14 +248,11 @@ export class MyProfileComponent implements OnInit, OnDestroy {
 
     const raw = this.form.getRawValue();
 
-    // Save bio and photo locally (backend doesn't have these fields)
+    // Save bio locally (backend doesn't have this field)
     if (raw.bio?.trim()) {
       localStorage.setItem(this.bioKey(), raw.bio.trim());
     } else {
       localStorage.removeItem(this.bioKey());
-    }
-    if (this.avatarUrl) {
-      this.authSession.setAvatar(this.userId, this.avatarUrl);
     }
 
     // PATCH: user updates their own name + phone

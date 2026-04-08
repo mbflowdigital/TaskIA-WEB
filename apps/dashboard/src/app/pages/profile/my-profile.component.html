@@ -47,6 +47,7 @@
             </div>
 
             <input
+              #photoInput
               id="photoInput"
               type="file"
               accept="image/*"
@@ -57,12 +58,38 @@
             <p class="text-muted small mb-2">Arraste uma imagem ou clique na foto</p>
             <p class="text-muted x-small mb-3">JPG, PNG ou WEBP · Máx. 5 MB</p>
 
+            <!-- Upload Photo Error -->
+            <div *ngIf="uploadPhotoError" class="alert alert-danger alert-sm mb-3 w-100">
+              <i class="ft-alert-circle mr-1"></i>{{ uploadPhotoError }}
+            </div>
+
+            <!-- Add Photo Button -->
+            <button
+              type="button"
+              class="btn btn-sm btn-primary mb-2 w-100"
+              [disabled]="isUploadingPhoto || isRemovingPhoto"
+              (click)="photoInput.click()">
+              <span *ngIf="!isUploadingPhoto">
+                <i class="ft-upload mr-1"></i>{{ avatarUrl ? 'Alterar foto' : 'Adicionar foto' }}
+              </span>
+              <span *ngIf="isUploadingPhoto">
+                <span class="spinner-border spinner-border-sm mr-1"></span>Enviando...
+              </span>
+            </button>
+
+            <!-- Remove Photo Button -->
             <button
               *ngIf="avatarUrl"
               type="button"
-              class="btn btn-sm btn-outline-danger"
+              class="btn btn-sm btn-outline-danger w-100"
+              [disabled]="isUploadingPhoto || isRemovingPhoto"
               (click)="removePhoto()">
-              <i class="ft-trash-2 mr-1"></i>Remover foto
+              <span *ngIf="!isRemovingPhoto">
+                <i class="ft-trash-2 mr-1"></i>Remover foto
+              </span>
+              <span *ngIf="isRemovingPhoto">
+                <span class="spinner-border spinner-border-sm mr-1"></span>Removendo...
+              </span>
             </button>
 
             <!-- User identity (read-only) -->
@@ -136,7 +163,7 @@
 
                 <div class="col-12 col-sm-6 form-group" *ngIf="user.cpf">
                   <label class="form-label">CPF</label>
-                  <input type="text" class="form-control" [value]="user.cpf" disabled />
+                  <input type="text" class="form-control" [value]="formattedCpf" disabled />
                 </div>
 
                 <div class="col-12 col-sm-6 form-group" *ngIf="user.birthDate">

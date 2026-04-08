@@ -5,7 +5,7 @@ import { catchError } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { ApiResult } from 'app/shared/api/shared/api-result.types';
-import { CheckEmailResponse, CreateUserRequest, UpdateUserRequest, UserDto, ViaCepDto } from 'app/shared/api/users/users.types';
+import { CheckEmailResponse, CreateUserRequest, UpdateUserRequest, UserDto, ViaCepDto, ProfileImageDto } from 'app/shared/api/users/users.types';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
 @Injectable({
@@ -106,6 +106,63 @@ export class UsersApiService {
         headers: this.getActorHeaders()
       })
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<ViaCepDto>)));
+  }
+
+  // ── Profile Image ────────────────────────────────────────────────────────
+
+  /**
+   * Faz upload da imagem de perfil do usuário
+   * @param userId ID do usuário
+   * @param file Arquivo de imagem
+   */
+  uploadProfileImage(userId: string, file: File): Observable<ApiResult<ProfileImageDto>> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http
+      .post<ApiResult<ProfileImageDto>>(`${this.baseUrl}/api/Users/${userId}/profile-image`, formData, {
+        headers: this.getActorHeaders()
+      })
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<ProfileImageDto>)));
+  }
+
+  /**
+   * Obtém a URL da imagem de perfil do usuário
+   * @param userId ID do usuário
+   * @returns URL da imagem para usar em <img src="">
+   */
+  getProfileImageUrl(userId: string): string {
+    return `${this.baseUrl}/api/Users/${userId}/profile-image`;
+  }
+
+  /**
+   * Obtém a imagem de perfil do usuário como Blob
+   * @param userId ID do usuário
+   */
+  getProfileImageBlob(userId: string): Observable<Blob> {
+    return this.http
+      .get(`${this.baseUrl}/api/Users/${userId}/profile-image`, {
+        headers: this.getActorHeaders(),
+        responseType: 'blob'
+      })
+      .pipe(
+        catchError(() => {
+          // Retorna um blob vazio em caso de erro
+          return of(new Blob());
+        })
+      );
+  }
+
+  /**
+   * Remove a imagem de perfil do usuário
+   * @param userId ID do usuário
+   */
+  deleteProfileImage(userId: string): Observable<ApiResult> {
+    return this.http
+      .delete<ApiResult>(`${this.baseUrl}/api/Users/${userId}/profile-image`, {
+        headers: this.getActorHeaders()
+      })
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult)));
   }
 }
 

@@ -66,7 +66,7 @@
                           id="projects-create-name"
                           type="text"
                           class="form-control"
-                          placeholder="Nome do projeto (10-200 caracteres)"
+                          placeholder="Nome do projeto"
                           formControlName="name"
                           [class.is-invalid]="formSubmitted && f.name.invalid"
                         />
@@ -314,17 +314,62 @@
                     <!-- Membros selecionados -->
                     <div class="selected-member-card mb-3" *ngFor="let member of teamMembersArray.controls; let i = index" [formGroupName]="i">
                       <div class="member-card-header d-flex align-items-center justify-content-between mb-2">
-                        <span class="member-name-badge">{{ member.get('userName')?.value }}</span>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="member-avatar">
+                            <!-- Sempre mostra as iniciais como base -->
+                            <div class="avatar-initials">
+                              {{ getUserInitials(member.get('userName')?.value) }}
+                            </div>
+                            <!-- Imagem sobrepõe as iniciais quando carregar -->
+                            <img 
+                              [src]="getUserProfileImageUrl(member.get('userId')?.value)" 
+                              [alt]="member.get('userName')?.value"
+                              (error)="$any($event.target).style.display = 'none'"
+                              class="avatar-img"
+                            />
+                          </div>
+                          <span class="member-name-badge">{{ member.get('userName')?.value }}</span>
+                        </div>
                         <button type="button" class="btn btn-sm btn-remove-member" (click)="removeMember(i)">✕ Remover</button>
                       </div>
 
                       <div class="row gx-2 gy-2">
                         <div class="col-12 col-md-4">
                           <label class="form-label form-label-sm">Função no projeto *</label>
-                          <select class="form-control form-control-sm" formControlName="role">
-                            <option value="">Selecione</option>
-                            <option *ngFor="let role of roleOptions" [value]="role">{{ role }}</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="member.get('roleDropdownOpen')?.value"
+                              (click)="toggleRoleDropdown(i, $event)">
+                              {{ member.get('role')?.value || 'Selecione' }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="member.get('roleDropdownOpen')?.value">
+                              <div class="custom-select-search">
+                                <input
+                                  type="text"
+                                  placeholder="Buscar função..."
+                                  [value]="member.get('roleSearchTerm')?.value || ''"
+                                  (input)="updateRoleSearchTerm(i, $event)"
+                                  (click)="$event.stopPropagation()"
+                                  class="form-control form-control-sm"
+                                />
+                              </div>
+                              <div class="custom-select-options">
+                                <div
+                                  *ngFor="let role of getFilteredRoles(member.get('roleSearchTerm')?.value)"
+                                  class="custom-select-option"
+                                  [class.selected]="member.get('role')?.value === role"
+                                  (click)="selectRole(i, role); $event.stopPropagation()">
+                                  {{ role }}
+                                </div>
+                                <div *ngIf="getFilteredRoles(member.get('roleSearchTerm')?.value).length === 0" class="custom-select-empty">
+                                  Nenhuma função encontrada
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         <div class="col-12 col-md-4">
@@ -507,9 +552,9 @@
                               <option value="">Selecione</option>
                               <option value="API">API</option>
                               <option value="Banco de Dados">Banco de Dados</option>
-                              <option value="Arquivo">Arquivo</option>
-                              <option value="Webhook">Webhook</option>
-                              <option value="Mensageria">Mensageria</option>
+                              <option value="Sistema ERP">Sistema ERP</option>
+                              <option value="Sistema MES">Sistema MES</option>
+                              <option value="Sistema SCADA/IHM">Sistema SCADA/IHM</option>
                               <option value="Outro">Outro</option>
                             </select>
                           </div>
@@ -861,9 +906,28 @@
                     </div>
                     <div class="review-card-body" *ngIf="reviewOpenSections['team']">
                       <div *ngFor="let member of teamMembersArray.controls" class="review-member-row">
-                        <strong>{{ member.get('userName')?.value }}</strong>
-                        <span class="text-muted">{{ member.get('role')?.value }}</span>
-                        <span class="text-muted">{{ member.get('dedication')?.value }}</span>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="member-avatar-sm">
+                            <!-- Sempre mostra as iniciais como base -->
+                            <div class="avatar-initials">
+                              {{ getUserInitials(member.get('userName')?.value) }}
+                            </div>
+                            <!-- Imagem sobrepõe as iniciais quando carregar -->
+                            <img 
+                              [src]="getUserProfileImageUrl(member.get('userId')?.value)" 
+                              [alt]="member.get('userName')?.value"
+                              (error)="$any($event.target).style.display = 'none'"
+                              class="avatar-img"
+                            />
+                          </div>
+                          <div class="flex-grow-1">
+                            <strong>{{ member.get('userName')?.value }}</strong>
+                            <div class="d-flex gap-2 flex-wrap">
+                              <span class="text-muted">{{ member.get('role')?.value }}</span>
+                              <span class="text-muted">{{ member.get('dedication')?.value }}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -34,6 +34,7 @@
                 formControlName="cpf"
                 class="form-input"
                 placeholder="000.000.000-00"
+                (input)="onCpfInput($event)"
                 [ngClass]="{ 'input-error': loginFormSubmitted && lf['cpf'].invalid }"
                 autocomplete="username"
               />
