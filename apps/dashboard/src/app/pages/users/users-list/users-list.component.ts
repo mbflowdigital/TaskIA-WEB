@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -28,6 +28,40 @@ export class UsersListComponent implements OnInit, OnDestroy {
 
   searchValue = '';
   limit = 10;
+
+  // Custom dropdown controls
+  verifiedDropdownOpen = false;
+  roleDropdownOpen = false;
+  statusDropdownOpen = false;
+  limitDropdownOpen = false;
+
+  // Opções dos dropdowns
+  readonly verifiedOptions = [
+    { value: '', label: 'Qualquer' },
+    { value: 'Yes', label: 'Sim' },
+    { value: 'No', label: 'Não' }
+  ];
+
+  readonly roleOptions = [
+    { value: '', label: 'Qualquer' },
+    { value: 'USER', label: 'Usuário' },
+    { value: 'ADM', label: 'Administrador' },
+    { value: 'ADM_MASTER', label: 'Adm. Master' }
+  ];
+
+  readonly statusOptions = [
+    { value: '', label: 'Qualquer' },
+    { value: 'Active', label: 'Ativo' },
+    { value: 'Close', label: 'Inativo' },
+    { value: 'Banned', label: 'Banido' }
+  ];
+
+  readonly limitOptions = [
+    { value: 10, label: '10' },
+    { value: 25, label: '25' },
+    { value: 50, label: '50' },
+    { value: 100, label: '100' }
+  ];
 
   users: UserDto[] = [];
   filteredUsers: UserDto[] = [];
@@ -66,6 +100,14 @@ export class UsersListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.verifiedDropdownOpen = false;
+    this.roleDropdownOpen = false;
+    this.statusDropdownOpen = false;
+    this.limitDropdownOpen = false;
+  }
+
   get visibleRows(): UserDto[] {
     return this.filteredUsers.slice(0, this.limit);
   }
@@ -101,6 +143,81 @@ export class UsersListComponent implements OnInit, OnDestroy {
     this.searchValue = '';
     this.limit = 10;
     this.applyFilter();
+  }
+
+  // Custom dropdown methods - Verificado
+  toggleVerifiedDropdown(event: Event): void {
+    event.stopPropagation();
+    this.verifiedDropdownOpen = !this.verifiedDropdownOpen;
+    this.roleDropdownOpen = false;
+    this.statusDropdownOpen = false;
+  }
+
+  selectVerified(value: '' | 'Yes' | 'No'): void {
+    this.verifiedFilter = value;
+    this.verifiedDropdownOpen = false;
+    this.onFilterChange();
+  }
+
+  getSelectedVerifiedLabel(): string {
+    const selected = this.verifiedOptions.find(opt => opt.value === this.verifiedFilter);
+    return selected?.label || 'Qualquer';
+  }
+
+  // Custom dropdown methods - Perfil
+  toggleRoleDropdown(event: Event): void {
+    event.stopPropagation();
+    this.roleDropdownOpen = !this.roleDropdownOpen;
+    this.verifiedDropdownOpen = false;
+    this.statusDropdownOpen = false;
+  }
+
+  selectRole(value: '' | 'USER' | 'ADM' | 'ADM_MASTER'): void {
+    this.roleFilter = value;
+    this.roleDropdownOpen = false;
+    this.onFilterChange();
+  }
+
+  getSelectedRoleLabel(): string {
+    const selected = this.roleOptions.find(opt => opt.value === this.roleFilter);
+    return selected?.label || 'Qualquer';
+  }
+
+  // Custom dropdown methods - Status
+  toggleStatusDropdown(event: Event): void {
+    event.stopPropagation();
+    this.statusDropdownOpen = !this.statusDropdownOpen;
+    this.verifiedDropdownOpen = false;
+    this.roleDropdownOpen = false;
+  }
+
+  selectStatus(value: '' | 'Active' | 'Close' | 'Banned'): void {
+    this.statusFilter = value;
+    this.statusDropdownOpen = false;
+    this.onFilterChange();
+  }
+
+  getSelectedStatusLabel(): string {
+    const selected = this.statusOptions.find(opt => opt.value === this.statusFilter);
+    return selected?.label || 'Qualquer';
+  }
+
+  // Custom dropdown methods - Limite
+  toggleLimitDropdown(event: Event): void {
+    event.stopPropagation();
+    this.limitDropdownOpen = !this.limitDropdownOpen;
+    this.verifiedDropdownOpen = false;
+    this.roleDropdownOpen = false;
+    this.statusDropdownOpen = false;
+  }
+
+  selectLimit(value: number): void {
+    this.limit = value;
+    this.limitDropdownOpen = false;
+  }
+
+  getSelectedLimitLabel(): string {
+    return this.limit.toString();
   }
 
   getUserProfileImageUrl(userId: string): string | null {

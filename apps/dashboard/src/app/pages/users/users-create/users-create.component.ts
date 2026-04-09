@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { ReactiveFormsModule, UntypedFormControl, UntypedFormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -48,6 +48,15 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
 
   companies: CompanyDto[] = [];
   positions: PositionDto[] = [];
+
+  // ── Custom Dropdowns Control ────────────────────────────────────────────
+  companyDropdownOpen = false;
+  companySearchTerm = '';
+  positionDropdownOpen = false;
+  positionSearchTerm = '';
+  roleDropdownOpen = false;
+  roleSearchTerm = '';
+  readonly roleOptions = ['USER', 'ADM'];
 
   form = new UntypedFormGroup({
     name: new UntypedFormControl('', [Validators.required, Validators.minLength(2)]),
@@ -322,5 +331,119 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     if (this.isEditMode) {
       this.form.controls['email'].disable();
     }
+  }
+
+  // ── Custom Dropdown Methods ─────────────────────────────────────────────
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    this.companyDropdownOpen = false;
+    this.positionDropdownOpen = false;
+    this.roleDropdownOpen = false;
+  }
+
+  // Company Dropdown
+  toggleCompanyDropdown(event: Event): void {
+    event.stopPropagation();
+    this.companyDropdownOpen = !this.companyDropdownOpen;
+    if (!this.companyDropdownOpen) {
+      this.companySearchTerm = '';
+    }
+  }
+
+  selectCompany(companyId: string): void {
+    this.form.patchValue({ companyId });
+    this.companyDropdownOpen = false;
+    this.companySearchTerm = '';
+  }
+
+  updateCompanySearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.companySearchTerm = input.value;
+  }
+
+  getFilteredCompanies(): CompanyDto[] {
+    if (!this.companySearchTerm || this.companySearchTerm.trim() === '') {
+      return this.companies;
+    }
+    const term = this.companySearchTerm.toLowerCase();
+    return this.companies.filter(company => company.name.toLowerCase().includes(term));
+  }
+
+  getSelectedCompanyName(): string {
+    const selectedId = this.f.companyId.value;
+    if (!selectedId) return 'Selecione uma empresa';
+    const company = this.companies.find(c => c.id === selectedId);
+    return company?.name || 'Selecione uma empresa';
+  }
+
+  // Position Dropdown
+  togglePositionDropdown(event: Event): void {
+    event.stopPropagation();
+    this.positionDropdownOpen = !this.positionDropdownOpen;
+    if (!this.positionDropdownOpen) {
+      this.positionSearchTerm = '';
+    }
+  }
+
+  selectPosition(positionId: string): void {
+    this.form.patchValue({ positionId });
+    this.positionDropdownOpen = false;
+    this.positionSearchTerm = '';
+  }
+
+  updatePositionSearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.positionSearchTerm = input.value;
+  }
+
+  getFilteredPositions(): PositionDto[] {
+    if (!this.positionSearchTerm || this.positionSearchTerm.trim() === '') {
+      return this.positions;
+    }
+    const term = this.positionSearchTerm.toLowerCase();
+    return this.positions.filter(pos => pos.positionName.toLowerCase().includes(term));
+  }
+
+  getSelectedPositionName(): string {
+    const selectedId = this.f.positionId.value;
+    if (!selectedId) return 'Selecione um cargo';
+    const position = this.positions.find(p => p.id === Number(selectedId));
+    return position?.positionName || 'Selecione um cargo';
+  }
+
+  // Role Dropdown
+  toggleRoleDropdown(event: Event): void {
+    event.stopPropagation();
+    this.roleDropdownOpen = !this.roleDropdownOpen;
+    if (!this.roleDropdownOpen) {
+      this.roleSearchTerm = '';
+    }
+  }
+
+  selectRole(role: string): void {
+    this.form.patchValue({ role });
+    this.roleDropdownOpen = false;
+    this.roleSearchTerm = '';
+  }
+
+  updateRoleSearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.roleSearchTerm = input.value;
+  }
+
+  getFilteredRoles(): string[] {
+    if (!this.roleSearchTerm || this.roleSearchTerm.trim() === '') {
+      return this.isAdmMaster ? this.roleOptions : ['USER'];
+    }
+    const term = this.roleSearchTerm.toLowerCase();
+    const roles = this.isAdmMaster ? this.roleOptions : ['USER'];
+    return roles.filter(role => role.toLowerCase().includes(term));
+  }
+
+  getSelectedRoleName(): string {
+    const selected = this.f.role.value;
+    if (selected === 'ADM') return 'Administrador (ADM)';
+    return 'Usuário';
   }
 }

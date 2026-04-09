@@ -85,14 +85,46 @@
                       <div class="form-group" *ngIf="isAdmMaster">
                         <div class="controls">
                           <label for="users-create-company">Empresa <small class="text-muted">(opcional)</small></label>
-                          <select
-                            id="users-create-company"
-                            class="form-control"
-                            formControlName="companyId"
-                          >
-                            <option value="">Selecione uma empresa</option>
-                            <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="companyDropdownOpen"
+                              (click)="toggleCompanyDropdown($event)">
+                              {{ getSelectedCompanyName() }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="companyDropdownOpen">
+                              <div class="custom-select-search" *ngIf="companies.length > 10">
+                                <input
+                                  type="text"
+                                  placeholder="Buscar empresa..."
+                                  [value]="companySearchTerm"
+                                  (input)="updateCompanySearchTerm($event)"
+                                  (click)="$event.stopPropagation()"
+                                  class="form-control form-control-sm"
+                                />
+                              </div>
+                              <div class="custom-select-options">
+                                <div
+                                  class="custom-select-option"
+                                  [class.selected]="f.companyId.value === ''"
+                                  (click)="selectCompany(''); $event.stopPropagation()">
+                                  Selecione uma empresa
+                                </div>
+                                <div
+                                  *ngFor="let company of getFilteredCompanies()"
+                                  class="custom-select-option"
+                                  [class.selected]="f.companyId.value === company.id"
+                                  (click)="selectCompany(company.id); $event.stopPropagation()">
+                                  {{ company.name }}
+                                </div>
+                                <div *ngIf="getFilteredCompanies().length === 0" class="custom-select-empty">
+                                  Nenhuma empresa encontrada
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <small *ngIf="companiesLoading" class="text-muted">Carregando empresas...</small>
                           <small *ngIf="!companiesLoading && f.role.value === 'ADM' && f.companyId.value" class="text-success">
                             Empresa já atribuída – este ADM só precisará trocar a senha no 1º acesso.
@@ -161,15 +193,47 @@
                       <div class="form-group">
                         <div class="controls">
                           <label for="users-create-position">Cargo</label>
-                          <select
-                            id="users-create-position"
-                            class="form-control"
-                            formControlName="positionId"
-                            [class.is-invalid]="formSubmitted && f.positionId.invalid"
-                          >
-                            <option value="">Selecione um cargo</option>
-                            <option *ngFor="let position of positions" [value]="position.id">{{ position.positionName }}</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="positionDropdownOpen"
+                              [class.is-invalid]="formSubmitted && f.positionId.invalid"
+                              (click)="togglePositionDropdown($event)">
+                              {{ getSelectedPositionName() }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="positionDropdownOpen">
+                              <div class="custom-select-search" *ngIf="positions.length > 10">
+                                <input
+                                  type="text"
+                                  placeholder="Buscar cargo..."
+                                  [value]="positionSearchTerm"
+                                  (input)="updatePositionSearchTerm($event)"
+                                  (click)="$event.stopPropagation()"
+                                  class="form-control form-control-sm"
+                                />
+                              </div>
+                              <div class="custom-select-options">
+                                <div
+                                  class="custom-select-option"
+                                  [class.selected]="f.positionId.value === ''"
+                                  (click)="selectPosition(''); $event.stopPropagation()">
+                                  Selecione um cargo
+                                </div>
+                                <div
+                                  *ngFor="let position of getFilteredPositions()"
+                                  class="custom-select-option"
+                                  [class.selected]="f.positionId.value == position.id"
+                                  (click)="selectPosition(position.id.toString()); $event.stopPropagation()">
+                                  {{ position.positionName }}
+                                </div>
+                                <div *ngIf="getFilteredPositions().length === 0" class="custom-select-empty">
+                                  Nenhum cargo encontrado
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <div class="invalid-feedback" *ngIf="formSubmitted && f.positionId.invalid">
                             Cargo é obrigatório.
                           </div>
@@ -180,15 +244,33 @@
                       <div class="form-group" *ngIf="!isEditMode">
                         <div class="controls">
                           <label for="users-create-role">Tipo de Usuário</label>
-                          <select
-                            id="users-create-role"
-                            class="form-control"
-                            formControlName="role"
-                            [attr.disabled]="isAdmMaster ? null : true"
-                          >
-                            <option value="USER">Usuário</option>
-                            <option value="ADM" *ngIf="isAdmMaster">Administrador (ADM)</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="roleDropdownOpen"
+                              [disabled]="!isAdmMaster"
+                              (click)="toggleRoleDropdown($event)">
+                              {{ getSelectedRoleName() }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="roleDropdownOpen && isAdmMaster">
+                              <div class="custom-select-options">
+                                <div
+                                  class="custom-select-option"
+                                  [class.selected]="f.role.value === 'USER'"
+                                  (click)="selectRole('USER'); $event.stopPropagation()">
+                                  Usuário
+                                </div>
+                                <div
+                                  class="custom-select-option"
+                                  [class.selected]="f.role.value === 'ADM'"
+                                  (click)="selectRole('ADM'); $event.stopPropagation()">
+                                  Administrador (ADM)
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <small class="text-muted" *ngIf="!isAdmMaster">Perfil fixo: Usuário padrão (USER).</small>
                         </div>
                       </div>

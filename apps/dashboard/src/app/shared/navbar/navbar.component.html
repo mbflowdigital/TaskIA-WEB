@@ -87,7 +87,10 @@
                 <span class="text-right">{{ userName }}</span><span
                   class="text-right text-muted font-small-3">Available</span>
               </div>
-              <img class="avatar" [src]="userAvatar || 'assets/img/portrait/small/avatar-s-1.png'" alt="avatar" height="35" width="35" style="object-fit:cover;border-radius:50%;" />
+              <img *ngIf="userAvatar" class="avatar" [src]="userAvatar" alt="avatar" height="35" width="35" style="object-fit:cover;border-radius:50%;" />
+              <div *ngIf="!userAvatar" class="avatar d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; border-radius: 50%; background-color: #e9ecef; color: #6c757d;">
+                <i class="ft-user"></i>
+              </div>
             </a>
             <div class="dropdown-menu text-left dropdown-menu-right m-0 pb-0" aria-labelledby="dropdownBasic2"
               ngbDropdownMenu>

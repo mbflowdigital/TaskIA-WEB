@@ -24,54 +24,85 @@
                   <div class="row">
                     <div class="col-12 col-sm-6 col-lg-3">
                       <div class="form-group">
-                        <label for="users-list-verified">Verificado</label>
-                        <select
-                          id="users-list-verified"
-                          class="form-control form-control-sm"
-                          [(ngModel)]="verifiedFilter"
-                          (ngModelChange)="onFilterChange()"
-                          name="verifiedFilter"
-                        >
-                          <option value="">Qualquer</option>
-                          <option value="Yes">Sim</option>
-                          <option value="No">Não</option>
-                        </select>
+                        <label>Verificado</label>
+                        <div class="custom-select-wrapper">
+                          <button
+                            type="button"
+                            class="custom-select-button"
+                            (click)="toggleVerifiedDropdown($event)"
+                          >
+                            <span>{{ getSelectedVerifiedLabel() }}</span>
+                            <i class="ft-chevron-down"></i>
+                          </button>
+                          <div class="custom-select-dropdown" *ngIf="verifiedDropdownOpen">
+                            <div class="custom-select-options">
+                              <div
+                                *ngFor="let option of verifiedOptions"
+                                class="custom-select-option"
+                                [class.selected]="verifiedFilter === option.value"
+                                (click)="selectVerified(option.value)"
+                              >
+                                {{ option.label }}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     <div class="col-12 col-sm-6 col-lg-3">
                       <div class="form-group">
-                        <label for="users-list-role">Perfil</label>
-                        <select
-                          id="users-list-role"
-                          class="form-control form-control-sm"
-                          [(ngModel)]="roleFilter"
-                          (ngModelChange)="onFilterChange()"
-                          name="roleFilter"
-                        >
-                          <option value="">Qualquer</option>
-                          <option value="USER">Usuário</option>
-                          <option value="ADM">Administrador</option>
-                          <option value="ADM_MASTER">Adm. Master</option>
-                        </select>
+                        <label>Perfil</label>
+                        <div class="custom-select-wrapper">
+                          <button
+                            type="button"
+                            class="custom-select-button"
+                            (click)="toggleRoleDropdown($event)"
+                          >
+                            <span>{{ getSelectedRoleLabel() }}</span>
+                            <i class="ft-chevron-down"></i>
+                          </button>
+                          <div class="custom-select-dropdown" *ngIf="roleDropdownOpen">
+                            <div class="custom-select-options">
+                              <div
+                                *ngFor="let option of roleOptions"
+                                class="custom-select-option"
+                                [class.selected]="roleFilter === option.value"
+                                (click)="selectRole(option.value)"
+                              >
+                                {{ option.label }}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     <div class="col-12 col-sm-6 col-lg-3">
                       <div class="form-group">
-                        <label for="users-list-status">Status</label>
-                        <select
-                          id="users-list-status"
-                          class="form-control form-control-sm"
-                          [(ngModel)]="statusFilter"
-                          (ngModelChange)="onFilterChange()"
-                          name="statusFilter"
-                        >
-                          <option value="">Qualquer</option>
-                          <option value="Active">Ativo</option>
-                          <option value="Close">Inativo</option>
-                          <option value="Banned">Banido</option>
-                        </select>
+                        <label>Status</label>
+                        <div class="custom-select-wrapper">
+                          <button
+                            type="button"
+                            class="custom-select-button"
+                            (click)="toggleStatusDropdown($event)"
+                          >
+                            <span>{{ getSelectedStatusLabel() }}</span>
+                            <i class="ft-chevron-down"></i>
+                          </button>
+                          <div class="custom-select-dropdown" *ngIf="statusDropdownOpen">
+                            <div class="custom-select-options">
+                              <div
+                                *ngFor="let option of statusOptions"
+                                class="custom-select-option"
+                                [class.selected]="statusFilter === option.value"
+                                (click)="selectStatus(option.value)"
+                              >
+                                {{ option.label }}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -116,21 +147,32 @@
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between flex-column flex-md-row mt-2">
-                  <label class="mb-0 text-muted">
-                    Mostrar
-                    <select
-                      name="users-list-select"
-                      class="form-control form-control-sm d-inline-block width-100 p-right-25 pl-4 mx-1"
-                      [ngModel]="limit"
-                      (change)="updateLimit($event)"
-                    >
-                      <option value="10">10</option>
-                      <option value="25">25</option>
-                      <option value="50">50</option>
-                      <option value="100">100</option>
-                    </select>
-                    registros
-                  </label>
+                  <div class="d-flex align-items-center mb-0 text-muted">
+                    <span>Mostrar</span>
+                    <div class="custom-select-wrapper mx-1" style="width: 80px; display: inline-block;">
+                      <button
+                        type="button"
+                        class="custom-select-button"
+                        (click)="toggleLimitDropdown($event)"
+                      >
+                        <span>{{ getSelectedLimitLabel() }}</span>
+                        <i class="ft-chevron-down"></i>
+                      </button>
+                      <div class="custom-select-dropdown" *ngIf="limitDropdownOpen">
+                        <div class="custom-select-options">
+                          <div
+                            *ngFor="let option of limitOptions"
+                            class="custom-select-option"
+                            [class.selected]="limit === option.value"
+                            (click)="selectLimit(option.value)"
+                          >
+                            {{ option.label }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <span>registros</span>
+                  </div>
 
                   <div class="d-flex align-items-center mt-1 mt-md-0">
                     <span class="text-muted mr-1">Buscar:</span>
@@ -185,8 +227,8 @@
                               <div
                                 *ngIf="!getUserProfileImageUrl(user.id)"
                                 class="rounded-circle d-flex align-items-center justify-content-center"
-                                style="width: 32px; height: 32px; background-color: #7367f0; color: white; font-size: 11px; font-weight: 600;">
-                                {{ getUserInitials(user.name) }}
+                                style="width: 32px; height: 32px; background-color: #e9ecef; color: #6c757d;">
+                                <i class="ft-user" style="font-size: 14px;"></i>
                               </div>
                             </div>
                             <div class="cell-line-height" style="min-width: 0;">

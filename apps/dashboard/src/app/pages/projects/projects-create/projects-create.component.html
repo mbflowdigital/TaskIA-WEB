@@ -251,15 +251,41 @@
                       <div class="col-12 col-md-3">
                         <div class="form-group">
                           <label for="projects-create-department">Setor/Departamento responsável *</label>
-                          <select
-                            id="projects-create-department"
-                            class="form-control"
-                            formControlName="department"
-                            [class.is-invalid]="formSubmitted && f.department.invalid"
-                          >
-                            <option value="">Selecione</option>
-                            <option *ngFor="let department of departmentOptions" [value]="department">{{ department }}</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="departmentDropdownOpen"
+                              [class.is-invalid]="formSubmitted && f.department.invalid"
+                              (click)="toggleDepartmentDropdown($event)">
+                              {{ f.department.value || 'Selecione' }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="departmentDropdownOpen">
+                              <div class="custom-select-search" *ngIf="departmentOptions.length > 10">
+                                <input
+                                  type="text"
+                                  placeholder="Buscar setor/departamento..."
+                                  [value]="departmentSearchTerm"
+                                  (input)="updateDepartmentSearchTerm($event)"
+                                  (click)="$event.stopPropagation()"
+                                  class="form-control form-control-sm"
+                                />
+                              </div>
+                              <div class="custom-select-options">
+                                <div
+                                  *ngFor="let dept of getFilteredDepartments()"
+                                  class="custom-select-option"
+                                  [class.selected]="f.department.value === dept"
+                                  (click)="selectDepartment(dept); $event.stopPropagation()">
+                                  {{ dept }}
+                                </div>
+                                <div *ngIf="getFilteredDepartments().length === 0" class="custom-select-empty">
+                                  Nenhum setor/departamento encontrado
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <div class="invalid-feedback" *ngIf="formSubmitted && f.department.invalid">
                             Informe o setor/departamento responsável.
                           </div>
@@ -269,15 +295,41 @@
                       <div class="col-12 col-md-3">
                         <div class="form-group">
                           <label for="projects-create-project-type">Tipo de projeto *</label>
-                          <select
-                            id="projects-create-project-type"
-                            class="form-control"
-                            formControlName="projectType"
-                            [class.is-invalid]="formSubmitted && f.projectType.invalid"
-                          >
-                            <option value="">Selecione</option>
-                            <option *ngFor="let type of projectTypeOptions" [value]="type">{{ type }}</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="projectTypeDropdownOpen"
+                              [class.is-invalid]="formSubmitted && f.projectType.invalid"
+                              (click)="toggleProjectTypeDropdown($event)">
+                              {{ f.projectType.value || 'Selecione' }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="projectTypeDropdownOpen">
+                              <div class="custom-select-search" *ngIf="projectTypeOptions.length > 10">
+                                <input
+                                  type="text"
+                                  placeholder="Buscar tipo de projeto..."
+                                  [value]="projectTypeSearchTerm"
+                                  (input)="updateProjectTypeSearchTerm($event)"
+                                  (click)="$event.stopPropagation()"
+                                  class="form-control form-control-sm"
+                                />
+                              </div>
+                              <div class="custom-select-options">
+                                <div
+                                  *ngFor="let type of getFilteredProjectTypes()"
+                                  class="custom-select-option"
+                                  [class.selected]="f.projectType.value === type"
+                                  (click)="selectProjectType(type); $event.stopPropagation()">
+                                  {{ type }}
+                                </div>
+                                <div *ngIf="getFilteredProjectTypes().length === 0" class="custom-select-empty">
+                                  Nenhum tipo de projeto encontrado
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <div class="invalid-feedback" *ngIf="formSubmitted && f.projectType.invalid">
                             Informe o tipo do projeto.
                           </div>
@@ -299,16 +351,40 @@
                     <!-- Select para adicionar membro -->
                     <div class="add-member-row mb-3" *ngIf="!loadingTeamData && availableUsers.length">
                       <label class="form-label mb-1 fw-semibold">Adicionar membro à equipe</label>
-                      <select
-                        class="form-control add-member-select"
-                        (change)="addMemberFromSelect($event)"
-                        [disabled]="unselectedUsers.length === 0"
-                      >
-                        <option value="">
+                      <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                        <button
+                          type="button"
+                          class="custom-select-button"
+                          [class.active]="addMemberDropdownOpen"
+                          [disabled]="unselectedUsers.length === 0"
+                          (click)="toggleAddMemberDropdown($event)">
                           {{ unselectedUsers.length === 0 ? 'Todos os usuários foram adicionados' : '+ Selecione um usuário para adicionar...' }}
-                        </option>
-                        <option *ngFor="let user of unselectedUsers" [value]="user.id">{{ user.name }}</option>
-                      </select>
+                          <i class="ft-chevron-down"></i>
+                        </button>
+                        <div class="custom-select-dropdown" *ngIf="addMemberDropdownOpen">
+                          <div class="custom-select-search" *ngIf="unselectedUsers.length > 10">
+                            <input
+                              type="text"
+                              placeholder="Buscar usuário..."
+                              [value]="addMemberSearchTerm"
+                              (input)="updateAddMemberSearchTerm($event)"
+                              (click)="$event.stopPropagation()"
+                              class="form-control form-control-sm"
+                            />
+                          </div>
+                          <div class="custom-select-options">
+                            <div
+                              *ngFor="let user of getFilteredAvailableUsers()"
+                              class="custom-select-option"
+                              (click)="selectAddMember(user.id); $event.stopPropagation()">
+                              {{ user.name }}
+                            </div>
+                            <div *ngIf="getFilteredAvailableUsers().length === 0" class="custom-select-empty">
+                              Nenhum usuário encontrado
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <!-- Membros selecionados -->
@@ -316,17 +392,17 @@
                       <div class="member-card-header d-flex align-items-center justify-content-between mb-2">
                         <div class="d-flex align-items-center gap-2">
                           <div class="member-avatar">
-                            <!-- Sempre mostra as iniciais como base -->
-                            <div class="avatar-initials">
-                              {{ getUserInitials(member.get('userName')?.value) }}
-                            </div>
-                            <!-- Imagem sobrepõe as iniciais quando carregar -->
                             <img 
+                              *ngIf="getUserProfileImageUrl(member.get('userId')?.value)"
                               [src]="getUserProfileImageUrl(member.get('userId')?.value)" 
                               [alt]="member.get('userName')?.value"
-                              (error)="$any($event.target).style.display = 'none'"
                               class="avatar-img"
                             />
+                            <div 
+                              *ngIf="!getUserProfileImageUrl(member.get('userId')?.value)"
+                              class="avatar-placeholder">
+                              <i class="ft-user"></i>
+                            </div>
                           </div>
                           <span class="member-name-badge">{{ member.get('userName')?.value }}</span>
                         </div>
@@ -374,10 +450,40 @@
 
                         <div class="col-12 col-md-4">
                           <label class="form-label form-label-sm">Dedicação *</label>
-                          <select class="form-control form-control-sm" formControlName="dedication">
-                            <option value="">Selecione</option>
-                            <option *ngFor="let d of dedicationOptions" [value]="d">{{ d }}</option>
-                          </select>
+                          <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="custom-select-button"
+                              [class.active]="member.get('dedicationDropdownOpen')?.value"
+                              (click)="toggleDedicationDropdown(i, $event)">
+                              {{ member.get('dedication')?.value || 'Selecione' }}
+                              <i class="ft-chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" *ngIf="member.get('dedicationDropdownOpen')?.value">
+                              <div class="custom-select-search" *ngIf="dedicationOptions.length > 10">
+                                <input
+                                  type="text"
+                                  placeholder="Buscar dedicação..."
+                                  [value]="member.get('dedicationSearchTerm')?.value || ''"
+                                  (input)="updateDedicationSearchTerm(i, $event)"
+                                  (click)="$event.stopPropagation()"
+                                  class="form-control form-control-sm"
+                                />
+                              </div>
+                              <div class="custom-select-options">
+                                <div
+                                  *ngFor="let dedication of getFilteredDedications(member.get('dedicationSearchTerm')?.value)"
+                                  class="custom-select-option"
+                                  [class.selected]="member.get('dedication')?.value === dedication"
+                                  (click)="selectDedication(i, dedication); $event.stopPropagation()">
+                                  {{ dedication }}
+                                </div>
+                                <div *ngIf="getFilteredDedications(member.get('dedicationSearchTerm')?.value).length === 0" class="custom-select-empty">
+                                  Nenhuma dedicação encontrada
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         <div class="col-12 col-md-4 d-flex align-items-end pb-1">
@@ -513,12 +619,40 @@
                           </div>
                           <div class="col-12 col-md-2">
                             <label class="form-label form-label-sm">Criticidade *</label>
-                            <select class="form-control form-control-sm" formControlName="criticality">
-                              <option value="">Selecione</option>
-                              <option value="Bloqueante">Bloqueante</option>
-                              <option value="Importante">Importante</option>
-                              <option value="Desejável">Desejável</option>
-                            </select>
+                            <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                              <button
+                                type="button"
+                                class="custom-select-button"
+                                [class.active]="dep.get('criticalityDropdownOpen')?.value"
+                                (click)="toggleDependencyCriticalityDropdown(i, $event)">
+                                {{ dep.get('criticality')?.value || 'Selecione' }}
+                                <i class="ft-chevron-down"></i>
+                              </button>
+                              <div class="custom-select-dropdown" *ngIf="dep.get('criticalityDropdownOpen')?.value">
+                                <div class="custom-select-search" *ngIf="criticalityOptions.length > 10">
+                                  <input
+                                    type="text"
+                                    placeholder="Buscar criticidade..."
+                                    [value]="dep.get('criticalitySearchTerm')?.value || ''"
+                                    (input)="updateDependencyCriticalitySearchTerm(i, $event)"
+                                    (click)="$event.stopPropagation()"
+                                    class="form-control form-control-sm"
+                                  />
+                                </div>
+                                <div class="custom-select-options">
+                                  <div
+                                    *ngFor="let crit of getFilteredCriticalities(dep.get('criticalitySearchTerm')?.value)"
+                                    class="custom-select-option"
+                                    [class.selected]="dep.get('criticality')?.value === crit"
+                                    (click)="selectDependencyCriticality(i, crit); $event.stopPropagation()">
+                                    {{ crit }}
+                                  </div>
+                                  <div *ngIf="getFilteredCriticalities(dep.get('criticalitySearchTerm')?.value).length === 0" class="custom-select-empty">
+                                    Nenhuma criticidade encontrada
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -548,24 +682,77 @@
                           </div>
                           <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm">Tipo *</label>
-                            <select class="form-control form-control-sm" formControlName="type">
-                              <option value="">Selecione</option>
-                              <option value="API">API</option>
-                              <option value="Banco de Dados">Banco de Dados</option>
-                              <option value="Sistema ERP">Sistema ERP</option>
-                              <option value="Sistema MES">Sistema MES</option>
-                              <option value="Sistema SCADA/IHM">Sistema SCADA/IHM</option>
-                              <option value="Outro">Outro</option>
-                            </select>
+                            <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                              <button
+                                type="button"
+                                class="custom-select-button"
+                                [class.active]="intg.get('typeDropdownOpen')?.value"
+                                (click)="toggleIntegrationTypeDropdown(i, $event)">
+                                {{ intg.get('type')?.value || 'Selecione' }}
+                                <i class="ft-chevron-down"></i>
+                              </button>
+                              <div class="custom-select-dropdown" *ngIf="intg.get('typeDropdownOpen')?.value">
+                                <div class="custom-select-search" *ngIf="integrationTypeOptions.length > 10">
+                                  <input
+                                    type="text"
+                                    placeholder="Buscar tipo..."
+                                    [value]="intg.get('typeSearchTerm')?.value || ''"
+                                    (input)="updateIntegrationTypeSearchTerm(i, $event)"
+                                    (click)="$event.stopPropagation()"
+                                    class="form-control form-control-sm"
+                                  />
+                                </div>
+                                <div class="custom-select-options">
+                                  <div
+                                    *ngFor="let type of getFilteredIntegrationTypes(intg.get('typeSearchTerm')?.value)"
+                                    class="custom-select-option"
+                                    [class.selected]="intg.get('type')?.value === type"
+                                    (click)="selectIntegrationType(i, type); $event.stopPropagation()">
+                                    {{ type }}
+                                  </div>
+                                  <div *ngIf="getFilteredIntegrationTypes(intg.get('typeSearchTerm')?.value).length === 0" class="custom-select-empty">
+                                    Nenhum tipo encontrado
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm">Criticidade *</label>
-                            <select class="form-control form-control-sm" formControlName="criticality">
-                              <option value="">Selecione</option>
-                              <option value="Bloqueante">Bloqueante</option>
-                              <option value="Importante">Importante</option>
-                              <option value="Desejável">Desejável</option>
-                            </select>
+                            <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                              <button
+                                type="button"
+                                class="custom-select-button"
+                                [class.active]="intg.get('criticalityDropdownOpen')?.value"
+                                (click)="toggleIntegrationCriticalityDropdown(i, $event)">
+                                {{ intg.get('criticality')?.value || 'Selecione' }}
+                                <i class="ft-chevron-down"></i>
+                              </button>
+                              <div class="custom-select-dropdown" *ngIf="intg.get('criticalityDropdownOpen')?.value">
+                                <div class="custom-select-search" *ngIf="criticalityOptions.length > 10">
+                                  <input
+                                    type="text"
+                                    placeholder="Buscar criticidade..."
+                                    [value]="intg.get('criticalitySearchTerm')?.value || ''"
+                                    (input)="updateIntegrationCriticalitySearchTerm(i, $event)"
+                                    (click)="$event.stopPropagation()"
+                                    class="form-control form-control-sm"
+                                  />
+                                </div>
+                                <div class="custom-select-options">
+                                  <div
+                                    *ngFor="let crit of getFilteredCriticalities(intg.get('criticalitySearchTerm')?.value)"
+                                    class="custom-select-option"
+                                    [class.selected]="intg.get('criticality')?.value === crit"
+                                    (click)="selectIntegrationCriticality(i, crit); $event.stopPropagation()">
+                                    {{ crit }}
+                                  </div>
+                                  <div *ngIf="getFilteredCriticalities(intg.get('criticalitySearchTerm')?.value).length === 0" class="custom-select-empty">
+                                    Nenhuma criticidade encontrada
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <div class="col-12 col-md-2 d-flex flex-column gap-2 pb-1">
                             <label class="form-label form-label-sm mb-0">Status</label>
@@ -908,17 +1095,17 @@
                       <div *ngFor="let member of teamMembersArray.controls" class="review-member-row">
                         <div class="d-flex align-items-center gap-2">
                           <div class="member-avatar-sm">
-                            <!-- Sempre mostra as iniciais como base -->
-                            <div class="avatar-initials">
-                              {{ getUserInitials(member.get('userName')?.value) }}
-                            </div>
-                            <!-- Imagem sobrepõe as iniciais quando carregar -->
                             <img 
+                              *ngIf="getUserProfileImageUrl(member.get('userId')?.value)"
                               [src]="getUserProfileImageUrl(member.get('userId')?.value)" 
                               [alt]="member.get('userName')?.value"
-                              (error)="$any($event.target).style.display = 'none'"
                               class="avatar-img"
                             />
+                            <div 
+                              *ngIf="!getUserProfileImageUrl(member.get('userId')?.value)"
+                              class="avatar-placeholder">
+                              <i class="ft-user"></i>
+                            </div>
                           </div>
                           <div class="flex-grow-1">
                             <strong>{{ member.get('userName')?.value }}</strong>
