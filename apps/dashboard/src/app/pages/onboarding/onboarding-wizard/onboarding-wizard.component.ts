@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import {
   ReactiveFormsModule,
   UntypedFormControl,
@@ -92,6 +92,10 @@ export class OnboardingWizardComponent implements OnInit {
     'Agronegócio',
     'Outro'
   ];
+
+  // ── Custom Dropdown Control ────────────────────────────────────────────
+  categoryDropdownOpen = false;
+  categorySearchTerm = '';
 
   constructor(
     private readonly authSession: AuthSessionService,
@@ -288,5 +292,38 @@ export class OnboardingWizardComponent implements OnInit {
         this.submitError = 'Erro inesperado. Tente novamente.';
       }
     });
+  }
+
+  // ── Custom Dropdown Methods ─────────────────────────────────────────────
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    this.categoryDropdownOpen = false;
+  }
+
+  toggleCategoryDropdown(event: Event): void {
+    event.stopPropagation();
+    this.categoryDropdownOpen = !this.categoryDropdownOpen;
+    if (!this.categoryDropdownOpen) {
+      this.categorySearchTerm = '';
+    }
+  }
+
+  selectCategory(category: string): void {
+    this.companyForm.patchValue({ category });
+    this.categoryDropdownOpen = false;
+    this.categorySearchTerm = '';
+  }
+
+  updateCategorySearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.categorySearchTerm = input.value;
+  }
+
+  getFilteredCategories(): string[] {
+    if (!this.categorySearchTerm || this.categorySearchTerm.trim() === '') {
+      return this.categories;
+    }
+    const term = this.categorySearchTerm.toLowerCase();
+    return this.categories.filter(cat => cat.toLowerCase().includes(term));
   }
 }

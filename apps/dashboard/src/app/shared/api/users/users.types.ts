@@ -57,3 +57,11 @@ export interface ViaCepDto {
   ddd: string;
   siafi: string;
 }
+
+export interface ProfileImageDto {
+  id: string;
+  userId: string;
+  contentType: string;
+  fileSizeBytes: number;
+  createdAt: string;
+}

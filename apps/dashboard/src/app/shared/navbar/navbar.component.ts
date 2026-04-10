@@ -1,7 +1,8 @@
 import { Component, Output, EventEmitter, OnDestroy, OnInit, AfterViewInit, ChangeDetectorRef, Inject, Renderer2, ViewChild, ElementRef, ViewChildren, QueryList, HostListener } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { LayoutService } from '../services/layout.service';
-import { Subscription } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ConfigService } from '../services/config.service';
 import { DOCUMENT } from '@angular/common';
 import { CustomizerService } from '../services/customizer.service';
@@ -10,6 +11,7 @@ import { LISTITEMS } from '../data/template-search';
 import { Router } from '@angular/router';
 import { AuthSessionService } from '../auth/auth-session.service';
 import { AuthRefreshService } from '../auth/auth-refresh.service';
+import { UsersApiService } from '../api/users-api.service';
 
 @Component({
   selector: "app-navbar",
@@ -30,8 +32,12 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
   hideSidebar: boolean = true;
   public isCollapsed = true;
   userName = 'Usuario';
+  userAvatar: string | null = null;
   layoutSub: Subscription;
   configSub: Subscription;
+  avatarSub: Subscription;
+  nameSub: Subscription;
+  private destroy$ = new Subject<void>();
 
   @ViewChild('search') searchElement: ElementRef;
   @ViewChildren('searchResults') searchResults: QueryList<any>;
@@ -52,7 +58,9 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
     private router: Router,
     private authSessionService: AuthSessionService,
     private authRefreshService: AuthRefreshService,
-    private configService: ConfigService, private cdr: ChangeDetectorRef) {
+    private configService: ConfigService, 
+    private cdr: ChangeDetectorRef,
+    private usersApi: UsersApiService) {
 
     const initialLang = this.translate.currentLang || this.translate.getDefaultLang() || 'pt-BR';
     this.currentLang = initialLang;
@@ -69,7 +77,18 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.listItems = LISTITEMS;
-    this.userName = this.authSessionService.getUser()?.name?.trim() || 'Usuario';
+    const sessionUser = this.authSessionService.getUser();
+    
+    // Carregar imagem de perfil diretamente do banco
+    if (sessionUser?.userId) {
+      this.loadUserProfileImage(sessionUser.userId);
+    }
+    
+    this.authSessionService.loadUserName();
+    this.nameSub = this.authSessionService.userName$.subscribe(name => {
+      this.userName = name || 'Usuario';
+      this.cdr.markForCheck();
+    });
 
     if (this.innerWidth < 1200) {
       this.isSmallScreen = true;
@@ -92,11 +111,25 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Liberar URL do avatar se existir
+    if (this.userAvatar && this.userAvatar.startsWith('blob:')) {
+      URL.revokeObjectURL(this.userAvatar);
+    }
+    
     if (this.layoutSub) {
       this.layoutSub.unsubscribe();
     }
     if (this.configSub) {
       this.configSub.unsubscribe();
+    }
+    if (this.avatarSub) {
+      this.avatarSub.unsubscribe();
+    }
+    if (this.nameSub) {
+      this.nameSub.unsubscribe();
     }
   }
 
@@ -175,6 +208,33 @@ export class NavbarComponent implements OnInit, AfterViewInit, OnDestroy {
     this.currentLang = language;
     this.translate.use(language);
     this.setLanguageUi(language);
+  }
+
+  /**
+   * Carrega a imagem de perfil do usuário diretamente do banco
+   */
+  private loadUserProfileImage(userId: string): void {
+    this.usersApi.getProfileImageBlob(userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (blob) => {
+          if (blob && blob.size > 0) {
+            // Liberar URL anterior se existir
+            if (this.userAvatar && this.userAvatar.startsWith('blob:')) {
+              URL.revokeObjectURL(this.userAvatar);
+            }
+            
+            this.userAvatar = URL.createObjectURL(blob);
+            this.cdr.markForCheck();
+          } else {
+            this.userAvatar = null;
+          }
+        },
+        error: () => {
+          this.userAvatar = null;
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   private setLanguageUi(language: string): void {

@@ -54,23 +54,34 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.menuItems = JSON.parse(JSON.stringify(ROUTES));
+    this.applyRoleVisibility();
     this.loadProjects();
   }
 
   private applyRoleVisibility(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
     const canSeeUsers = role === 'ADM' || role === 'ADM_MASTER';
-    const canSeeCompanies = role === 'ADM_MASTER';
+    const isAdm = role === 'ADM';
+    const admCompanyId = isAdm ? (this.authSession.getUser()?.companyId ?? null) : null;
 
     this.menuItems = this.menuItems
       .map((menu: RouteInfo) => {
         if (!menu.submenu?.length) return menu;
 
-        const filteredSubmenu = menu.submenu.filter(item => {
-          if (item.path === '/users') return canSeeUsers;
-          if (item.path === '/companies') return canSeeCompanies;
-          return true;
-        });
+        const filteredSubmenu = menu.submenu
+          .map(item => {
+            // Para ADM: transforma o link /companies em link direto para a empresa dele
+            if (item.path === '/companies' && isAdm && admCompanyId) {
+              return { ...item, path: `/companies/${admCompanyId}`, title: 'Minha Empresa' };
+            }
+            return item;
+          })
+          .filter(item => {
+            if (item.path === '/users') return canSeeUsers;
+            if (item.path === '/companies') return role === 'ADM_MASTER';
+            if (item.path?.startsWith('/companies/')) return isAdm && !!admCompanyId;
+            return true;
+          });
 
         return { ...menu, submenu: filteredSubmenu };
       })
@@ -78,25 +89,32 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadProjects() {
-    this.projectsApiService.getAll().subscribe(result => {
-      if (result?.data?.length) {
-        this.projectsSubmenu = result.data
-          .filter(p => p.status === 'Active')
-          .map(p => ({
-            path: p.status === 'Draft' ? `/projects/${p.id}/edit` : `/projects/${p.id}`,
-            title: p.name,
-            icon: 'ft-folder submenu-icon',
-            class: 'project-sub-item',
-            badge: '',
-            badgeClass: '',
-            isExternalLink: false,
-            submenu: []
-          }));
-      } else {
+    this.projectsApiService.getAll().subscribe({
+      next: result => {
+        if (result?.data?.length) {
+          this.projectsSubmenu = result.data
+            .filter(p => p.status === 'Active')
+            .map(p => ({
+              path: p.status === 'Draft' ? `/projects/${p.id}/edit` : `/projects/${p.id}`,
+              title: p.name,
+              icon: 'ft-folder submenu-icon',
+              class: 'project-sub-item',
+              badge: '',
+              badgeClass: '',
+              isExternalLink: false,
+              submenu: []
+            }));
+        } else {
+          this.projectsSubmenu = [];
+        }
+        this.injectProjects();
+        this.cdr.markForCheck();
+      },
+      error: () => {
         this.projectsSubmenu = [];
+        this.injectProjects();
+        this.cdr.markForCheck();
       }
-      this.injectProjects();
-      this.cdr.markForCheck();
     });
   }
 

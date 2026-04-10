@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Custom Dropdown Styles - Shared across all components */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+
+  .custom-select-button {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    background: #fff;
+    text-align: left;
+    font-size: 0.875rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+    &:hover {
+      border-color: #80bdff;
+    }
+
+    &.active {
+      border-color: #80bdff;
+      outline: 0;
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    &.is-invalid {
+      border-color: #dc3545;
+    }
+
+    &:disabled {
+      background-color: #e9ecef;
+      opacity: 0.6;
+      cursor: not-allowed;
+
+      &:hover {
+        border-color: #ced4da;
+      }
+    }
+
+    i {
+      font-size: 0.75rem;
+      color: #6c757d;
+      transition: transform 0.2s;
+    }
+
+    &.active i {
+      transform: rotate(180deg);
+    }
+  }
+
+  .custom-select-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    max-height: none;
+  }
+
+  .custom-select-search {
+    padding: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+    flex-shrink: 0;
+
+    input {
+      font-size: 0.875rem;
+    }
+  }
+
+  .custom-select-options {
+    overflow-y: auto;
+    max-height: 140px;
+    min-height: auto;
+    
+    /* Estilização da scrollbar (webkit) */
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 3px;
+      
+      &:hover {
+        background: #a8a8a8;
+      }
+    }
+  }
+
+  .custom-select-option {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: #f8f9fa;
+    }
+
+    &.selected {
+      background-color: #e7f3ff;
+      color: #0056b3;
+      font-weight: 500;
+    }
+  }
+
+  .custom-select-empty {
+    padding: 0.75rem;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.875rem;
+  }
+}

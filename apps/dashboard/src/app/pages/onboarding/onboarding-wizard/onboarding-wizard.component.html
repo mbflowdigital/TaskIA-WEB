@@ -114,15 +114,42 @@
 
             <div class="form-group">
               <label class="form-label">Segmento / Categoria *</label>
-              <select
-                class="form-input"
-                formControlName="category"
-                [class.input-error]="companySubmitted && cf['category'].invalid"
-                style="cursor:pointer"
-              >
-                <option value="">Selecione um segmento...</option>
-                <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
-              </select>
+              <div class="custom-select-wrapper" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  class="custom-select-button form-input"
+                  [class.active]="categoryDropdownOpen"
+                  [class.input-error]="companySubmitted && cf['category'].invalid"
+                  (click)="toggleCategoryDropdown($event)"
+                  style="cursor:pointer">
+                  {{ cf['category'].value || 'Selecione um segmento...' }}
+                  <i class="ft-chevron-down"></i>
+                </button>
+                <div class="custom-select-dropdown" *ngIf="categoryDropdownOpen">
+                  <div class="custom-select-search" *ngIf="categories.length > 10">
+                    <input
+                      type="text"
+                      placeholder="Buscar segmento..."
+                      [value]="categorySearchTerm"
+                      (input)="updateCategorySearchTerm($event)"
+                      (click)="$event.stopPropagation()"
+                      class="form-control form-control-sm"
+                    />
+                  </div>
+                  <div class="custom-select-options">
+                    <div
+                      *ngFor="let cat of getFilteredCategories()"
+                      class="custom-select-option"
+                      [class.selected]="cf['category'].value === cat"
+                      (click)="selectCategory(cat); $event.stopPropagation()">
+                      {{ cat }}
+                    </div>
+                    <div *ngIf="getFilteredCategories().length === 0" class="custom-select-empty">
+                      Nenhum segmento encontrado
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="input-error-message" *ngIf="companySubmitted && cf['category'].invalid">
                 Selecione o segmento da empresa.
               </div>
