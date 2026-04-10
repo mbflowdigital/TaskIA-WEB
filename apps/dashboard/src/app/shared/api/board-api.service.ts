@@ -20,6 +20,8 @@ export interface BoardTaskDto {
   responsavelName?: string;
   sugestaoResponsavelId?: string;
   sugestaoResponsavelName?: string;
+  parentTaskId?: string;
+  subTasks?: BoardTaskDto[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -69,6 +71,12 @@ export class BoardApiService {
     return this.http
       .get<ApiResult<BoardTaskDto[]>>(`${this.baseUrl}/api/Board/project/${projectId}`)
       .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<BoardTaskDto[]>)));
+  }
+
+  getById(id: string): Observable<ApiResult<BoardTaskDto>> {
+    return this.http
+      .get<ApiResult<BoardTaskDto>>(`${this.baseUrl}/api/Board/${id}`)
+      .pipe(catchError((err: HttpErrorResponse) => of(err.error as ApiResult<BoardTaskDto>)));
   }
 
   updateStatus(id: string, status: string): Observable<ApiResult<BoardTaskDto>> {

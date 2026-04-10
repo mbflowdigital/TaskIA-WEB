@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, switchMap } from 'rxjs';
 
 import { BoardApiService, BoardTaskDto, BoardStatus, BOARD_STATUSES, UpdateBoardRequest } from '../../../shared/api/board-api.service';
 import { ProjectsApiService } from '../../../shared/api/projects-api.service';
@@ -53,6 +53,7 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   backlogFilter = '';
   backlogPage = 1;
   readonly backlogPageSize = 15;
+  expandedTasks: Record<string, boolean> = {};
 
   private readonly priorityOrder: Record<string, number> = {
     crítica: 0, critica: 0, alta: 1, média: 2, media: 2, baixa: 3
@@ -179,6 +180,39 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     return this.boardTasks.some(t => this.isCritical(t) && t.status === 'A Fazer');
   }
 
+  /**
+   * Atualiza uma tarefa tanto no array principal quanto nas subtarefas da tarefa pai
+   */
+  private updateTaskInList(updatedTask: BoardTaskDto): void {
+    // Atualiza no array principal
+    const idx = this.boardTasks.findIndex(t => t.id === updatedTask.id);
+    if (idx !== -1) {
+      this.boardTasks[idx] = updatedTask;
+    }
+
+    // Se for uma subtarefa, atualiza também no array subTasks da tarefa pai
+    if (updatedTask.parentTaskId) {
+      const parentIdx = this.boardTasks.findIndex(t => t.id === updatedTask.parentTaskId);
+      if (parentIdx !== -1 && this.boardTasks[parentIdx].subTasks) {
+        const subIdx = this.boardTasks[parentIdx].subTasks!.findIndex(st => st.id === updatedTask.id);
+        if (subIdx !== -1) {
+          this.boardTasks[parentIdx].subTasks![subIdx] = updatedTask;
+        }
+      }
+    }
+
+    // Se for uma tarefa pai, atualiza ela mas preserva as subtarefas existentes se não vieram na resposta
+    if (!updatedTask.parentTaskId && idx !== -1) {
+      const existingTask = this.boardTasks[idx];
+      if (existingTask.subTasks && !updatedTask.subTasks) {
+        this.boardTasks[idx].subTasks = existingTask.subTasks;
+      }
+    }
+
+    // Força atualização da view
+    this.boardTasks = [...this.boardTasks];
+  }
+
   // ── Actions ───────────────────────────────────────────────────────────────
 
   onChangeTaskStatus(task: BoardTaskDto, newStatus: string): void {
@@ -189,25 +223,55 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     }
     this.taskActionLoading[task.id] = true;
     this.clearFeedback(task.id);
+    
+    // Se for uma subtarefa, marcar a tarefa pai como loading também
+    if (task.parentTaskId) {
+      this.taskActionLoading[task.parentTaskId] = true;
+    }
+    
     this.boardApi.updateStatus(task.id, newStatus)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result) => {
-          this.taskActionLoading[task.id] = false;
+      .pipe(
+        switchMap((result) => {
+          // Atualiza a subtarefa no visual imediatamente
           if (result && result.isSuccess && result.data) {
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = result.data;
-            this.boardTasks = [...this.boardTasks];
+            this.updateTaskInList(result.data);
             if (this.selectedTask && this.selectedTask.id === task.id) {
               this.selectedTask = result.data;
             }
-            this.showFeedback(task.id, 'success', 'Status atualizado!');
-          } else {
-            this.showFeedback(task.id, 'error', (result && result.message) ? result.message : 'Erro ao atualizar status.');
           }
+          
+          // Se for subtarefa, busca a tarefa pai atualizada (backend já sincronizou)
+          if (task.parentTaskId && result && result.isSuccess) {
+            return this.boardApi.getById(task.parentTaskId);
+          }
+          
+          return [result];
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (result) => {
+          this.taskActionLoading[task.id] = false;
+          
+          if (task.parentTaskId) {
+            this.taskActionLoading[task.parentTaskId] = false;
+            
+            // Atualiza a tarefa pai no visual
+            if (result && result.isSuccess && result.data) {
+              this.updateTaskInList(result.data);
+              if (this.selectedTask && this.selectedTask.id === task.parentTaskId) {
+                this.selectedTask = result.data;
+              }
+            }
+          }
+          
+          this.showFeedback(task.id, 'success', 'Status atualizado!');
         },
         error: () => {
           this.taskActionLoading[task.id] = false;
+          if (task.parentTaskId) {
+            this.taskActionLoading[task.parentTaskId] = false;
+          }
           this.showFeedback(task.id, 'error', 'Erro de conexão.');
         }
       });
@@ -223,9 +287,7 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
         next: (result) => {
           this.taskActionLoading[task.id] = false;
           if (result && result.isSuccess && result.data) {
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = result.data;
-            this.boardTasks = [...this.boardTasks];
+            this.updateTaskInList(result.data);
             this.editingResponsible[task.id] = false;
             this.showFeedback(task.id, 'success', 'Responsável atualizado!');
           } else {
@@ -250,9 +312,7 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
         next: (result) => {
           this.taskActionLoading[task.id] = false;
           if (result && result.isSuccess && result.data) {
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = result.data;
-            this.boardTasks = [...this.boardTasks];
+            this.updateTaskInList(result.data);
             if (this.selectedTask && this.selectedTask.id === task.id) {
               this.selectedTask = result.data;
             }
@@ -282,7 +342,19 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
             this.showFeedback(task.id, 'error', result.message ?? 'Erro ao excluir tarefa.');
             return;
           }
+          
+          // Remove do array principal
           this.boardTasks = this.boardTasks.filter(t => t.id !== task.id);
+          
+          // Se for uma subtarefa, remove também do array subTasks da tarefa pai
+          if (task.parentTaskId) {
+            const parentIdx = this.boardTasks.findIndex(t => t.id === task.parentTaskId);
+            if (parentIdx !== -1 && this.boardTasks[parentIdx].subTasks) {
+              this.boardTasks[parentIdx].subTasks = this.boardTasks[parentIdx].subTasks!.filter(st => st.id !== task.id);
+              this.boardTasks = [...this.boardTasks];
+            }
+          }
+          
           this.selectedTask = null;
         },
         error: () => {
@@ -333,12 +405,19 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
 
   get backlogFilteredTasks(): BoardTaskDto[] {
     const term = this.backlogFilter.toLowerCase().trim();
-    let tasks = this.boardTasks.filter(t =>
+    // Filtrar apenas tarefas pai (sem parentTaskId)
+    let tasks = this.boardTasks.filter(t => !t.parentTaskId).filter(t =>
       !term ||
       t.name?.toLowerCase().includes(term) ||
       t.id?.toLowerCase().includes(term) ||
       t.description?.toLowerCase().includes(term) ||
-      (t.responsavelName?.toLowerCase().includes(term) ?? false)
+      (t.responsavelName?.toLowerCase().includes(term) ?? false) ||
+      // Buscar também nas subtarefas
+      (t.subTasks?.some(st => 
+        st.name?.toLowerCase().includes(term) ||
+        st.description?.toLowerCase().includes(term) ||
+        (st.responsavelName?.toLowerCase().includes(term) ?? false)
+      ) ?? false)
     );
 
     const dir = this.backlogSortDir === 'asc' ? 1 : -1;
@@ -411,6 +490,21 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     return this.backlogSortDir === 'asc' ? 'ft-chevron-up' : 'ft-chevron-down';
   }
 
+  toggleTaskExpansion(taskId: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.expandedTasks[taskId] = !this.expandedTasks[taskId];
+  }
+
+  isTaskExpanded(taskId: string): boolean {
+    return !!this.expandedTasks[taskId];
+  }
+
+  getSubTasksCount(task: BoardTaskDto): number {
+    return task.subTasks?.length ?? 0;
+  }
+
   getStatusBadgeClass(status: string): string {
     switch (status) {
       case 'A Fazer':      return 'bl-badge-todo';
@@ -461,9 +555,7 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
           const updated = result.data!;
           if (!statusChanged) {
             this.saveTaskLoading = false;
-            const idx = this.boardTasks.findIndex(t => t.id === task.id);
-            if (idx !== -1) this.boardTasks[idx] = updated;
-            this.boardTasks = [...this.boardTasks];
+            this.updateTaskInList(updated);
             this.selectedTask = updated;
             this.taskNameEdit = updated.name;
             this.taskDescEdit = updated.description ?? '';
@@ -476,9 +568,7 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
               next: (statusResult) => {
                 this.saveTaskLoading = false;
                 const final = (statusResult?.isSuccess && statusResult.data) ? statusResult.data : updated;
-                const idx = this.boardTasks.findIndex(t => t.id === task.id);
-                if (idx !== -1) this.boardTasks[idx] = final;
-                this.boardTasks = [...this.boardTasks];
+                this.updateTaskInList(final);
                 this.selectedTask = final;
                 this.taskNameEdit = final.name;
                 this.taskDescEdit = final.description ?? '';
