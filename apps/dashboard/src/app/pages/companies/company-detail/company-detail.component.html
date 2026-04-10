@@ -91,7 +91,7 @@
                         <tr *ngFor="let user of users">
                           <td>
                             <div>{{ user.name }}</div>
-                            <small class="text-muted">{{ user.cpf || '-' }}</small>
+                            <small class="text-muted">{{ formatUserCpf(user.cpf) }}</small>
                           </td>
                           <td>{{ user.email }}</td>
                           <td>{{ user.positionName || '-' }}</td>

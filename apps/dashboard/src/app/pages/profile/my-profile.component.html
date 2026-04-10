@@ -1,0 +1,211 @@
+<div class="profile-page container-fluid py-4">
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="d-flex justify-content-center align-items-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="sr-only">Carregando...</span>
+    </div>
+  </div>
+
+  <!-- Load error -->
+  <div *ngIf="loadError && !isLoading" class="alert alert-danger">
+    <i class="ft-alert-circle mr-2"></i>{{ loadError }}
+  </div>
+
+  <ng-container *ngIf="!isLoading && !loadError && user">
+    <div class="row">
+
+      <!-- Left: Avatar column -->
+      <div class="col-12 col-md-4 col-lg-3 mb-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body d-flex flex-column align-items-center text-center py-4">
+
+            <!-- Avatar -->
+            <div
+              class="avatar-wrapper mb-3"
+              [class.drag-over]="isDragOver"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave()"
+              (drop)="onDrop($event)">
+              <img
+                *ngIf="avatarUrl; else defaultAvatar"
+                [src]="avatarUrl"
+                class="avatar-img"
+                alt="Foto de perfil"
+              />
+              <ng-template #defaultAvatar>
+                <div class="avatar-placeholder">
+                  <i class="ft-user"></i>
+                </div>
+              </ng-template>
+              <div class="avatar-overlay">
+                <label for="photoInput" class="avatar-overlay-label">
+                  <i class="ft-camera"></i>
+                  <span>Alterar foto</span>
+                </label>
+              </div>
+            </div>
+
+            <input
+              #photoInput
+              id="photoInput"
+              type="file"
+              accept="image/*"
+              class="d-none"
+              (change)="onFileSelected($event)"
+            />
+
+            <p class="text-muted small mb-2">Arraste uma imagem ou clique na foto</p>
+            <p class="text-muted x-small mb-3">JPG, PNG ou WEBP · Máx. 5 MB</p>
+
+            <!-- Upload Photo Error -->
+            <div *ngIf="uploadPhotoError" class="alert alert-danger alert-sm mb-3 w-100">
+              <i class="ft-alert-circle mr-1"></i>{{ uploadPhotoError }}
+            </div>
+
+            <!-- Add Photo Button -->
+            <button
+              type="button"
+              class="btn btn-sm btn-primary mb-2 w-100"
+              [disabled]="isUploadingPhoto || isRemovingPhoto"
+              (click)="photoInput.click()">
+              <span *ngIf="!isUploadingPhoto">
+                <i class="ft-upload mr-1"></i>{{ avatarUrl ? 'Alterar foto' : 'Adicionar foto' }}
+              </span>
+              <span *ngIf="isUploadingPhoto">
+                <span class="spinner-border spinner-border-sm mr-1"></span>Enviando...
+              </span>
+            </button>
+
+            <!-- Remove Photo Button -->
+            <button
+              *ngIf="avatarUrl"
+              type="button"
+              class="btn btn-sm btn-outline-danger w-100"
+              [disabled]="isUploadingPhoto || isRemovingPhoto"
+              (click)="removePhoto()">
+              <span *ngIf="!isRemovingPhoto">
+                <i class="ft-trash-2 mr-1"></i>Remover foto
+              </span>
+              <span *ngIf="isRemovingPhoto">
+                <span class="spinner-border spinner-border-sm mr-1"></span>Removendo...
+              </span>
+            </button>
+
+            <!-- User identity (read-only) -->
+            <hr class="w-100 mt-3 mb-3" />
+            <p class="font-weight-bold mb-1">{{ user.name }}</p>
+            <p class="text-muted small mb-1">{{ user.email }}</p>
+            <span class="badge badge-secondary">{{ user.role ?? 'USER' }}</span>
+            <p *ngIf="user.companyName" class="text-muted small mt-2 mb-0">
+              <i class="ft-briefcase mr-1"></i>{{ user.companyName }}
+            </p>
+            <p *ngIf="user.positionName" class="text-muted small mb-0">
+              <i class="ft-award mr-1"></i>{{ user.positionName }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Form column -->
+      <div class="col-12 col-md-8 col-lg-9">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h4 class="card-title mb-0">
+              <i class="ft-user mr-2"></i>Meu Perfil
+            </h4>
+          </div>
+          <div class="card-body">
+
+            <!-- Success / Error alerts -->
+            <div *ngIf="submitSuccess" class="alert alert-success alert-dismissible fade show">
+              <i class="ft-check-circle mr-2"></i>{{ submitSuccess }}
+            </div>
+            <div *ngIf="submitError" class="alert alert-danger">
+              <i class="ft-alert-circle mr-2"></i>{{ submitError }}
+            </div>
+
+            <form [formGroup]="form" (ngSubmit)="onSave()">
+
+              <!-- Section: Dados pessoais -->
+              <p class="text-muted font-small-3 font-weight-bold text-uppercase mb-2">Dados pessoais</p>
+
+              <div class="row">
+                <div class="col-12 col-sm-6 form-group">
+                  <label class="form-label">Nome completo<span class="text-danger ml-1">*</span></label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    formControlName="name"
+                    placeholder="Seu nome completo"
+                    [class.is-invalid]="f['name'].touched && f['name'].invalid"
+                  />
+                  <div class="invalid-feedback" *ngIf="f['name'].touched && f['name'].invalid">
+                    Nome é obrigatório.
+                  </div>
+                </div>
+
+                <div class="col-12 col-sm-6 form-group">
+                  <label class="form-label">E-mail</label>
+                  <input type="email" class="form-control" [value]="user.email" disabled />
+                  <small class="text-muted">O e-mail não pode ser alterado.</small>
+                </div>
+
+                <div class="col-12 col-sm-6 form-group">
+                  <label class="form-label">Telefone</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    formControlName="phone"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+
+                <div class="col-12 col-sm-6 form-group" *ngIf="user.cpf">
+                  <label class="form-label">CPF</label>
+                  <input type="text" class="form-control" [value]="formattedCpf" disabled />
+                </div>
+
+                <div class="col-12 col-sm-6 form-group" *ngIf="user.birthDate">
+                  <label class="form-label">Data de nascimento</label>
+                  <input type="text" class="form-control" [value]="user.birthDate | date:'dd/MM/yyyy'" disabled />
+                </div>
+              </div>
+
+              <!-- Section: Bio -->
+              <p class="text-muted font-small-3 font-weight-bold text-uppercase mb-2 mt-3">Sobre mim</p>
+
+              <div class="form-group">
+                <label class="form-label">Descrição / Bio</label>
+                <textarea
+                  class="form-control"
+                  formControlName="bio"
+                  rows="4"
+                  placeholder="Fale um pouco sobre você, suas habilidades, área de atuação..."
+                  maxlength="500"
+                ></textarea>
+                <small class="text-muted d-flex justify-content-end">
+                  {{ f['bio'].value?.length ?? 0 }}/500
+                </small>
+              </div>
+
+              <!-- Actions -->
+              <div class="d-flex justify-content-end mt-3">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  [disabled]="isSubmitting">
+                  <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm mr-2" role="status"></span>
+                  <i *ngIf="!isSubmitting" class="ft-save mr-1"></i>
+                  {{ isSubmitting ? 'Salvando...' : 'Salvar alterações' }}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
+</div>

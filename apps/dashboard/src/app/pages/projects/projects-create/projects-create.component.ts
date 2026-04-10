@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ChangeDetectorRef, HostListener } from '@angular/core';
 import { AbstractControl, FormsModule, ReactiveFormsModule, UntypedFormArray, UntypedFormControl, UntypedFormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, forkJoin, takeUntil, debounceTime, interval, switchMap, takeWhile, startWith } from 'rxjs';
@@ -10,6 +10,7 @@ import { ProjectsApiService } from '../../../shared/api/projects-api.service';
 import { ProjectMemberRequest, ProjectDetailsRequest, ProjectExecutionSettingsRequest, UpdateProjectDetailsRequest, ProjectCompleteDto, ProjectMemberCompleteDto } from '../../../shared/api/projects/projects.types';
 import { CompaniesApiService } from '../../../shared/api/companies-api.service';
 import { UserDto } from '../../../shared/api/users/users.types';
+import { UsersApiService } from '../../../shared/api/users-api.service';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus, AnalyzeProjectJobStatus } from '../../../shared/api/claude-api.service';
 import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
@@ -23,7 +24,7 @@ import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/
 })
 export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-  private readonly leadershipRoles = ['Gerente de Projeto', 'Tech Lead'];
+  private readonly leadershipRoles = ['Gerente de Projeto', 'Coordenador', 'Supervisor'];
 
   // Wizard
   currentStep = 1;
@@ -146,6 +147,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private readonly MAX_FILE_SIZE_MB = 20;
   private readonly MAX_FILE_SIZE_BYTES = this.MAX_FILE_SIZE_MB * 1024 * 1024;
 
+  // Cache de imagens de perfil (userId -> ObjectURL)
+  private profileImageCache = new Map<string, string>();
+
   toggleReviewSection(key: string): void {
     this.reviewOpenSections[key] = !this.reviewOpenSections[key];
   }
@@ -214,11 +218,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   form = new UntypedFormGroup({
     // TELA 1: DADOS BÁSICOS
-    name: new UntypedFormControl('', [
-      Validators.required,
-      Validators.minLength(10),
-      Validators.maxLength(200)
-    ]),
+    name: new UntypedFormControl('', Validators.required),
     objective: new UntypedFormControl('', [
       Validators.required,
       Validators.minLength(20)
@@ -281,25 +281,43 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return !!(c?.get('lgpd')?.value || c?.get('pciDss')?.value || c?.get('hipaa')?.value || c?.get('iso27001')?.value || c?.get('sox')?.value);
   }
 
-  readonly departmentOptions = ['TI', 'Marketing', 'RH', 'Operações', 'Financeiro', 'Produto', 'Comercial'];
-  readonly projectTypeOptions = ['Migração', 'Implantação', 'Melhoria', 'Desenvolvimento', 'Integração'];
+  readonly departmentOptions = ['Produção', 'Manutenção', 'Qualidade', 'Operações', 'Engenharia', 'Logística', 'Administrativo', 'Financeiro', 'RH', 'Comercial', 'TI'];
+  readonly projectTypeOptions = ['Implantação', 'Melhoria', 'Expansão', 'Modernização', 'Adequação', 'Otimização', 'Desenvolvimento'];
   readonly roleOptions = [
     'Gerente de Projeto',
-    'Tech Lead',
-    'Desenvolvedor',
+    'Coordenador',
+    'Supervisor',
+    'Engenheiro',
+    'Técnico',
+    'Especialista',
     'Analista',
-    'Designer',
-    'QA',
-    'DevOps'
+    'Operador',
+    'Assistente',
+    'Administrador',
+    'Consultor'
   ];
   readonly dedicationOptions = ['Integral', 'Parcial 50%', 'Parcial 25%', 'Consultor Pontual'];
+  
+  readonly criticalityOptions = ['Bloqueante', 'Importante', 'Desejável'];
+  readonly integrationTypeOptions = ['API', 'Banco de Dados', 'Sistema ERP', 'Sistema MES', 'Sistema SCADA/IHM', 'Outro'];
+
+  // ── Controles de dropdowns customizados ─────────────────────────────────
+  departmentDropdownOpen = false;
+  departmentSearchTerm = '';
+  projectTypeDropdownOpen = false;
+  projectTypeSearchTerm = '';
+  addMemberDropdownOpen = false;
+  addMemberSearchTerm = '';
+
+  private readonly documentsApi = inject(DocumentsApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor(
     private readonly projectsApi: ProjectsApiService,
     private readonly companiesApi: CompaniesApiService,
+    private readonly usersApi: UsersApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
-    private readonly documentsApi: DocumentsApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -314,9 +332,26 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     const sessionRole = this.authSession.getRole().trim().toUpperCase();
     const companyId = (sessionUser?.companyId ?? '').trim();
 
-    this.companyDisplayName = sessionUser?.companyName ?? 'Empresa';
-    if (sessionRole !== 'ADM_MASTER' && this.isValidGuid(companyId)) {
-      this.loadTeamData(companyId);
+    this.companyDisplayName = sessionUser?.companyName || 'Empresa';
+    if (this.isValidGuid(companyId)) {
+      this.initCompanyAndTeam(companyId, sessionRole);
+    } else if (sessionUser?.userId) {
+      // companyId não está na sessão: busca o perfil atualizado do usuário na API
+      this.usersApi.getById(sessionUser.userId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (r) => {
+            if (r?.isSuccess && r.data) {
+              const freshCompanyId = (r.data.companyId ?? '').trim();
+              this.companyDisplayName = r.data.companyName || 'Empresa';
+              // Atualiza a sessão com os dados mais recentes
+              this.authSession.setUser({ ...sessionUser, companyId: freshCompanyId, companyName: r.data.companyName });
+              if (this.isValidGuid(freshCompanyId)) {
+                this.initCompanyAndTeam(freshCompanyId, sessionRole);
+              }
+            }
+          }
+        });
     }
 
 
@@ -363,6 +398,10 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Libera todas as ObjectURLs do cache
+    this.profileImageCache.forEach(url => URL.revokeObjectURL(url));
+    this.profileImageCache.clear();
   }
 
   onReset(): void {
@@ -481,7 +520,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       role: new UntypedFormControl(''),
       dedication: new UntypedFormControl(''),
       isApprover: new UntypedFormControl(false),
-      roleDescription: new UntypedFormControl('')
+      roleDescription: new UntypedFormControl(''),
+      roleDropdownOpen: new UntypedFormControl(false),
+      roleSearchTerm: new UntypedFormControl(''),
+      dedicationDropdownOpen: new UntypedFormControl(false),
+      dedicationSearchTerm: new UntypedFormControl('')
     });
   }
 
@@ -496,8 +539,314 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       role: new UntypedFormControl(data.role),
       dedication: new UntypedFormControl(data.dedication),
       isApprover: new UntypedFormControl(data.isApprover),
-      roleDescription: new UntypedFormControl(data.roleDescription)
+      roleDescription: new UntypedFormControl(data.roleDescription),
+      roleDropdownOpen: new UntypedFormControl(false),
+      roleSearchTerm: new UntypedFormControl(''),
+      dedicationDropdownOpen: new UntypedFormControl(false),
+      dedicationSearchTerm: new UntypedFormControl('')
     });
+  }
+
+  toggleRoleDropdown(index: number, event: Event): void {
+    event.stopPropagation();
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    const isOpen = member.get('roleDropdownOpen')?.value;
+    
+    // Fecha todos os outros dropdowns
+    this.teamMembersArray.controls.forEach((ctrl, i) => {
+      if (i !== index) {
+        ctrl.get('roleDropdownOpen')?.setValue(false);
+      }
+    });
+    
+    // Toggle o dropdown atual
+    member.get('roleDropdownOpen')?.setValue(!isOpen);
+    if (!isOpen) {
+      member.get('roleSearchTerm')?.setValue('');
+    }
+  }
+
+  selectRole(index: number, role: string): void {
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    member.get('role')?.setValue(role);
+    member.get('roleDropdownOpen')?.setValue(false);
+    member.get('roleSearchTerm')?.setValue('');
+  }
+
+  updateRoleSearchTerm(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    member.get('roleSearchTerm')?.setValue(input.value);
+  }
+
+  getFilteredRoles(searchTerm: string | null): string[] {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return this.roleOptions;
+    }
+    const term = searchTerm.toLowerCase();
+    return this.roleOptions.filter(role => role.toLowerCase().includes(term));
+  }
+
+  // Fecha dropdowns ao clicar fora
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    this.departmentDropdownOpen = false;
+    this.projectTypeDropdownOpen = false;
+    this.addMemberDropdownOpen = false;
+    this.teamMembersArray.controls.forEach(ctrl => {
+      ctrl.get('roleDropdownOpen')?.setValue(false);
+      ctrl.get('dedicationDropdownOpen')?.setValue(false);
+    });
+    this.externalDependenciesArray.controls.forEach(ctrl => {
+      ctrl.get('criticalityDropdownOpen')?.setValue(false);
+    });
+    this.integrationsArray.controls.forEach(ctrl => {
+      ctrl.get('typeDropdownOpen')?.setValue(false);
+      ctrl.get('criticalityDropdownOpen')?.setValue(false);
+    });
+  }
+
+  // ── Funções de controle do dropdown de Department ────────────────────────
+  toggleDepartmentDropdown(event: Event): void {
+    event.stopPropagation();
+    this.departmentDropdownOpen = !this.departmentDropdownOpen;
+    if (!this.departmentDropdownOpen) {
+      this.departmentSearchTerm = '';
+    }
+  }
+
+  selectDepartment(department: string): void {
+    this.form.patchValue({ department });
+    this.departmentDropdownOpen = false;
+    this.departmentSearchTerm = '';
+  }
+
+  updateDepartmentSearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.departmentSearchTerm = input.value;
+  }
+
+  getFilteredDepartments(): string[] {
+    if (!this.departmentSearchTerm || this.departmentSearchTerm.trim() === '') {
+      return this.departmentOptions;
+    }
+    const term = this.departmentSearchTerm.toLowerCase();
+    return this.departmentOptions.filter(dept => dept.toLowerCase().includes(term));
+  }
+
+  // ── Funções de controle do dropdown de Project Type ──────────────────────
+  toggleProjectTypeDropdown(event: Event): void {
+    event.stopPropagation();
+    this.projectTypeDropdownOpen = !this.projectTypeDropdownOpen;
+    if (!this.projectTypeDropdownOpen) {
+      this.projectTypeSearchTerm = '';
+    }
+  }
+
+  selectProjectType(projectType: string): void {
+    this.form.patchValue({ projectType });
+    this.projectTypeDropdownOpen = false;
+    this.projectTypeSearchTerm = '';
+  }
+
+  updateProjectTypeSearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.projectTypeSearchTerm = input.value;
+  }
+
+  getFilteredProjectTypes(): string[] {
+    if (!this.projectTypeSearchTerm || this.projectTypeSearchTerm.trim() === '') {
+      return this.projectTypeOptions;
+    }
+    const term = this.projectTypeSearchTerm.toLowerCase();
+    return this.projectTypeOptions.filter(type => type.toLowerCase().includes(term));
+  }
+
+  // ── Funções de controle do dropdown de Add Member ────────────────────────
+  toggleAddMemberDropdown(event: Event): void {
+    event.stopPropagation();
+    this.addMemberDropdownOpen = !this.addMemberDropdownOpen;
+    if (!this.addMemberDropdownOpen) {
+      this.addMemberSearchTerm = '';
+    }
+  }
+
+  selectAddMember(userId: string): void {
+    const user = this.availableUsers.find(u => u.id === userId);
+    if (user) {
+      const exists = this.teamMembersArray.controls.some(ctrl => ctrl.get('userId')?.value === user.id);
+      if (!exists) {
+        this.teamMembersArray.push(this.createTeamMemberControl(user));
+      }
+    }
+    this.addMemberDropdownOpen = false;
+    this.addMemberSearchTerm = '';
+  }
+
+  updateAddMemberSearchTerm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.addMemberSearchTerm = input.value;
+  }
+
+  getFilteredAvailableUsers(): UserDto[] {
+    const unselected = this.unselectedUsers;
+    if (!this.addMemberSearchTerm || this.addMemberSearchTerm.trim() === '') {
+      return unselected;
+    }
+    const term = this.addMemberSearchTerm.toLowerCase();
+    return unselected.filter(user => user.name.toLowerCase().includes(term));
+  }
+
+  // ── Funções de controle do dropdown de Dedication (por membro) ───────────
+  toggleDedicationDropdown(index: number, event: Event): void {
+    event.stopPropagation();
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    const isOpen = member.get('dedicationDropdownOpen')?.value;
+    
+    // Fecha todos os outros dropdowns de dedicação
+    this.teamMembersArray.controls.forEach((ctrl, i) => {
+      if (i !== index) {
+        ctrl.get('dedicationDropdownOpen')?.setValue(false);
+      }
+    });
+    
+    // Toggle o dropdown atual
+    member.get('dedicationDropdownOpen')?.setValue(!isOpen);
+    if (!isOpen) {
+      member.get('dedicationSearchTerm')?.setValue('');
+    }
+  }
+
+  selectDedication(index: number, dedication: string): void {
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    member.get('dedication')?.setValue(dedication);
+    member.get('dedicationDropdownOpen')?.setValue(false);
+    member.get('dedicationSearchTerm')?.setValue('');
+  }
+
+  updateDedicationSearchTerm(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const member = this.teamMembersArray.at(index) as UntypedFormGroup;
+    member.get('dedicationSearchTerm')?.setValue(input.value);
+  }
+
+  getFilteredDedications(searchTerm: string | null): string[] {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return this.dedicationOptions;
+    }
+    const term = searchTerm.toLowerCase();
+    return this.dedicationOptions.filter(dedication => dedication.toLowerCase().includes(term));
+  }
+
+  // ── Funções de controle dos dropdowns do step 3 ──────────────────────────
+
+  // Criticality (External Dependencies)
+  toggleDependencyCriticalityDropdown(index: number, event: Event): void {
+    event.stopPropagation();
+    const dep = this.externalDependenciesArray.at(index) as UntypedFormGroup;
+    const isOpen = dep.get('criticalityDropdownOpen')?.value;
+    
+    this.externalDependenciesArray.controls.forEach((ctrl, i) => {
+      if (i !== index) {
+        ctrl.get('criticalityDropdownOpen')?.setValue(false);
+      }
+    });
+    
+    dep.get('criticalityDropdownOpen')?.setValue(!isOpen);
+    if (!isOpen) {
+      dep.get('criticalitySearchTerm')?.setValue('');
+    }
+  }
+
+  selectDependencyCriticality(index: number, criticality: string): void {
+    const dep = this.externalDependenciesArray.at(index) as UntypedFormGroup;
+    dep.get('criticality')?.setValue(criticality);
+    dep.get('criticalityDropdownOpen')?.setValue(false);
+    dep.get('criticalitySearchTerm')?.setValue('');
+  }
+
+  updateDependencyCriticalitySearchTerm(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const dep = this.externalDependenciesArray.at(index) as UntypedFormGroup;
+    dep.get('criticalitySearchTerm')?.setValue(input.value);
+  }
+
+  // Integration Type
+  toggleIntegrationTypeDropdown(index: number, event: Event): void {
+    event.stopPropagation();
+    const intg = this.integrationsArray.at(index) as UntypedFormGroup;
+    const isOpen = intg.get('typeDropdownOpen')?.value;
+    
+    this.integrationsArray.controls.forEach((ctrl, i) => {
+      if (i !== index) {
+        ctrl.get('typeDropdownOpen')?.setValue(false);
+      }
+    });
+    
+    intg.get('typeDropdownOpen')?.setValue(!isOpen);
+    if (!isOpen) {
+      intg.get('typeSearchTerm')?.setValue('');
+    }
+  }
+
+  selectIntegrationType(index: number, type: string): void {
+    const intg = this.integrationsArray.at(index) as UntypedFormGroup;
+    intg.get('type')?.setValue(type);
+    intg.get('typeDropdownOpen')?.setValue(false);
+    intg.get('typeSearchTerm')?.setValue('');
+  }
+
+  updateIntegrationTypeSearchTerm(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const intg = this.integrationsArray.at(index) as UntypedFormGroup;
+    intg.get('typeSearchTerm')?.setValue(input.value);
+  }
+
+  getFilteredIntegrationTypes(searchTerm: string | null): string[] {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return this.integrationTypeOptions;
+    }
+    const term = searchTerm.toLowerCase();
+    return this.integrationTypeOptions.filter(type => type.toLowerCase().includes(term));
+  }
+
+  // Integration Criticality
+  toggleIntegrationCriticalityDropdown(index: number, event: Event): void {
+    event.stopPropagation();
+    const intg = this.integrationsArray.at(index) as UntypedFormGroup;
+    const isOpen = intg.get('criticalityDropdownOpen')?.value;
+    
+    this.integrationsArray.controls.forEach((ctrl, i) => {
+      if (i !== index) {
+        ctrl.get('criticalityDropdownOpen')?.setValue(false);
+      }
+    });
+    
+    intg.get('criticalityDropdownOpen')?.setValue(!isOpen);
+    if (!isOpen) {
+      intg.get('criticalitySearchTerm')?.setValue('');
+    }
+  }
+
+  selectIntegrationCriticality(index: number, criticality: string): void {
+    const intg = this.integrationsArray.at(index) as UntypedFormGroup;
+    intg.get('criticality')?.setValue(criticality);
+    intg.get('criticalityDropdownOpen')?.setValue(false);
+    intg.get('criticalitySearchTerm')?.setValue('');
+  }
+
+  updateIntegrationCriticalitySearchTerm(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const intg = this.integrationsArray.at(index) as UntypedFormGroup;
+    intg.get('criticalitySearchTerm')?.setValue(input.value);
+  }
+
+  getFilteredCriticalities(searchTerm: string | null): string[] {
+    if (!searchTerm || searchTerm.trim() === '') {
+      return this.criticalityOptions;
+    }
+    const term = searchTerm.toLowerCase();
+    return this.criticalityOptions.filter(crit => crit.toLowerCase().includes(term));
   }
 
   private populateFormFromComplete(data: ProjectCompleteDto): void {
@@ -816,6 +1165,53 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return this.availableUsers.filter(u => !selectedIds.has(u.id));
   }
 
+  /**
+   * Obtém a URL da imagem de perfil do usuário (carrega como blob se necessário)
+   * @param userId ID do usuário
+   * @returns URL da imagem ou string vazia se não houver userId
+   */
+  getUserProfileImageUrl(userId: string | null | undefined): string {
+    if (!userId) return '';
+    
+    // Verifica se já está no cache
+    if (this.profileImageCache.has(userId)) {
+      return this.profileImageCache.get(userId)!;
+    }
+    
+    // Carrega a imagem como blob
+    this.usersApi.getProfileImageBlob(userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (blob) => {
+          if (blob && blob.size > 0) {
+            const url = URL.createObjectURL(blob);
+            this.profileImageCache.set(userId, url);
+            // Força detecção de mudanças para atualizar a view
+            this.cdr.markForCheck();
+          }
+        },
+        error: () => {
+          // Ignora erro - o fallback de iniciais será exibido
+        }
+      });
+    
+    return ''; // Retorna vazio inicialmente, será atualizado quando carregar
+  }
+
+  /**
+   * Obtém as iniciais do nome do usuário para exibir no avatar
+   * @param userName Nome do usuário
+   * @returns Iniciais (máximo 2 caracteres)
+   */
+  getUserInitials(userName: string | null | undefined): string {
+    if (!userName) return '??';
+    const names = userName.trim().split(/\s+/);
+    if (names.length === 1) {
+      return names[0].substring(0, 2).toUpperCase();
+    }
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+  }
+
   addMemberFromSelect(event: Event): void {
     const select = event.target as HTMLSelectElement;
     const userId = select.value;
@@ -838,7 +1234,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       name: new UntypedFormControl('', Validators.required),
       whatIsNeeded: new UntypedFormControl('', Validators.required),
       deadline: new UntypedFormControl(''),
-      criticality: new UntypedFormControl('', Validators.required)
+      criticality: new UntypedFormControl('', Validators.required),
+      criticalityDropdownOpen: new UntypedFormControl(false),
+      criticalitySearchTerm: new UntypedFormControl('')
     });
   }
 
@@ -856,7 +1254,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       systemName: new UntypedFormControl('', Validators.required),
       type: new UntypedFormControl('', Validators.required),
       criticality: new UntypedFormControl('', Validators.required),
-      status: new UntypedFormControl('exists')
+      status: new UntypedFormControl('exists'),
+      typeDropdownOpen: new UntypedFormControl(false),
+      typeSearchTerm: new UntypedFormControl(''),
+      criticalityDropdownOpen: new UntypedFormControl(false),
+      criticalitySearchTerm: new UntypedFormControl('')
     });
   }
 
@@ -898,8 +1300,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
-          if (result?.isSuccess && result.data?.name) {
-            this.companyDisplayName = result.data.name;
+          if (result?.isSuccess && result.data) {
+            this.companyDisplayName = result.data.name || 'Empresa';
           }
         }
       });
@@ -929,6 +1331,17 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
+  private initCompanyAndTeam(companyId: string, sessionRole: string): void {
+    if (sessionRole !== 'ADM_MASTER') {
+      this.loadTeamData(companyId);
+    } else {
+      // ADM_MASTER: apenas busca o nome da empresa (não tem equipe própria)
+      this.companiesApi.getById(companyId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({ next: (r) => { if (r?.isSuccess && r.data) this.companyDisplayName = r.data.name || 'Empresa'; } });
+    }
+  }
+
   private isStep2Valid(): boolean {
     this.f['department']?.markAsTouched();
     this.f['projectType']?.markAsTouched();
@@ -941,6 +1354,11 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
     if (this.f['department']?.invalid || this.f['projectType']?.invalid) {
       return false;
+    }
+
+    // Sem usuários disponíveis: permite avançar sem membros na equipe
+    if (!this.loadingTeamData && this.availableUsers.length === 0) {
+      return true;
     }
 
     return !this.teamMembersArray.errors;

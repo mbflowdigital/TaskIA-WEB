@@ -7,6 +7,15 @@ import { CompaniesApiService, CompanyDto } from '../../../shared/api/companies-a
 import { UserDto } from 'app/shared/api/users/users.types';
 import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 
+function formatCpf(raw: string | null | undefined): string {
+  if (!raw) return '-';
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1-$2');
+}
+
 @Component({
   selector: 'app-company-detail',
   standalone: true,
@@ -30,15 +39,25 @@ export class CompanyDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
-    if (role !== 'ADM_MASTER') {
+    const isAdmin = role === 'ADM' || role === 'ADM_MASTER';
+    if (!isAdmin) {
       this.router.navigate(['/page']);
       return;
     }
 
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
-      this.router.navigate(['/companies']);
+      this.router.navigate(['/page']);
       return;
+    }
+
+    // ADM só pode ver a própria empresa
+    if (role === 'ADM') {
+      const sessionCompanyId = this.authSession.getUser()?.companyId;
+      if (!sessionCompanyId || id !== sessionCompanyId) {
+        this.router.navigate(['/page']);
+        return;
+      }
     }
 
     this.load(id);
@@ -47,6 +66,10 @@ export class CompanyDetailComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  formatUserCpf(cpf: string | null | undefined): string {
+    return formatCpf(cpf);
   }
 
   private load(companyId: string): void {
