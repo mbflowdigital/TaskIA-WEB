@@ -305,23 +305,26 @@
           <!-- Input equipe -->
           <ng-template #teamInputTpl>
             <div class="step-heading">
-              <h4>Sua Equipe</h4>
-              <p>Quantas pessoas fazem parte da sua empresa?</p>
+              <h4>Tamanho da Equipe</h4>
+              <p>Qual é o porte da sua empresa? Isso nos ajuda a calibrar o plano de projetos.</p>
             </div>
 
             <form novalidate [formGroup]="teamForm">
               <div class="form-group">
-                <label class="form-label">Número de membros *</label>
-                <input
-                  type="number"
-                  class="form-input"
-                  formControlName="numberOfMembers"
-                  placeholder="Ex.: 25"
-                  min="1"
-                  [class.input-error]="teamSubmitted && tf['numberOfMembers'].invalid"
-                />
+                <label class="form-label">Selecione o porte da empresa *</label>
+                <div class="team-size-grid">
+                  <button
+                    *ngFor="let opt of teamSizeOptions"
+                    type="button"
+                    class="team-size-card"
+                    [class.selected]="tf['numberOfMembers'].value === opt.value"
+                    (click)="teamForm.patchValue({ numberOfMembers: opt.value })">
+                    <span class="tscard-label">{{ opt.label }}</span>
+                    <span class="tscard-desc">{{ opt.description }}</span>
+                  </button>
+                </div>
                 <div class="input-error-message" *ngIf="teamSubmitted && tf['numberOfMembers'].invalid">
-                  Informe a quantidade de membros (mínimo 1).
+                  Selecione o porte da empresa.
                 </div>
               </div>
             </form>

@@ -388,3 +388,53 @@ $bg-light:    hsl(220, 20%, 98%);
 
   i { font-size: 0.9rem; }
 }
+
+/* ── Team Size Card-Select ─────────────────────────────────── */
+.team-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.team-size-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.9rem 0.5rem;
+  border: 2px solid $border;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: $navy;
+    background: hsl(220, 30%, 97%);
+  }
+
+  &.selected {
+    border-color: $navy;
+    background: hsl(220, 46%, 95%);
+    box-shadow: 0 0 0 3px rgba(28, 45, 71, 0.12);
+
+    .tscard-label { color: $navy; }
+    .tscard-desc  { color: hsl(220, 40%, 40%); }
+  }
+
+  .tscard-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a2e4a;
+    line-height: 1;
+  }
+
+  .tscard-desc {
+    font-size: 0.7rem;
+    color: $text-muted;
+    font-weight: 500;
+    text-align: center;
+  }
+}
