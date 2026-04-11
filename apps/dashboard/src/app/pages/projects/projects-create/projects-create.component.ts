@@ -14,6 +14,7 @@ import { UsersApiService } from '../../../shared/api/users-api.service';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus, AnalyzeProjectJobStatus } from '../../../shared/api/claude-api.service';
 import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
+import { BoardApiService, BoardTaskDto } from '../../../shared/api/board-api.service';
 
 @Component({
   selector: 'app-projects-create',
@@ -65,6 +66,12 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   isGeneratingTasks = false;
   generateTasksError?: string;
   currentTaskMessage = '';
+
+  // Task review phases (0=none, 1=macro review, 2=subtasks display)
+  taskReviewPhase = 0;
+  generatedMacroTasks: BoardTaskDto[] = [];
+  loadingGeneratedTasks = false;
+  isDeletingTask = new Set<string>();
   private taskMessageInterval?: ReturnType<typeof setInterval>;
 
   private readonly taskMessages = [
@@ -318,6 +325,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     private readonly usersApi: UsersApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
+    private readonly boardApi: BoardApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -1346,12 +1354,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.f['department']?.markAsTouched();
     this.f['projectType']?.markAsTouched();
 
-    for (const member of this.teamMembersArray.controls) {
-      member.markAllAsTouched();
-    }
-
-    this.teamMembersArray.updateValueAndValidity();
-
     if (this.f['department']?.invalid || this.f['projectType']?.invalid) {
       return false;
     }
@@ -1360,6 +1362,12 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     if (!this.loadingTeamData && this.availableUsers.length === 0) {
       return true;
     }
+
+    for (const member of this.teamMembersArray.controls) {
+      member.markAllAsTouched();
+    }
+
+    this.teamMembersArray.updateValueAndValidity();
 
     return !this.teamMembersArray.errors;
   }
@@ -1992,8 +2000,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           if (status === 'Completed') {
             this.stopTaskMessages();
             this.isGeneratingTasks = false;
-            this.authSession.clearOnboardingFlag();
-            this.router.navigate(['/projects', this.createdProjectId, 'board']);
+            this.loadGeneratedTasks();
           } else if (status === 'Failed') {
             this.stopTaskMessages();
             this.isGeneratingTasks = false;
@@ -2012,6 +2019,75 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.analysisResult = undefined;
     this.isSubmitting = false;
     this.generationStep = 0;
+  }
+
+  // ── Task Review Phase 1: load generated tasks ────────────────────────────
+  private loadGeneratedTasks(): void {
+    if (!this.createdProjectId) { this.navigateToBoard(); return; }
+    this.loadingGeneratedTasks = true;
+
+    this.boardApi.getByProject(this.createdProjectId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.loadingGeneratedTasks = false;
+          if (!result?.isSuccess || !Array.isArray(result.data)) {
+            this.navigateToBoard();
+            return;
+          }
+          this.generatedMacroTasks = result.data
+            .filter(t => !t.parentTaskId)
+            .sort((a, b) => a.ordemNoBoard - b.ordemNoBoard);
+          this.taskReviewPhase = 1;
+        },
+        error: () => {
+          this.loadingGeneratedTasks = false;
+          this.navigateToBoard();
+        }
+      });
+  }
+
+  deleteMacroTask(task: BoardTaskDto): void {
+    if (this.isDeletingTask.has(task.id)) return;
+    this.isDeletingTask.add(task.id);
+
+    const subIds = (task.subTasks ?? []).map(s => s.id);
+    const allIds = [task.id, ...subIds];
+    const deletes = allIds.map(id => this.boardApi.delete(id));
+
+    forkJoin(deletes)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.generatedMacroTasks = this.generatedMacroTasks.filter(t => t.id !== task.id);
+          this.isDeletingTask.delete(task.id);
+        },
+        error: () => { this.isDeletingTask.delete(task.id); }
+      });
+  }
+
+  proceedToSubtasks(): void { this.taskReviewPhase = 2; }
+  backToMacros(): void { this.taskReviewPhase = 1; }
+
+  getMacroSubtasks(task: BoardTaskDto): BoardTaskDto[] {
+    return (task.subTasks ?? []).sort((a, b) => a.ordemNoBoard - b.ordemNoBoard);
+  }
+
+  get totalSubtasksCount(): number {
+    return this.generatedMacroTasks.reduce((acc, t) => acc + (t.subTasks?.length ?? 0), 0);
+  }
+
+  getPriorityClass(priority: string): string {
+    const map: Record<string, string> = {
+      'Crítica': 'priority-critica', 'Alta': 'priority-alta',
+      'Média': 'priority-media', 'Baixa': 'priority-baixa'
+    };
+    return map[priority] ?? 'priority-media';
+  }
+
+  getPriorityEmoji(priority: string): string {
+    const map: Record<string, string> = { 'Crítica': '🔴', 'Alta': '🟠', 'Média': '🟡', 'Baixa': '🟢' };
+    return map[priority] ?? '🟡';
   }
 
   navigateToBoard(): void {

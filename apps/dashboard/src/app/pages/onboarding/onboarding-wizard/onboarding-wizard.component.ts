@@ -284,8 +284,18 @@ export class OnboardingWizardComponent implements OnInit {
           this.submitError = result?.message ?? 'Erro ao concluir onboarding.';
           return;
         }
-        // Limpa flag e redireciona para o dashboard
-        this.authSession.clearOnboardingFlag();
+        // Atualiza sessão com companyId/companyName retornados pelo backend
+        const sessionUser = this.authSession.getUser();
+        if (sessionUser && result.data?.companyId) {
+          this.authSession.setUser({
+            ...sessionUser,
+            companyId: result.data.companyId,
+            companyName: result.data.companyName ?? sessionUser.companyName,
+            requiresOnboarding: false
+          });
+        } else {
+          this.authSession.clearOnboardingFlag();
+        }
         this.router.navigate(['/page']);
       },
       error: () => {

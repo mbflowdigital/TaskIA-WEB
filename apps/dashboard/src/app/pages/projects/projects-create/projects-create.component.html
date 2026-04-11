@@ -505,16 +505,16 @@
                       </div>
                     </div>
 
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['teamRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['teamRequired']">
                       Selecione pelo menos 1 membro da equipe.
                     </div>
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['leadershipRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['leadershipRequired']">
                       Selecione pelo menos 1 Gerente de Projeto ou Tech Lead.
                     </div>
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['approverLeadershipRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['approverLeadershipRequired']">
                       Se marcar "É aprovador", o membro deve ter cargo de liderança.
                     </div>
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['memberFieldsRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['memberFieldsRequired']">
                       Defina função e dedicação para todos os membros selecionados.
                     </div>
                   </div>
@@ -1397,6 +1397,194 @@
 
                 </div>
 
+                <!-- ── Loading: buscando tarefas geradas ── -->
+                <div *ngIf="loadingGeneratedTasks" class="task-review-loading">
+                  <div class="task-review-spinner">
+                    <span class="spinner-border text-primary" style="width:2.5rem;height:2.5rem;" role="status"></span>
+                  </div>
+                  <p class="text-muted mt-3 mb-0" style="font-size:0.95rem;">Carregando tarefas geradas...</p>
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     FASE 1 — Revisão das Tarefas Macro
+                     ══════════════════════════════════════════════════════════ -->
+                <div *ngIf="taskReviewPhase === 1 && !loadingGeneratedTasks" class="task-review-container">
+
+                  <!-- Phase indicator -->
+                  <div class="task-phase-indicator mb-4">
+                    <div class="phase-step active">
+                      <div class="phase-dot active">1</div>
+                      <span class="phase-label">Tarefas Principais</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-step">
+                      <div class="phase-dot">2</div>
+                      <span class="phase-label">Subtarefas</span>
+                    </div>
+                  </div>
+
+                  <!-- Header -->
+                  <div class="task-review-header mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span style="font-size:1.4rem;">🎯</span>
+                      <h5 class="mb-0 fw-bold" style="color:#1a2e4a;">Tarefas Principais</h5>
+                      <span class="task-count-badge">{{ generatedMacroTasks.length }}</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size:0.875rem;">
+                      Revise as tarefas macro geradas pela IA. Remova as que não fazem sentido para o seu projeto antes de prosseguir.
+                    </p>
+                  </div>
+
+                  <!-- Lista de tarefas macro -->
+                  <div class="macro-tasks-list">
+                    <div *ngFor="let task of generatedMacroTasks; let i = index"
+                         class="macro-task-card"
+                         [class.deleting]="isDeletingTask.has(task.id)">
+
+                      <!-- Header da tarefa -->
+                      <div class="macro-task-header">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                          <span class="macro-order-badge">#{{ i + 1 }}</span>
+                          <span class="macro-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                            {{ getPriorityEmoji(task.priority) }} {{ task.priority }}
+                          </span>
+                          <span class="macro-task-name text-truncate fw-semibold">{{ task.name }}</span>
+                        </div>
+                        <button type="button"
+                                class="btn-macro-delete"
+                                (click)="deleteMacroTask(task)"
+                                [disabled]="isDeletingTask.has(task.id)"
+                                title="Remover esta tarefa">
+                          <span *ngIf="isDeletingTask.has(task.id)" class="spinner-border spinner-border-sm" role="status"></span>
+                          <span *ngIf="!isDeletingTask.has(task.id)">✕</span>
+                        </button>
+                      </div>
+
+                      <!-- Corpo da tarefa -->
+                      <div class="macro-task-body" *ngIf="task.description">
+                        <p class="macro-task-desc mb-0">{{ task.description }}</p>
+                      </div>
+
+                      <!-- Footer da tarefa -->
+                      <div class="macro-task-footer">
+                        <span class="macro-meta-item" *ngIf="task.prazoEmDias">
+                          📅 {{ task.prazoEmDias }} dia{{ task.prazoEmDias !== 1 ? 's' : '' }}
+                        </span>
+                        <span class="macro-meta-item" *ngIf="task.sugestaoResponsavelName">
+                          👤 {{ task.sugestaoResponsavelName }}
+                        </span>
+                        <span class="macro-meta-item subtask-count-chip" *ngIf="getMacroSubtasks(task).length > 0">
+                          📋 {{ getMacroSubtasks(task).length }} subtarefa{{ getMacroSubtasks(task).length !== 1 ? 's' : '' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div *ngIf="generatedMacroTasks.length === 0" class="task-review-empty">
+                      <div style="font-size:2.5rem;">🗑️</div>
+                      <p class="fw-semibold mt-2 mb-1" style="color:#1a2e4a;">Todas as tarefas foram removidas</p>
+                      <p class="text-muted" style="font-size:0.875rem;">Volte para rever o plano e gerar novamente.</p>
+                    </div>
+                  </div>
+
+                  <!-- Rodapé de ação -->
+                  <div class="task-review-footer">
+                    <button type="button" class="btn btn-outline-secondary" (click)="resetAnalysis()">
+                      ← Rever plano
+                    </button>
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="tasks-remaining-label" *ngIf="generatedMacroTasks.length > 0">
+                        {{ generatedMacroTasks.length }} tarefa{{ generatedMacroTasks.length !== 1 ? 's' : '' }} selecionada{{ generatedMacroTasks.length !== 1 ? 's' : '' }}
+                      </span>
+                      <button type="button"
+                              class="btn btn-primary btn-review-proceed"
+                              (click)="proceedToSubtasks()"
+                              [disabled]="generatedMacroTasks.length === 0">
+                        Ver subtarefas →
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     FASE 2 — Subtarefas agrupadas
+                     ══════════════════════════════════════════════════════════ -->
+                <div *ngIf="taskReviewPhase === 2 && !loadingGeneratedTasks" class="task-review-container">
+
+                  <!-- Phase indicator -->
+                  <div class="task-phase-indicator mb-4">
+                    <div class="phase-step done">
+                      <div class="phase-dot done">✓</div>
+                      <span class="phase-label">Tarefas Principais</span>
+                    </div>
+                    <div class="phase-connector active"></div>
+                    <div class="phase-step active">
+                      <div class="phase-dot active">2</div>
+                      <span class="phase-label">Subtarefas</span>
+                    </div>
+                  </div>
+
+                  <!-- Header -->
+                  <div class="task-review-header mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span style="font-size:1.4rem;">📋</span>
+                      <h5 class="mb-0 fw-bold" style="color:#1a2e4a;">Subtarefas por tarefa principal</h5>
+                      <span class="task-count-badge">{{ totalSubtasksCount }}</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size:0.875rem;">
+                      Cada tarefa principal foi decomposta em subtarefas executáveis. Tudo certo? Vá para o board!
+                    </p>
+                  </div>
+
+                  <!-- Grupos de subtarefas por macro -->
+                  <div class="subtask-groups">
+                    <div *ngFor="let macro of generatedMacroTasks; let i = index" class="subtask-group">
+
+                      <!-- Macro header (accordion-style) -->
+                      <div class="subtask-group-header">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                          <span class="macro-order-badge sm">#{{ i + 1 }}</span>
+                          <span class="macro-priority-badge sm" [ngClass]="getPriorityClass(macro.priority)">
+                            {{ getPriorityEmoji(macro.priority) }}
+                          </span>
+                          <span class="fw-semibold text-truncate" style="color:#1a2e4a;">{{ macro.name }}</span>
+                        </div>
+                        <span class="subtask-group-count" *ngIf="getMacroSubtasks(macro).length > 0">
+                          {{ getMacroSubtasks(macro).length }} subtarefa{{ getMacroSubtasks(macro).length !== 1 ? 's' : '' }}
+                        </span>
+                        <span class="subtask-group-count no-sub" *ngIf="getMacroSubtasks(macro).length === 0">
+                          Sem subtarefas
+                        </span>
+                      </div>
+
+                      <!-- Subtask rows -->
+                      <div class="subtask-rows" *ngIf="getMacroSubtasks(macro).length > 0">
+                        <div *ngFor="let sub of getMacroSubtasks(macro)" class="subtask-row">
+                          <span class="subtask-bullet">↳</span>
+                          <span class="subtask-priority-dot" [ngClass]="getPriorityClass(sub.priority)"
+                                [title]="sub.priority"></span>
+                          <span class="subtask-name flex-grow-1">{{ sub.name }}</span>
+                          <span class="subtask-meta" *ngIf="sub.prazoEmDias">📅 {{ sub.prazoEmDias }}d</span>
+                          <span class="subtask-meta" *ngIf="sub.sugestaoResponsavelName">👤 {{ sub.sugestaoResponsavelName }}</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <!-- Rodapé de ação -->
+                  <div class="task-review-footer">
+                    <button type="button" class="btn btn-outline-secondary" (click)="backToMacros()">
+                      ← Ver tarefas principais
+                    </button>
+                    <button type="button" class="btn btn-success btn-review-finish" (click)="navigateToBoard()">
+                      ✅ Tudo certo, ir para o Board
+                    </button>
+                  </div>
+
+                </div>
+
               </div>
             </div>
           </div>
@@ -1405,5 +1593,3 @@
     </section>
   </div>
 </div>
-
-
