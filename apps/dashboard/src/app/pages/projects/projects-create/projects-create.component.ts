@@ -14,6 +14,7 @@ import { UsersApiService } from '../../../shared/api/users-api.service';
 import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 import { ClaudeApiService, ProjectAnalysisRequest, ProjectAnalysisResult, GenerateTasksJobStatus, AnalyzeProjectJobStatus } from '../../../shared/api/claude-api.service';
 import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/documents-api.service';
+import { BoardApiService, BoardTaskDto } from '../../../shared/api/board-api.service';
 
 @Component({
   selector: 'app-projects-create',
@@ -24,7 +25,7 @@ import { DocumentsApiService, ExtractedTextResponse } from '../../../shared/api/
 })
 export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-  private readonly leadershipRoles = ['Gerente de Projeto', 'Coordenador', 'Supervisor'];
+  private readonly leadershipRoles = ['Patrocinador(a) do Projeto', 'Diretor(a)', 'Gerente de Projeto', 'Coordenador', 'Supervisor'];
 
   // Wizard
   currentStep = 1;
@@ -65,6 +66,12 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   isGeneratingTasks = false;
   generateTasksError?: string;
   currentTaskMessage = '';
+
+  // Task review phases (0=none, 1=macro review, 2=subtasks display)
+  taskReviewPhase = 0;
+  generatedMacroTasks: BoardTaskDto[] = [];
+  loadingGeneratedTasks = false;
+  isDeletingTask = new Set<string>();
   private taskMessageInterval?: ReturnType<typeof setInterval>;
 
   private readonly taskMessages = [
@@ -94,6 +101,33 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     '💪 Trabalhando duro aqui pra te poupar horas de planejamento...',
     '🔮 Prevendo os próximos passos do seu projeto...',
   ];
+
+  // ── AI Suggest Objective ────────────────────────────────────────────────
+  isSuggestingObjective = false;
+  suggestObjectiveError?: string;
+
+  onSuggestObjective(): void {
+    const name = (this.f['name'].value as string | undefined)?.trim();
+    if (!name || this.isSuggestingObjective) return;
+    this.isSuggestingObjective = true;
+    this.suggestObjectiveError = undefined;
+    this.claudeApi.suggestProject(name)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          this.isSuggestingObjective = false;
+          if (res?.isSuccess && res.data) {
+            this.form.patchValue({ objective: res.data.objective });
+          } else {
+            this.suggestObjectiveError = 'Não foi possível gerar sugestão. Tente novamente.';
+          }
+        },
+        error: () => {
+          this.isSuggestingObjective = false;
+          this.suggestObjectiveError = 'Erro ao contatar a IA. Tente novamente.';
+        }
+      });
+  }
 
   // ── Step 5 state ─────────────────────────────────────────────────────────
 
@@ -281,15 +315,51 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     return !!(c?.get('lgpd')?.value || c?.get('pciDss')?.value || c?.get('hipaa')?.value || c?.get('iso27001')?.value || c?.get('sox')?.value);
   }
 
-  readonly departmentOptions = ['Produção', 'Manutenção', 'Qualidade', 'Operações', 'Engenharia', 'Logística', 'Administrativo', 'Financeiro', 'RH', 'Comercial', 'TI'];
-  readonly projectTypeOptions = ['Implantação', 'Melhoria', 'Expansão', 'Modernização', 'Adequação', 'Otimização', 'Desenvolvimento'];
+  readonly departmentOptions = [
+    // Diretoria / Estratégia
+    'Diretoria / C-Level', 'Planejamento Estratégico',
+    // Administrativo / Suporte
+    'Administrativo', 'Jurídico / Compliance', 'RH / Gestão de Pessoas',
+    // Financeiro
+    'Financeiro / Controladoria', 'Compras / Procurement',
+    // Comercial
+    'Comercial / Vendas', 'Marketing', 'Atendimento ao Cliente',
+    // Operações / Industrial
+    'Operações', 'Produção', 'Manutenção', 'Qualidade', 'PCP',
+    // Engenharia / Técnico
+    'Engenharia', 'Logística / Supply Chain',
+    // TI / Inovação
+    'TI / Sistemas', 'Inovação & P&D',
+    // Outros
+    'HSE / Segurança', 'Outro'
+  ];
+  readonly projectTypeOptions = [
+    // Estratégico / Executivo
+    'Planejamento Estratégico', 'Transformação Digital', 'Reestruturação Organizacional',
+    // Negócio
+    'Lançamento de Produto / Serviço', 'Expansão de Mercado', 'Fusão & Aquisição',
+    // Processos
+    'Melhoria de Processos', 'Otimização de Custos', 'Conformidade / Adequação Regulatória',
+    // Sistemas
+    'Implantação de Sistema (ERP, CRM...)', 'Desenvolvimento de Software',
+    // Industrial
+    'Automação Industrial', 'Manutenção / Reforma', 'Ampliação de Capacidade',
+    // Outros
+    'Gestão de Mudança', 'Projeto de Infraestrutura', 'Outro'
+  ];
   readonly roleOptions = [
+    // Sponsor / Diretoria
+    'Patrocinador(a) do Projeto', 'Diretor(a)',
+    // Gestão
     'Gerente de Projeto',
     'Coordenador',
     'Supervisor',
     'Engenheiro',
     'Técnico',
     'Especialista',
+    'Analista de Negócios',
+    'Product Owner',
+    'Consultor',
     'Analista',
     'Operador',
     'Assistente',
@@ -299,7 +369,13 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
   readonly dedicationOptions = ['Integral', 'Parcial 50%', 'Parcial 25%', 'Consultor Pontual'];
   
   readonly criticalityOptions = ['Bloqueante', 'Importante', 'Desejável'];
-  readonly integrationTypeOptions = ['API', 'Banco de Dados', 'Sistema ERP', 'Sistema MES', 'Sistema SCADA/IHM', 'Outro'];
+  readonly integrationTypeOptions = [
+    'API / Webservice', 'Banco de Dados',
+    'ERP (SAP, TOTVS, Oracle...)', 'CRM (Salesforce, HubSpot...)',
+    'BI / Analytics (Power BI, Tableau...)', 'Plataforma de RH (Workday, ADP...)',
+    'Sistema MES', 'Sistema SCADA/IHM', 'CLP / PLC',
+    'E-Commerce / Marketplace', 'Planilha / Excel', 'Outro'
+  ];
 
   // ── Controles de dropdowns customizados ─────────────────────────────────
   departmentDropdownOpen = false;
@@ -318,6 +394,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     private readonly usersApi: UsersApiService,
     private readonly authSession: AuthSessionService,
     private readonly claudeApi: ClaudeApiService,
+    private readonly boardApi: BoardApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router
   ) {}
@@ -1346,12 +1423,6 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.f['department']?.markAsTouched();
     this.f['projectType']?.markAsTouched();
 
-    for (const member of this.teamMembersArray.controls) {
-      member.markAllAsTouched();
-    }
-
-    this.teamMembersArray.updateValueAndValidity();
-
     if (this.f['department']?.invalid || this.f['projectType']?.invalid) {
       return false;
     }
@@ -1360,6 +1431,12 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     if (!this.loadingTeamData && this.availableUsers.length === 0) {
       return true;
     }
+
+    for (const member of this.teamMembersArray.controls) {
+      member.markAllAsTouched();
+    }
+
+    this.teamMembersArray.updateValueAndValidity();
 
     return !this.teamMembersArray.errors;
   }
@@ -1751,11 +1828,14 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   get currentStepSubtitle(): string {
     if (this.isEditMode) return 'Atualize os dados do projeto';
-    if (this.currentStep === 5) return 'Passo 5 de 5: Revisão e geração';
-    if (this.currentStep === 4) return 'Passo 4 de 5: Prioridades e expectativas';
-    if (this.currentStep === 3) return 'Passo 3 de 5: Contexto e restrições';
-    if (this.currentStep === 2) return 'Passo 2 de 5: Equipe e funções';
-    return 'Passo 1 de 5: Dados básicos';
+    const subtitles: Record<number, string> = {
+      1: 'Passo 1 de 5 · Dados do Projeto',
+      2: 'Passo 2 de 5 · Equipe e Responsáveis',
+      3: 'Passo 3 de 5 · Contexto Operacional',
+      4: 'Passo 4 de 5 · Estratégia e Prioridades',
+      5: 'Passo 5 de 5 · Revisão Final + IA'
+    };
+    return subtitles[this.currentStep] ?? '';
   }
 
   goToStep(step: number): void {
@@ -1766,6 +1846,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     }
     
     if (step > this.currentStep) {
+      // Step 5 requires saving steps 2-4 first — only allow jumping to it if already there
+      if (step === 5 && this.currentStep < 5) return;
       this.formSubmitted = true;
       if (this.currentStep === 1 && !this.isStep1Valid()) return;
       if (this.currentStep === 2 && !this.isStep2Valid()) return;
@@ -1951,6 +2033,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   onGenerateTasks(): void {
     if (!this.createdProjectId) return;
+    if (this.taskReviewPhase > 0 || this.isGeneratingTasks) return;
     this.isGeneratingTasks = true;
     this.generateTasksError = undefined;
     this.startTaskMessages();
@@ -1992,8 +2075,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           if (status === 'Completed') {
             this.stopTaskMessages();
             this.isGeneratingTasks = false;
-            this.authSession.clearOnboardingFlag();
-            this.router.navigate(['/projects', this.createdProjectId, 'board']);
+            this.loadGeneratedTasks();
           } else if (status === 'Failed') {
             this.stopTaskMessages();
             this.isGeneratingTasks = false;
@@ -2012,6 +2094,80 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     this.analysisResult = undefined;
     this.isSubmitting = false;
     this.generationStep = 0;
+    this.taskReviewPhase = 0;
+    this.generatedMacroTasks = [];
+    this.loadingGeneratedTasks = false;
+    this.isDeletingTask.clear();
+    this.stopTaskMessages();
+  }
+
+  // ── Task Review Phase 1: load generated tasks ────────────────────────────
+  private loadGeneratedTasks(): void {
+    if (!this.createdProjectId) { this.navigateToBoard(); return; }
+    this.loadingGeneratedTasks = true;
+
+    this.boardApi.getByProject(this.createdProjectId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.loadingGeneratedTasks = false;
+          if (!result?.isSuccess || !Array.isArray(result.data)) {
+            this.navigateToBoard();
+            return;
+          }
+          this.generatedMacroTasks = result.data
+            .filter(t => !t.parentTaskId)
+            .sort((a, b) => a.ordemNoBoard - b.ordemNoBoard);
+          this.taskReviewPhase = 1;
+        },
+        error: () => {
+          this.loadingGeneratedTasks = false;
+          this.navigateToBoard();
+        }
+      });
+  }
+
+  deleteMacroTask(task: BoardTaskDto): void {
+    if (this.isDeletingTask.has(task.id)) return;
+    this.isDeletingTask.add(task.id);
+
+    const subIds = (task.subTasks ?? []).map(s => s.id);
+    const allIds = [task.id, ...subIds];
+    const deletes = allIds.map(id => this.boardApi.delete(id));
+
+    forkJoin(deletes)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.generatedMacroTasks = this.generatedMacroTasks.filter(t => t.id !== task.id);
+          this.isDeletingTask.delete(task.id);
+        },
+        error: () => { this.isDeletingTask.delete(task.id); }
+      });
+  }
+
+  proceedToSubtasks(): void { this.taskReviewPhase = 2; }
+  backToMacros(): void { this.taskReviewPhase = 1; }
+
+  getMacroSubtasks(task: BoardTaskDto): BoardTaskDto[] {
+    return (task.subTasks ?? []).sort((a, b) => a.ordemNoBoard - b.ordemNoBoard);
+  }
+
+  get totalSubtasksCount(): number {
+    return this.generatedMacroTasks.reduce((acc, t) => acc + (t.subTasks?.length ?? 0), 0);
+  }
+
+  getPriorityClass(priority: string): string {
+    const map: Record<string, string> = {
+      'Crítica': 'priority-critica', 'Alta': 'priority-alta',
+      'Média': 'priority-media', 'Baixa': 'priority-baixa'
+    };
+    return map[priority] ?? 'priority-media';
+  }
+
+  getPriorityEmoji(priority: string): string {
+    const map: Record<string, string> = { 'Crítica': '🔴', 'Alta': '🟠', 'Média': '🟡', 'Baixa': '🟢' };
+    return map[priority] ?? '🟡';
   }
 
   navigateToBoard(): void {

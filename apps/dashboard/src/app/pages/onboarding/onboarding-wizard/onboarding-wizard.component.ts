@@ -81,16 +81,33 @@ export class OnboardingWizardComponent implements OnInit {
 
   // ── Category options ─────────────────────────────────────────────────────
   readonly categories = [
-    'Tecnologia',
-    'Saúde',
-    'Educação',
-    'Finanças',
-    'Varejo',
-    'Indústria',
-    'Serviços',
-    'Construção',
-    'Agronegócio',
-    'Outro'
+    // Serviços / Administrativo
+    'Consultoria & Assessoria', 'Serviços Financeiros / Contabilidade',
+    'Advocacia / Jurídico', 'Marketing & Comunicação', 'RH & Gestão de Pessoas',
+    // Tecnologia
+    'Tecnologia / Software', 'Telecomunicações', 'E-Commerce / Digital',
+    // Saúde / Educação
+    'Saúde & Medicina', 'Educação & Treinamento', 'Farmacêutico',
+    // Indústria / Manufatura
+    'Indústria / Manufatura', 'Automação Industrial', 'Construção Civil',
+    'Química / Petroquímica', 'Mineração',
+    // Agro / Alimentos
+    'Agronegócio', 'Alimentos & Bebidas',
+    // Comércio
+    'Varejo / Distribuição', 'Logística & Transporte',
+    // Financeiro
+    'Banco / Financeiro', 'Seguros',
+    // Outros
+    'Governo / Setor Público', 'Outro'
+  ];
+
+  readonly teamSizeOptions: { label: string; description: string; value: number }[] = [
+    { label: '1–10',      description: 'Microempresa',    value: 5    },
+    { label: '11–50',     description: 'Pequena empresa', value: 25   },
+    { label: '51–200',    description: 'Média empresa',   value: 100  },
+    { label: '201–1.000', description: 'Grande empresa',  value: 500  },
+    { label: '1.001–5k',  description: 'Corporação',      value: 2000 },
+    { label: '5.000+',    description: 'Multinacional',   value: 5000 },
   ];
 
   // ── Custom Dropdown Control ────────────────────────────────────────────
@@ -284,8 +301,18 @@ export class OnboardingWizardComponent implements OnInit {
           this.submitError = result?.message ?? 'Erro ao concluir onboarding.';
           return;
         }
-        // Limpa flag e redireciona para o dashboard
-        this.authSession.clearOnboardingFlag();
+        // Atualiza sessão com companyId/companyName retornados pelo backend
+        const sessionUser = this.authSession.getUser();
+        if (sessionUser && result.data?.companyId) {
+          this.authSession.setUser({
+            ...sessionUser,
+            companyId: result.data.companyId,
+            companyName: result.data.companyName ?? sessionUser.companyName,
+            requiresOnboarding: false
+          });
+        } else {
+          this.authSession.clearOnboardingFlag();
+        }
         this.router.navigate(['/page']);
       },
       error: () => {

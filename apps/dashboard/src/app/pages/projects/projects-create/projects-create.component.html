@@ -19,7 +19,7 @@
           <div class="card">
             <div class="card-content">
               <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center justify-content-between mb-3">
                   <div>
                     <h4 class="mb-0">{{ isEditMode ? 'Editar projeto' : 'Criar projeto' }}</h4>
                     <small class="text-muted">
@@ -29,7 +29,50 @@
                   <a class="btn btn-sm btn-outline-secondary" routerLink="/projects">Voltar</a>
                 </div>
 
-                <hr />
+                <!-- Wizard Progress Header — visível em todos os passos -->
+                <div class="wizard-progress-header" *ngIf="!isLoading && !loadError">
+                  <div class="wpg-steps">
+                    <div class="wpg-step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+                      <button type="button" class="wpg-step-circle" (click)="goToStep(1)" title="Dados do Projeto">
+                        <span *ngIf="currentStep <= 1">1</span>
+                        <span *ngIf="currentStep > 1">✓</span>
+                      </button>
+                      <span class="wpg-step-label">Dados</span>
+                    </div>
+                    <div class="wpg-connector" [class.active]="currentStep > 1"></div>
+                    <div class="wpg-step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+                      <button type="button" class="wpg-step-circle" (click)="goToStep(2)" title="Equipe e Responsáveis">
+                        <span *ngIf="currentStep <= 2">2</span>
+                        <span *ngIf="currentStep > 2">✓</span>
+                      </button>
+                      <span class="wpg-step-label">Equipe</span>
+                    </div>
+                    <div class="wpg-connector" [class.active]="currentStep > 2"></div>
+                    <div class="wpg-step" [class.active]="currentStep === 3" [class.completed]="currentStep > 3">
+                      <button type="button" class="wpg-step-circle" (click)="goToStep(3)" title="Contexto Operacional">
+                        <span *ngIf="currentStep <= 3">3</span>
+                        <span *ngIf="currentStep > 3">✓</span>
+                      </button>
+                      <span class="wpg-step-label">Contexto</span>
+                    </div>
+                    <div class="wpg-connector" [class.active]="currentStep > 3"></div>
+                    <div class="wpg-step" [class.active]="currentStep === 4" [class.completed]="currentStep > 4">
+                      <button type="button" class="wpg-step-circle" (click)="goToStep(4)" title="Estratégia e Prioridades">
+                        <span *ngIf="currentStep <= 4">4</span>
+                        <span *ngIf="currentStep > 4">✓</span>
+                      </button>
+                      <span class="wpg-step-label">Estratégia</span>
+                    </div>
+                    <div class="wpg-connector" [class.active]="currentStep > 4"></div>
+                    <div class="wpg-step" [class.active]="currentStep === 5" [class.completed]="currentStep > 5">
+                      <button type="button" class="wpg-step-circle" (click)="goToStep(5)" [disabled]="currentStep < 5" title="Revisão Final + IA">
+                        <span *ngIf="currentStep <= 5">5</span>
+                        <span *ngIf="currentStep > 5">✓</span>
+                      </button>
+                      <span class="wpg-step-label">Revisão</span>
+                    </div>
+                  </div>
+                </div>
 
                 <div *ngIf="isLoading" class="mt-1">Carregando projeto...</div>
 
@@ -57,6 +100,16 @@
 
                 <!-- TELA 1: DADOS BÁSICOS -->
                 <form novalidate [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!isLoading && !loadError && currentStep === 1">
+
+                  <!-- Cabeçalho do passo -->
+                  <div class="step-header">
+                    <div class="step-header-icon">🏗️</div>
+                    <div>
+                      <h5 class="step-header-title">Dados do Projeto</h5>
+                      <p class="step-header-desc">Defina o nome, objetivo e horizonte temporal do projeto</p>
+                    </div>
+                  </div>
+
                   <div class="row">
                     <!-- Nome do projeto -->
                     <div class="col-12">
@@ -91,6 +144,22 @@
                         <div class="invalid-feedback" *ngIf="formSubmitted && f.objective.invalid">
                           <div *ngIf="f.objective.errors?.['required']">Objetivo é obrigatório</div>
                           <div *ngIf="f.objective.errors?.['minlength']">Mínimo 20 caracteres</div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-end mt-1">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-ai-suggest"
+                            (click)="onSuggestObjective()"
+                            [disabled]="!f['name'].value || isSuggestingObjective"
+                            [title]="!f['name'].value ? 'Preencha o nome do projeto primeiro' : 'Sugerir objetivo com IA'">
+                            <span *ngIf="!isSuggestingObjective">✨ Sugerir com IA</span>
+                            <span *ngIf="isSuggestingObjective">
+                              <span class="spinner-border spinner-border-sm me-1" role="status"></span> Gerando...
+                            </span>
+                          </button>
+                        </div>
+                        <div *ngIf="suggestObjectiveError" class="alert alert-warning py-1 px-2 mt-1 small">
+                          {{ suggestObjectiveError }}
                         </div>
                       </div>
                     </div>
@@ -160,65 +229,6 @@
                     >
                       Limpar
                     </button>
-                    
-                    <!-- Step Indicators (Bolinhas de progresso) -->
-                    <div class="wizard-steps d-flex gap-2 align-items-center">
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 1"
-                        [class.completed]="currentStep > 1"
-                        (click)="goToStep(1)"
-                        title="Dados básicos"
-                      >
-                        <span>1</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 1"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 2"
-                        [class.completed]="currentStep > 2"
-                        (click)="goToStep(2)"
-                        title="Definir equipe"
-                      >
-                        <span>2</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 2"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 3"
-                        [class.completed]="currentStep > 3"
-                        (click)="goToStep(3)"
-                        title="Contexto e restrições"
-                      >
-                        <span>3</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 3"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 4"
-                        [class.completed]="currentStep > 4"
-                        (click)="goToStep(4)"
-                        title="Prioridades e expectativas"
-                      >
-                        <span>4</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 4"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 5"
-                        [class.completed]="currentStep > 5"
-                        (click)="goToStep(5)"
-                        title="Revisão e geração"
-                      >
-                        <span>5</span>
-                      </button>
-                    </div>
-
                     <button 
                       type="button" 
                       class="btn btn-primary" 
@@ -232,8 +242,18 @@
 
                 <!-- TELA 2: EQUIPE E FUNÇÕES -->
                 <form [formGroup]="form" *ngIf="currentStep === 2 && !analysisResult && !isLoading && !loadError">
+
+                  <!-- Cabeçalho do passo -->
+                  <div class="step-header">
+                    <div class="step-header-icon">👥</div>
+                    <div>
+                      <h5 class="step-header-title">Equipe e Responsáveis</h5>
+                      <p class="step-header-desc">Monte a equipe de execução e defina os papéis de cada membro</p>
+                    </div>
+                  </div>
+
                   <div class="step-section mb-3">
-                    <h5 class="mb-2">Seção 1: Confirmar dados da empresa</h5>
+                    <h5 class="mb-2">Empresa e Departamento</h5>
                     <div class="row align-items-end">
                       <div class="col-12 col-md-6">
                         <div class="form-group">
@@ -339,7 +359,7 @@
                   </div>
 
                   <div class="step-section" formArrayName="teamMembers">
-                    <h5 class="mb-2">Seção 2: Selecionar membros da equipe</h5>
+                    <h5 class="mb-2">Monte a Equipe de Execução</h5>
                     <p class="text-muted mb-2">Adicione os membros e defina suas funções no projeto.</p>
 
                     <div *ngIf="loadingTeamData" class="alert alert-light border">Carregando usuários da empresa...</div>
@@ -400,8 +420,8 @@
                             />
                             <div 
                               *ngIf="!getUserProfileImageUrl(member.get('userId')?.value)"
-                              class="avatar-placeholder">
-                              <i class="ft-user"></i>
+                              class="avatar-initials">
+                              {{ getUserInitials(member.get('userName')?.value) }}
                             </div>
                           </div>
                           <span class="member-name-badge">{{ member.get('userName')?.value }}</span>
@@ -505,16 +525,16 @@
                       </div>
                     </div>
 
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['teamRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['teamRequired']">
                       Selecione pelo menos 1 membro da equipe.
                     </div>
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['leadershipRequired']">
-                      Selecione pelo menos 1 Gerente de Projeto ou Tech Lead.
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['leadershipRequired']">
+                      Selecione pelo menos 1 membro com cargo de liderança (Patrocinador, Diretor, Gerente de Projeto, Coordenador ou Supervisor).
                     </div>
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['approverLeadershipRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['approverLeadershipRequired']">
                       Se marcar "É aprovador", o membro deve ter cargo de liderança.
                     </div>
-                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && teamMembersArray.errors?.['memberFieldsRequired']">
+                    <div class="alert alert-danger mt-2" *ngIf="formSubmitted && availableUsers.length > 0 && teamMembersArray.errors?.['memberFieldsRequired']">
                       Defina função e dedicação para todos os membros selecionados.
                     </div>
                   </div>
@@ -523,54 +543,6 @@
                     <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
                       ← Voltar
                     </button>
-
-                    <div class="wizard-steps d-flex gap-2 align-items-center">
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 1"
-                        [class.completed]="currentStep > 1"
-                        (click)="goToStep(1)"
-                        title="Dados básicos"
-                      >
-                        <span>1</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 1"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 2"
-                        [class.completed]="currentStep > 2"
-                        (click)="goToStep(2)"
-                        title="Definir equipe"
-                      >
-                        <span>2</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 2"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 3"
-                        [class.completed]="currentStep > 3"
-                        (click)="goToStep(3)"
-                        title="Contexto e restrições"
-                      >
-                        <span>3</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 3"></div>
-                      <button 
-                        type="button"
-                        class="step-dot"
-                        [class.active]="currentStep === 4"
-                        [class.completed]="currentStep > 4"
-                        (click)="goToStep(4)"
-                        title="Prioridades e expectativas"
-                      >
-                        <span>4</span>
-                      </button>
-                      <div class="step-line" [class.active]="currentStep > 4"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão e geração"><span>5</span></button>
-                    </div>
 
                     <button 
                       type="button" 
@@ -586,9 +558,18 @@
                 <!-- TELA 3: CONTEXTO E RESTRIÇÕES -->
                 <form [formGroup]="form" *ngIf="currentStep === 3 && !analysisResult && !isLoading && !loadError">
 
+                  <!-- Cabeçalho do passo -->
+                  <div class="step-header">
+                    <div class="step-header-icon">⚙️</div>
+                    <div>
+                      <h5 class="step-header-title">Contexto e Restrições</h5>
+                      <p class="step-header-desc">Informe dependências, restrições operacionais e requisitos de conformidade do projeto</p>
+                    </div>
+                  </div>
+
                   <!-- SEÇÃO 1: DEPENDÊNCIAS E INTEGRAÇÕES -->
                   <div class="step-section mb-3">
-                    <h5 class="mb-3">Seção 1: Dependências e integrações</h5>
+                    <h5 class="mb-3">Dependências e Integrações</h5>
 
                     <div class="mb-4">
                       <label class="d-block mb-2 fw-semibold">Existem dependências externas ao projeto?</label>
@@ -767,7 +748,7 @@
 
                   <!-- SEÇÃO 2: RESTRIÇÕES OPERACIONAIS -->
                   <div class="step-section mb-3">
-                    <h5 class="mb-3">Seção 2: Restrições operacionais</h5>
+                    <h5 class="mb-3">Restrições Operacionais</h5>
 
                     <div class="mb-4">
                       <label class="d-block mb-2 fw-semibold">Orçamento:</label>
@@ -791,11 +772,11 @@
                     </div>
 
                     <div class="mb-4">
-                      <label class="d-block mb-2 fw-semibold">Horário de trabalho da equipe:</label>
+                      <label class="d-block mb-1 fw-semibold">Horário de trabalho da equipe:</label>
                       <div class="d-flex flex-wrap radio-group">
-                        <label class="radio-option"><input type="radio" formControlName="workSchedule" value="commercial" /> Comercial</label>
-                        <label class="radio-option"><input type="radio" formControlName="workSchedule" value="flexible" /> Flexível</label>
-                        <label class="radio-option"><input type="radio" formControlName="workSchedule" value="off-hours" /> Fora do expediente</label>
+                        <label class="radio-option"><input type="radio" formControlName="workSchedule" value="commercial" /> Comercial (8h–18h)</label>
+                        <label class="radio-option"><input type="radio" formControlName="workSchedule" value="flexible" /> Horário Flexível / Híbrido</label>
+                        <label class="radio-option"><input type="radio" formControlName="workSchedule" value="off-hours" /> Fora do Expediente / Turnos</label>
                       </div>
                     </div>
 
@@ -815,17 +796,18 @@
 
                   <!-- SEÇÃO 3: CONFORMIDADE E DISPONIBILIDADE -->
                   <div class="step-section mb-3">
-                    <h5 class="mb-3">Seção 3: Conformidade e disponibilidade</h5>
+                    <h5 class="mb-3">Conformidade e Disponibilidade</h5>
 
                     <div class="mb-4">
-                      <label class="d-block mb-2 fw-semibold">Requisitos de conformidade (Compliance):</label>
+                      <label class="d-block mb-2 fw-semibold">Requisitos de conformidade:</label>
+                      <p class="text-muted small mb-2">Selecione os padrões regulatórios que este projeto deve atender. A IA adaptará o plano para incluir tarefas de conformidade necessárias.</p>
                       <div class="d-flex flex-wrap checkbox-group" [formGroup]="complianceGroup">
-                        <label class="checkbox-option"><input type="checkbox" formControlName="publicData" /> Dados Públicos</label>
-                        <label class="checkbox-option"><input type="checkbox" formControlName="lgpd" /> LGPD</label>
-                        <label class="checkbox-option"><input type="checkbox" formControlName="pciDss" /> PCI-DSS</label>
-                        <label class="checkbox-option"><input type="checkbox" formControlName="hipaa" /> HIPAA</label>
-                        <label class="checkbox-option"><input type="checkbox" formControlName="iso27001" /> ISO 27001</label>
-                        <label class="checkbox-option"><input type="checkbox" formControlName="sox" /> SOX</label>
+                        <label class="checkbox-option"><input type="checkbox" formControlName="publicData" /> Dados Públicos / Gov</label>
+                        <label class="checkbox-option"><input type="checkbox" formControlName="lgpd" /> LGPD (Dados Pessoais)</label>
+                        <label class="checkbox-option"><input type="checkbox" formControlName="pciDss" /> PCI-DSS (Pagamentos)</label>
+                        <label class="checkbox-option"><input type="checkbox" formControlName="hipaa" /> HIPAA (Saúde)</label>
+                        <label class="checkbox-option"><input type="checkbox" formControlName="iso27001" /> ISO 27001 (Seg. Info)</label>
+                        <label class="checkbox-option"><input type="checkbox" formControlName="sox" /> SOX (Empresas Listadas)</label>
                       </div>
                       <div *ngIf="hasSensitiveCompliance" formGroupName="complianceApprovers" class="mt-3 p-3 border rounded bg-light">
                         <p class="text-warning mb-2"><strong>⚠ Dados sensíveis detectados.</strong> Selecione os aprovadores necessários:</p>
@@ -873,19 +855,6 @@
                     <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
                       ← Voltar
                     </button>
-
-                    <div class="wizard-steps d-flex gap-2 align-items-center">
-                      <button type="button" class="step-dot" [class.active]="currentStep === 1" [class.completed]="currentStep > 1" (click)="goToStep(1)" title="Dados básicos"><span>1</span></button>
-                      <div class="step-line" [class.active]="currentStep > 1"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 2" [class.completed]="currentStep > 2" (click)="goToStep(2)" title="Definir equipe"><span>2</span></button>
-                      <div class="step-line" [class.active]="currentStep > 2"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 3" [class.completed]="currentStep > 3" (click)="goToStep(3)" title="Contexto e restrições"><span>3</span></button>
-                      <div class="step-line" [class.active]="currentStep > 3"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 4" [class.completed]="currentStep > 4" (click)="goToStep(4)" title="Prioridades e expectativas"><span>4</span></button>
-                      <div class="step-line" [class.active]="currentStep > 4"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão e geração"><span>5</span></button>
-                    </div>
-
                     <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="isSubmitting">
                       Próximo →
                     </button>
@@ -895,9 +864,18 @@
                 <!-- TELA 4: PRIORIDADES E EXPECTATIVAS -->
                 <form [formGroup]="form" *ngIf="currentStep === 4 && !analysisResult && !isLoading && !loadError">
 
+                  <!-- Cabeçalho do passo -->
+                  <div class="step-header">
+                    <div class="step-header-icon">🎯</div>
+                    <div>
+                      <h5 class="step-header-title">Estratégia e Prioridades</h5>
+                      <p class="step-header-desc">Defina como o projeto será conduzido, quais são as prioridades e as expectativas de execução</p>
+                    </div>
+                  </div>
+
                   <!-- SEÇÃO 1: PRIORIDADES, RISCO E EXPERIÊNCIA -->
                   <div class="step-section mb-3">
-                    <h5 class="mb-3">Seção 1: Prioridades e contexto</h5>
+                    <h5 class="mb-3">Prioridades e Contexto</h5>
 
                     <div class="mb-4">
                       <label class="d-block mb-2 fw-semibold">Ranking de prioridades <span class="text-muted fw-normal">(arraste para reordenar do mais ao menos importante)</span>:</label>
@@ -918,7 +896,7 @@
                         formControlName="biggestRisk"
                         rows="3"
                         maxlength="500"
-                        placeholder="Descreva o principal risco que pode comprometer o projeto..."
+                        placeholder="Ex.: atraso na aprovação de orçamento, resistência interna à mudança, dependência de fornecedor crítico, falta de patrocinêdio executivo..."
                       ></textarea>
                       <div class="text-end text-muted char-count">{{ (f['biggestRisk'].value?.length || 0) }}/500</div>
                     </div>
@@ -945,7 +923,7 @@
 
                   <!-- SEÇÃO 2: EXPECTATIVAS DE EXECUÇÃO -->
                   <div class="step-section mb-3">
-                    <h5 class="mb-3">Seção 2: Expectativas de execução</h5>
+                    <h5 class="mb-3">Estratégia de Execução</h5>
 
                     <div class="mb-4">
                       <label class="d-block mb-2 fw-semibold">Nível de detalhe do plano gerado:</label>
@@ -993,7 +971,7 @@
                         formControlName="finalObservations"
                         rows="4"
                         maxlength="1000"
-                        placeholder="Informações adicionais relevantes para a análise de IA..."
+                        placeholder="Ex.: entrega final deve ocorrer antes do fechamento fiscal, o comitê diretivo acompanha mensalmente, precisamos de aprovação jurídica na fase de contratos, não há budget para horas extras..."
                       ></textarea>
                       <div class="text-end text-muted char-count">{{ (f['finalObservations'].value?.length || 0) }}/1000</div>
                     </div>
@@ -1004,19 +982,6 @@
                     <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
                       ← Voltar
                     </button>
-
-                    <div class="wizard-steps d-flex gap-2 align-items-center">
-                      <button type="button" class="step-dot" [class.active]="currentStep === 1" [class.completed]="currentStep > 1" (click)="goToStep(1)" title="Dados básicos"><span>1</span></button>
-                      <div class="step-line" [class.active]="currentStep > 1"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 2" [class.completed]="currentStep > 2" (click)="goToStep(2)" title="Definir equipe"><span>2</span></button>
-                      <div class="step-line" [class.active]="currentStep > 2"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 3" [class.completed]="currentStep > 3" (click)="goToStep(3)" title="Contexto e restrições"><span>3</span></button>
-                      <div class="step-line" [class.active]="currentStep > 3"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 4" [class.completed]="currentStep > 4" (click)="goToStep(4)" title="Prioridades e expectativas"><span>4</span></button>
-                      <div class="step-line" [class.active]="currentStep > 4"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão e geração"><span>5</span></button>
-                    </div>
-
                     <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="isSubmitting">
                       Próximo →
                     </button>
@@ -1025,33 +990,58 @@
 
                 <!-- TELA 5: REVISÃO E GERAÇÃO -->
 
-                <!-- Loading / geração -->
-                <div *ngIf="currentStep === 5 && isSubmitting && !analysisResult" class="generation-loading text-center py-5">
-                  <div class="generation-robot mb-3">🤖</div>
-                  <h5 class="fw-bold mb-3">Gerando plano com IA...</h5>
-                  <div class="generation-progress mb-4">
-                    <div class="generation-progress-bar"></div>
-                  </div>
-                  <div class="generation-steps">
-                    <div class="generation-step" [class.done]="generationStep > 1" [class.active]="generationStep === 1">
-                      <span class="gen-icon">{{ generationStep > 1 ? '✅' : (generationStep === 1 ? '⏳' : '⬜') }}</span>
-                      <span>Analisando contexto</span>
+                <!-- Loading / geração — tela imersiva -->
+                <div *ngIf="currentStep === 5 && isSubmitting && !analysisResult" class="generation-immersive">
+                  <div class="gen-immersive-content">
+                    <div class="gen-robot-wrapper">
+                      <div class="gen-robot-pulse"></div>
+                      <div class="gen-robot">🤖</div>
                     </div>
-                    <div class="generation-step" [class.done]="generationStep > 2" [class.active]="generationStep === 2">
-                      <span class="gen-icon">{{ generationStep > 2 ? '✅' : (generationStep === 2 ? '⏳' : '⬜') }}</span>
-                      <span>Criando fases...</span>
+                    <h4 class="gen-title">Criando seu plano de projeto</h4>
+                    <p class="gen-subtitle">Nossa IA está analisando todas as informações que você forneceu</p>
+                    <div class="gen-progress-track">
+                      <div class="gen-progress-fill"></div>
                     </div>
-                    <div class="generation-step" [class.done]="generationStep > 3" [class.active]="generationStep === 3">
-                      <span class="gen-icon">{{ generationStep > 3 ? '✅' : (generationStep === 3 ? '⏳' : '⬜') }}</span>
-                      <span>Gerando tarefas...</span>
+                    <div class="gen-steps-list">
+                      <div class="gen-step-item" [class.done]="generationStep > 1" [class.active]="generationStep === 1">
+                        <span class="gen-step-icon">{{ generationStep > 1 ? '✅' : (generationStep === 1 ? '⚡' : '○') }}</span>
+                        <div>
+                          <span class="gen-step-text">Analisando contexto e objetivos</span>
+                          <span *ngIf="generationStep === 1" class="gen-step-sub">Processando informações da equipe e restrições...</span>
+                        </div>
+                      </div>
+                      <div class="gen-step-item" [class.done]="generationStep > 2" [class.active]="generationStep === 2">
+                        <span class="gen-step-icon">{{ generationStep > 2 ? '✅' : (generationStep === 2 ? '⚡' : '○') }}</span>
+                        <div>
+                          <span class="gen-step-text">Estruturando fases e entregas</span>
+                          <span *ngIf="generationStep === 2" class="gen-step-sub">Definindo roadmap e marcos do projeto...</span>
+                        </div>
+                      </div>
+                      <div class="gen-step-item" [class.done]="generationStep > 3" [class.active]="generationStep === 3">
+                        <span class="gen-step-icon">{{ generationStep > 3 ? '✅' : (generationStep === 3 ? '⚡' : '○') }}</span>
+                        <div>
+                          <span class="gen-step-text">Gerando plano detalhado de tarefas</span>
+                          <span *ngIf="generationStep === 3" class="gen-step-sub">Criando backlog com responsáveis e prioridades...</span>
+                        </div>
+                      </div>
                     </div>
+                    <p class="gen-tip"><em>Isso pode levar alguns segundos. Você pode pegar um café ☕</em></p>
                   </div>
                 </div>
 
                 <!-- Review: cards expansíveis -->
                 <div *ngIf="currentStep === 5 && !isSubmitting && !analysisResult && !isLoading && !loadError">
 
-                  <p class="text-muted mb-3">Revise o resumo de cada etapa antes de gerar o plano. Clique em <strong>Editar</strong> para voltar e ajustar.</p>
+                  <!-- Cabeçalho do passo -->
+                  <div class="step-header">
+                    <div class="step-header-icon">🤖</div>
+                    <div>
+                      <h5 class="step-header-title">Revisão Final + Geração IA</h5>
+                      <p class="step-header-desc">Revise todas as etapas e gere o plano de projeto inteligente com IA</p>
+                    </div>
+                  </div>
+
+                  <p class="text-muted mb-3">Clique em <strong>Editar</strong> para voltar e ajustar qualquer etapa antes de gerar.</p>
 
                   <!-- Card: Dados básicos -->
                   <div class="review-card mb-2">
@@ -1103,8 +1093,8 @@
                             />
                             <div 
                               *ngIf="!getUserProfileImageUrl(member.get('userId')?.value)"
-                              class="avatar-placeholder">
-                              <i class="ft-user"></i>
+                              class="avatar-initials">
+                              {{ getUserInitials(member.get('userName')?.value) }}
                             </div>
                           </div>
                           <div class="flex-grow-1">
@@ -1296,21 +1286,8 @@
                     <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
                       ← Voltar
                     </button>
-
-                    <div class="wizard-steps d-flex gap-2 align-items-center">
-                      <button type="button" class="step-dot" [class.active]="currentStep === 1" [class.completed]="currentStep > 1" (click)="goToStep(1)" title="Dados básicos"><span>1</span></button>
-                      <div class="step-line" [class.active]="currentStep > 1"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 2" [class.completed]="currentStep > 2" (click)="goToStep(2)" title="Equipe"><span>2</span></button>
-                      <div class="step-line" [class.active]="currentStep > 2"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 3" [class.completed]="currentStep > 3" (click)="goToStep(3)" title="Contexto"><span>3</span></button>
-                      <div class="step-line" [class.active]="currentStep > 3"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 4" [class.completed]="currentStep > 4" (click)="goToStep(4)" title="Prioridades"><span>4</span></button>
-                      <div class="step-line" [class.active]="currentStep > 4"></div>
-                      <button type="button" class="step-dot" [class.active]="currentStep === 5" [class.completed]="currentStep > 5" (click)="goToStep(5)" title="Revisão"><span>5</span></button>
-                    </div>
-
                     <button type="button" class="btn btn-primary btn-generate" (click)="onConcluir()" [disabled]="isSubmitting">
-                      ✨ Gerar plano
+                      ✨ Gerar plano com IA
                     </button>
                   </div>
                 </div>
@@ -1397,6 +1374,194 @@
 
                 </div>
 
+                <!-- ── Loading: buscando tarefas geradas ── -->
+                <div *ngIf="loadingGeneratedTasks" class="task-review-loading">
+                  <div class="task-review-spinner">
+                    <span class="spinner-border text-primary" style="width:2.5rem;height:2.5rem;" role="status"></span>
+                  </div>
+                  <p class="text-muted mt-3 mb-0" style="font-size:0.95rem;">Carregando tarefas geradas...</p>
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     FASE 1 — Revisão das Tarefas Macro
+                     ══════════════════════════════════════════════════════════ -->
+                <div *ngIf="taskReviewPhase === 1 && !loadingGeneratedTasks" class="task-review-container">
+
+                  <!-- Phase indicator -->
+                  <div class="task-phase-indicator mb-4">
+                    <div class="phase-step active">
+                      <div class="phase-dot active">1</div>
+                      <span class="phase-label">Tarefas Principais</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-step">
+                      <div class="phase-dot">2</div>
+                      <span class="phase-label">Subtarefas</span>
+                    </div>
+                  </div>
+
+                  <!-- Header -->
+                  <div class="task-review-header mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span style="font-size:1.4rem;">🎯</span>
+                      <h5 class="mb-0 fw-bold" style="color:#1a2e4a;">Tarefas Principais</h5>
+                      <span class="task-count-badge">{{ generatedMacroTasks.length }}</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size:0.875rem;">
+                      Revise as tarefas macro geradas pela IA. Remova as que não fazem sentido para o seu projeto antes de prosseguir.
+                    </p>
+                  </div>
+
+                  <!-- Lista de tarefas macro -->
+                  <div class="macro-tasks-list">
+                    <div *ngFor="let task of generatedMacroTasks; let i = index"
+                         class="macro-task-card"
+                         [class.deleting]="isDeletingTask.has(task.id)">
+
+                      <!-- Header da tarefa -->
+                      <div class="macro-task-header">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                          <span class="macro-order-badge">#{{ i + 1 }}</span>
+                          <span class="macro-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                            {{ getPriorityEmoji(task.priority) }} {{ task.priority }}
+                          </span>
+                          <span class="macro-task-name text-truncate fw-semibold">{{ task.name }}</span>
+                        </div>
+                        <button type="button"
+                                class="btn-macro-delete"
+                                (click)="deleteMacroTask(task)"
+                                [disabled]="isDeletingTask.has(task.id)"
+                                title="Remover esta tarefa">
+                          <span *ngIf="isDeletingTask.has(task.id)" class="spinner-border spinner-border-sm" role="status"></span>
+                          <span *ngIf="!isDeletingTask.has(task.id)">✕</span>
+                        </button>
+                      </div>
+
+                      <!-- Corpo da tarefa -->
+                      <div class="macro-task-body" *ngIf="task.description">
+                        <p class="macro-task-desc mb-0">{{ task.description }}</p>
+                      </div>
+
+                      <!-- Footer da tarefa -->
+                      <div class="macro-task-footer">
+                        <span class="macro-meta-item" *ngIf="task.prazoEmDias">
+                          📅 {{ task.prazoEmDias }} dia{{ task.prazoEmDias !== 1 ? 's' : '' }}
+                        </span>
+                        <span class="macro-meta-item" *ngIf="task.sugestaoResponsavelName">
+                          👤 {{ task.sugestaoResponsavelName }}
+                        </span>
+                        <span class="macro-meta-item subtask-count-chip" *ngIf="getMacroSubtasks(task).length > 0">
+                          📋 {{ getMacroSubtasks(task).length }} subtarefa{{ getMacroSubtasks(task).length !== 1 ? 's' : '' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div *ngIf="generatedMacroTasks.length === 0" class="task-review-empty">
+                      <div style="font-size:2.5rem;">🗑️</div>
+                      <p class="fw-semibold mt-2 mb-1" style="color:#1a2e4a;">Todas as tarefas foram removidas</p>
+                      <p class="text-muted" style="font-size:0.875rem;">Volte para rever o plano e gerar novamente.</p>
+                    </div>
+                  </div>
+
+                  <!-- Rodapé de ação -->
+                  <div class="task-review-footer">
+                    <button type="button" class="btn btn-outline-secondary" (click)="resetAnalysis()">
+                      ← Rever plano
+                    </button>
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="tasks-remaining-label" *ngIf="generatedMacroTasks.length > 0">
+                        {{ generatedMacroTasks.length }} tarefa{{ generatedMacroTasks.length !== 1 ? 's' : '' }} selecionada{{ generatedMacroTasks.length !== 1 ? 's' : '' }}
+                      </span>
+                      <button type="button"
+                              class="btn btn-primary btn-review-proceed"
+                              (click)="proceedToSubtasks()"
+                              [disabled]="generatedMacroTasks.length === 0">
+                        Ver subtarefas →
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════
+                     FASE 2 — Subtarefas agrupadas
+                     ══════════════════════════════════════════════════════════ -->
+                <div *ngIf="taskReviewPhase === 2 && !loadingGeneratedTasks" class="task-review-container">
+
+                  <!-- Phase indicator -->
+                  <div class="task-phase-indicator mb-4">
+                    <div class="phase-step done">
+                      <div class="phase-dot done">✓</div>
+                      <span class="phase-label">Tarefas Principais</span>
+                    </div>
+                    <div class="phase-connector active"></div>
+                    <div class="phase-step active">
+                      <div class="phase-dot active">2</div>
+                      <span class="phase-label">Subtarefas</span>
+                    </div>
+                  </div>
+
+                  <!-- Header -->
+                  <div class="task-review-header mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <span style="font-size:1.4rem;">📋</span>
+                      <h5 class="mb-0 fw-bold" style="color:#1a2e4a;">Subtarefas por tarefa principal</h5>
+                      <span class="task-count-badge">{{ totalSubtasksCount }}</span>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size:0.875rem;">
+                      Cada tarefa principal foi decomposta em subtarefas executáveis. Tudo certo? Vá para o board!
+                    </p>
+                  </div>
+
+                  <!-- Grupos de subtarefas por macro -->
+                  <div class="subtask-groups">
+                    <div *ngFor="let macro of generatedMacroTasks; let i = index" class="subtask-group">
+
+                      <!-- Macro header (accordion-style) -->
+                      <div class="subtask-group-header">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                          <span class="macro-order-badge sm">#{{ i + 1 }}</span>
+                          <span class="macro-priority-badge sm" [ngClass]="getPriorityClass(macro.priority)">
+                            {{ getPriorityEmoji(macro.priority) }}
+                          </span>
+                          <span class="fw-semibold text-truncate" style="color:#1a2e4a;">{{ macro.name }}</span>
+                        </div>
+                        <span class="subtask-group-count" *ngIf="getMacroSubtasks(macro).length > 0">
+                          {{ getMacroSubtasks(macro).length }} subtarefa{{ getMacroSubtasks(macro).length !== 1 ? 's' : '' }}
+                        </span>
+                        <span class="subtask-group-count no-sub" *ngIf="getMacroSubtasks(macro).length === 0">
+                          Sem subtarefas
+                        </span>
+                      </div>
+
+                      <!-- Subtask rows -->
+                      <div class="subtask-rows" *ngIf="getMacroSubtasks(macro).length > 0">
+                        <div *ngFor="let sub of getMacroSubtasks(macro)" class="subtask-row">
+                          <span class="subtask-bullet">↳</span>
+                          <span class="subtask-priority-dot" [ngClass]="getPriorityClass(sub.priority)"
+                                [title]="sub.priority"></span>
+                          <span class="subtask-name flex-grow-1">{{ sub.name }}</span>
+                          <span class="subtask-meta" *ngIf="sub.prazoEmDias">📅 {{ sub.prazoEmDias }}d</span>
+                          <span class="subtask-meta" *ngIf="sub.sugestaoResponsavelName">👤 {{ sub.sugestaoResponsavelName }}</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <!-- Rodapé de ação -->
+                  <div class="task-review-footer">
+                    <button type="button" class="btn btn-outline-secondary" (click)="backToMacros()">
+                      ← Ver tarefas principais
+                    </button>
+                    <button type="button" class="btn btn-success btn-review-finish" (click)="navigateToBoard()">
+                      ✅ Tudo certo, ir para o Board
+                    </button>
+                  </div>
+
+                </div>
+
               </div>
             </div>
           </div>
@@ -1405,5 +1570,3 @@
     </section>
   </div>
 </div>
-
-
