@@ -1883,6 +1883,11 @@
     border-color: #cbd5e0;
   }
 
+  &.priority-critica { border-left-color: #ef4444; }
+  &.priority-alta    { border-left-color: #f97316; }
+  &.priority-media   { border-left-color: #eab308; }
+  &.priority-baixa   { border-left-color: #22c55e; }
+
   &.deleting {
     opacity: 0.4;
     transform: scale(0.98);
@@ -1911,6 +1916,7 @@
   font-size: 0.8rem;
   font-weight: 700;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 
   &.sm { min-width: 24px; height: 20px; font-size: 0.7rem; }
 }
@@ -1944,6 +1950,7 @@
   flex: 1;
   min-width: 0;
 }
+
 
 .btn-macro-delete {
   flex-shrink: 0;
