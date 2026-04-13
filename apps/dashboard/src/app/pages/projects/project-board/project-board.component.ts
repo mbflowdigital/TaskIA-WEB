@@ -36,6 +36,7 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   editingPrazoModal = false;
   prazoModalValue: number | null = null;
   selectedTask: BoardTaskDto | null = null;
+  parentTaskInView: BoardTaskDto | null = null;
   taskNameEdit = '';
   taskDescEdit = '';
   taskStatusEdit = '';
@@ -68,14 +69,30 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.projectId = this.route.snapshot.paramMap.get('id') ?? '';
-    if (!this.projectId) {
-      this.router.navigate(['/projects']);
-      return;
-    }
-    this.loadProjectName();
-    this.loadTeamMembers();
-    this.fetchBoardTasks();
+    // Observar mudanças no parâmetro 'id' para suportar navegação entre projetos
+    this.route.paramMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const projectId = params.get('id') ?? '';
+        if (!projectId) {
+          this.router.navigate(['/projects']);
+          return;
+        }
+
+        // Resetar estado ao trocar de projeto
+        this.projectId = projectId;
+        this.projectName = '';
+        this.boardTasks = [];
+        this.selectedTask = null;
+        this.parentTaskInView = null;
+        this.expandedTasks = {};
+        this.columnVisibleCount = { 'A Fazer': 10, 'Em Andamento': 10, 'Concluído': 10 };
+        
+        // Carregar dados do novo projeto
+        this.loadProjectName();
+        this.loadTeamMembers();
+        this.fetchBoardTasks();
+      });
   }
 
   ngOnDestroy(): void {
@@ -514,13 +531,41 @@ export class ProjectBoardComponent implements OnInit, OnDestroy {
     }
   }
 
-  openModal(task: BoardTaskDto): void {
+  openModal(task: BoardTaskDto, parentTask?: BoardTaskDto): void {
+    // Se não foi passado parentTask mas a tarefa tem parentTaskId, buscar a tarefa pai
+    if (!parentTask && task.parentTaskId) {
+      parentTask = this.boardTasks.find(t => t.id === task.parentTaskId) ?? null;
+    }
+    
     this.selectedTask = task;
+    this.parentTaskInView = parentTask ?? null;
     this.taskNameEdit = task.name;
     this.taskDescEdit = task.description ?? '';
     this.taskStatusEdit = task.status;
     this.editingResponsibleModal = false;
     this.editingPrazoModal = false;
+  }
+
+  openSubTaskModal(subTask: BoardTaskDto, parentTask: BoardTaskDto): void {
+    this.openModal(subTask, parentTask);
+  }
+
+  backToParentTask(): void {
+    if (this.parentTaskInView) {
+      this.openModal(this.parentTaskInView);
+    }
+  }
+
+  get isViewingSubTask(): boolean {
+    return this.parentTaskInView !== null;
+  }
+
+  get hasSubTasks(): boolean {
+    return !this.isViewingSubTask && (this.selectedTask?.subTasks?.length ?? 0) > 0;
+  }
+
+  get showSidebar(): boolean {
+    return this.hasSubTasks || this.isViewingSubTask;
   }
 
   onSaveTask(): void {
