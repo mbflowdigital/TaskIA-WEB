@@ -95,9 +95,7 @@ export class VerticalMenuComponent implements OnInit, AfterViewInit, OnDestroy {
           this.projectsSubmenu = result.data
             .filter(p => p.status === 'Active')
             .map(p => ({
-              path: p.status === 'Draft'
-                ? `/projects/${p.id}/edit`
-                : `/projects/${p.id}/board`,
+              path: p.status === 'Draft' ? `/projects/${p.id}/edit` : `/projects/${p.id}/board`,
               title: p.name,
               icon: 'ft-folder submenu-icon',
               class: 'project-sub-item',

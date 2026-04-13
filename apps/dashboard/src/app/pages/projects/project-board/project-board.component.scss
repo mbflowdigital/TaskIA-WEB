@@ -61,15 +61,21 @@
 .backlog-table-wrap {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 520px;
+  max-height: 600px;
   border: 1px solid #e9ecef;
   border-radius: 10px;
 
   // Custom scrollbar
   &::-webkit-scrollbar        { width: 6px; height: 6px; }
   &::-webkit-scrollbar-track  { background: #f1f3f5; border-radius: 4px; }
-  &::-webkit-scrollbar-thumb  { background: #ced4da; border-radius: 4px; }
-  &::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
+  &::-webkit-scrollbar-thumb  { 
+    background: #adb5bd; 
+    border-radius: 4px;
+    
+    &:hover { 
+      background: #868e96; 
+    }
+  }
 }
 
 .backlog-table {
@@ -482,6 +488,10 @@
   flex-direction: column;
   animation: slideUp 0.18s ease;
   overflow: hidden;
+
+  &.kanban-modal-with-sidebar {
+    max-width: 1000px;
+  }
 }
 
 .kanban-modal-header {
@@ -506,16 +516,28 @@
   color: #1a2a3a;
   line-height: 1.35;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0.15rem 0.35rem;
   background: transparent;
   width: 100%;
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
+  transition: all 0.2s ease;
 
-  &:hover { border-color: #dee2e6; background: #f8f9fa; }
-  &:focus { border-color: #86b7fe; background: #fff; box-shadow: 0 0 0 2px rgba(13,110,253,.15); }
-  &:disabled { opacity: 0.7; cursor: not-allowed; }
+  &:hover { 
+    border-color: hsl(220, 15%, 90%); 
+    background: #f8f9fa; 
+  }
+  
+  &:focus { 
+    border-color: hsl(220, 60%, 18%); 
+    background: #fff; 
+    box-shadow: 0 0 0 3px rgba(28, 45, 71, 0.08); 
+  }
+  
+  &:disabled { 
+    opacity: 0.7; 
+    cursor: not-allowed; 
+  }
 }
 
 .kanban-modal-close {
@@ -532,10 +554,281 @@
   &:hover { background: #f0f2f5; color: #1a2a3a; }
 }
 
+.btn-back-to-parent {
+  background: #f0f2f5;
+  border: none;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  color: #1a2a3a;
+  font-size: 0.95rem;
+  line-height: 1;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover { 
+    background: #0d6efd; 
+    color: #fff; 
+  }
+}
+
+.kanban-modal-body-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 .kanban-modal-body {
   padding: 1.25rem 1.5rem;
   overflow-y: auto;
   flex: 1;
+  min-width: 0;
+}
+
+.parent-task-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.parent-task-info-body {
+  padding: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(13, 110, 253, 0.05);
+    
+    .parent-task-info-title {
+      color: #0d6efd;
+    }
+  }
+}
+
+.parent-task-info-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.parent-task-info-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a2a3a;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+  transition: color 0.2s ease;
+}
+
+.parent-task-info-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.75rem;
+  color: #6c757d;
+
+  i {
+    font-size: 0.8rem;
+    margin-right: 0.25rem;
+  }
+}
+
+.kanban-status-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15em 0.5em;
+  border-radius: 12px;
+
+  &.bl-badge-todo   { background: #e8edf3; color: #5a6c7d; }
+  &.bl-badge-doing  { background: #cfe2ff; color: #084298; }
+  &.bl-badge-done   { background: #d1e7dd; color: #0f5132; }
+}
+
+.kanban-modal-sidebar {
+  width: 320px;
+  border-left: 1px solid #e8edf3;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kanban-modal-sidebar-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e8edf3;
+  background: #fff;
+}
+
+.kanban-modal-sidebar-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a2a3a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+
+  i {
+    font-size: 0.9rem;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.2em 0.5em;
+  }
+}
+
+.kanban-modal-sidebar-body {
+  padding: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  max-height: 420px;
+
+  // Scrollbar customizada
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f3f5;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+
+    &:hover {
+      background: #868e96;
+    }
+  }
+}
+
+.subtask-item {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
+    transform: translateY(-1px);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  &.subtask-item-active {
+    border-color: #0d6efd;
+    border-width: 2px;
+    background: rgba(13, 110, 253, 0.05);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+  }
+}
+
+.subtasks-section {
+  margin-top: 1rem;
+}
+
+.subtasks-section-header {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e8edf3;
+
+  i {
+    font-size: 0.8rem;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.2em 0.5em;
+  }
+}
+
+.subtask-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.subtask-priority-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15em 0.5em;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  &.priority-critica { background: #f8d7da; color: #842029; }
+  &.priority-alta    { background: #ffe5cc; color: #7a3200; }
+  &.priority-media   { background: #fff3cd; color: #664d03; }
+  &.priority-baixa   { background: #d1ecf1; color: #0c5460; }
+}
+
+.subtask-status-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15em 0.5em;
+  border-radius: 12px;
+
+  &.bl-badge-todo   { background: #e8edf3; color: #5a6c7d; }
+  &.bl-badge-doing  { background: #cfe2ff; color: #084298; }
+  &.bl-badge-done   { background: #d1e7dd; color: #0f5132; }
+}
+
+.subtask-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1a2a3a;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.subtask-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: #6c757d;
+
+  i {
+    font-size: 0.7rem;
+  }
+}
+
+.subtask-responsible {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.subtask-prazo {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 .kanban-modal-section {
@@ -622,13 +915,23 @@
 .kanban-input-sm {
   font-size: 0.88rem;
   padding: 0.2rem 0.45rem;
-  border: 1px solid #86b7fe;
-  border-radius: 5px;
+  border: 1px solid hsl(220, 15%, 90%);
+  border-radius: 8px;
+  color: hsl(220, 30%, 12%);
+  background: white;
+  transition: all 0.2s ease;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 61, 130, 0.1);
-  transition: border-color 0.15s;
 
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:focus {
+    border-color: hsl(220, 60%, 18%);
+    box-shadow: 0 0 0 3px rgba(28, 45, 71, 0.08);
+  }
+
+  &:disabled { 
+    opacity: 0.6; 
+    cursor: not-allowed;
+    background: hsl(220, 20%, 98%);
+  }
 }
 
 .kanban-modal-value {
@@ -705,25 +1008,27 @@
 }
 
 .kanban-select {
-  font-size: 0.78rem;
-  padding: 0.15rem 0.4rem;
-  border: 1px solid #dee2e6;
-  border-radius: 5px;
-  color: #444;
-  background: #f8f9fa;
+  font-size: 0.88rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid hsl(220, 15%, 90%);
+  border-radius: 8px;
+  color: hsl(220, 30%, 12%);
+  background: white;
   cursor: pointer;
+  transition: all 0.2s ease;
   appearance: auto;
-  max-width: 140px;
+  max-width: 160px;
 
   &:focus {
     outline: none;
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 2px rgba(0, 61, 130, 0.1);
+    border-color: hsl(220, 60%, 18%);
+    box-shadow: 0 0 0 3px rgba(28, 45, 71, 0.08);
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: 0.6;
+    background: hsl(220, 20%, 98%);
   }
 }
 

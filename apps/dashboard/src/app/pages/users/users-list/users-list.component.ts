@@ -18,6 +18,7 @@ import { AuthSessionService } from 'app/shared/auth/auth-session.service';
 export class UsersListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private profileImageCache = new Map<string, string>();
+  private loadingImages = new Set<string>();
 
   isLoading = false;
   loadError?: string;
@@ -95,6 +96,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
       }
     });
     this.profileImageCache.clear();
+    this.loadingImages.clear();
 
     this.destroy$.next();
     this.destroy$.complete();
@@ -221,15 +223,25 @@ export class UsersListComponent implements OnInit, OnDestroy {
   }
 
   getUserProfileImageUrl(userId: string): string | null {
+    // Se já temos o resultado no cache (URL ou vazio), retornar
     if (this.profileImageCache.has(userId)) {
-      return this.profileImageCache.get(userId) || null;
+      const cached = this.profileImageCache.get(userId);
+      return cached || null;
     }
 
-    // Carregar imagem de forma assíncrona
+    // Se já estamos carregando esta imagem, não disparar nova requisição
+    if (this.loadingImages.has(userId)) {
+      return null;
+    }
+
+    // Marcar como carregando e disparar requisição
+    this.loadingImages.add(userId);
+
     this.usersApi.getProfileImageBlob(userId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (blob) => {
+          this.loadingImages.delete(userId);
           if (blob && blob.size > 0) {
             const url = URL.createObjectURL(blob);
             this.profileImageCache.set(userId, url);
@@ -238,6 +250,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
           }
         },
         error: () => {
+          this.loadingImages.delete(userId);
           this.profileImageCache.set(userId, '');
         }
       });
@@ -311,6 +324,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
   private load(): void {
     this.isLoading = true;
     this.loadError = undefined;
+    this.loadingImages.clear(); // Limpar estado de carregamento de imagens
 
     this.usersApi
       .getAll()

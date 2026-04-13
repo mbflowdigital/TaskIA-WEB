@@ -175,11 +175,11 @@
                               [style.top.px]="dropdownPos?.dropup ? dropdownPos?.top : dropdownPos?.top"
                               [style.left.px]="(dropdownPos?.left ?? 0) - 140"
                               [style.transform]="dropdownPos?.dropup ? 'translateY(-100%)' : 'none'">
-                              <button *ngIf="project.taskCount === 0" type="button" class="dropdown-item" (click)="editProject(project)">Editar</button>
+                              <button *ngIf="project.taskCount === 0" type="button" class="dropdown-item" (click)="editProject(project); $event.stopPropagation()">Editar</button>
                               <button
                                 type="button"
                                 class="dropdown-item"
-                                (click)="toggleProjectStatus(project)"
+                                (click)="toggleProjectStatus(project); $event.stopPropagation()"
                                 [disabled]="togglingStatusId === project.id"
                               >
                                 {{ togglingStatusId === project.id ? 'Aguarde...' : (project.status === 'Active' ? 'Inativar' : 'Ativar') }}
@@ -188,7 +188,7 @@
                               <button
                                 type="button"
                                 class="dropdown-item text-danger"
-                                (click)="deleteProject(project)"
+                                (click)="deleteProject(project); $event.stopPropagation()"
                                 [disabled]="deletingProjectId === project.id"
                               >
                                 {{ deletingProjectId === project.id ? 'Cancelando...' : 'Cancelar' }}
