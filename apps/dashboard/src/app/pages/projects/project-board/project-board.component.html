@@ -184,7 +184,7 @@
                               <tr *ngFor="let subTask of task.subTasks; trackBy: trackByTaskId"
                                 class="bl-row bl-row-subtask"
                                 [class.bl-row-loading]="taskActionLoading[subTask.id]"
-                                (click)="openModal(subTask)">
+                                (click)="openModal(subTask, task)">
                                 <td class="bl-col-priority" style="padding-left: 2.5rem;">
                                   <span class="kanban-priority-badge" [ngClass]="getPriorityClass(subTask.priority)">
                                     {{ getPriorityLabel(subTask.priority) }}
@@ -304,7 +304,7 @@
                               <tr *ngFor="let subTask of task.subTasks; trackBy: trackByTaskId"
                                 class="bl-row bl-row-subtask"
                                 [class.bl-row-loading]="taskActionLoading[subTask.id]"
-                                (click)="openModal(subTask)">
+                                (click)="openModal(subTask, task)">
                                 <td class="bl-col-priority" style="padding-left: 2.5rem;">
                                   <span class="kanban-priority-badge" [ngClass]="getPriorityClass(subTask.priority)">
                                     {{ getPriorityLabel(subTask.priority) }}
@@ -604,11 +604,20 @@
 
 <!-- Task Detail Modal -->
 <div *ngIf="selectedTask" class="kanban-modal-backdrop" (click)="selectedTask = null">
-  <div class="kanban-modal" (click)="$event.stopPropagation()">
+  <div class="kanban-modal" [class.kanban-modal-with-sidebar]="showSidebar" (click)="$event.stopPropagation()">
 
     <!-- Modal Header -->
     <div class="kanban-modal-header">
-      <div class="d-flex align-items-center" style="gap:0.6rem;">
+      <div class="d-flex align-items-center" style="gap:0.6rem; flex: 1;">
+        <!-- Back button when viewing subtask -->
+        <button 
+          *ngIf="isViewingSubTask" 
+          type="button" 
+          class="btn-back-to-parent"
+          (click)="backToParentTask()"
+          title="Voltar à tarefa principal">
+          <i class="ft-arrow-left"></i>
+        </button>
         <span class="kanban-priority-badge" [ngClass]="getPriorityClass(selectedTask.priority)">
           {{ getPriorityLabel(selectedTask.priority) }}
         </span>
@@ -626,7 +635,8 @@
     </div>
 
     <!-- Modal Body -->
-    <div class="kanban-modal-body">
+    <div class="kanban-modal-body-wrapper">
+      <div class="kanban-modal-body">
 
       <!-- Critical warning inside modal (shown in backlog or when warning is active for this task) -->
       <div *ngIf="criticalWarningTaskId === selectedTask.id || (activeTab === 'backlog' && hasPendingCriticals() && !isCritical(selectedTask))" class="critical-warning-banner mb-3">
@@ -734,6 +744,116 @@
       </div>
 
     </div>
+
+    <!-- Sidebar (SubTasks or Parent Task) -->
+    <div *ngIf="showSidebar" class="kanban-modal-sidebar">
+      
+      <!-- Subtarefas (quando visualizando tarefa principal) -->
+      <ng-container *ngIf="hasSubTasks">
+        <div class="kanban-modal-sidebar-header">
+          <h6 class="kanban-modal-sidebar-title">
+            <i class="ft-list mr-1"></i>Subtarefas
+            <span class="badge badge-secondary ml-1">{{ selectedTask!.subTasks!.length }}</span>
+          </h6>
+        </div>
+        <div class="kanban-modal-sidebar-body">
+          <div 
+            *ngFor="let subTask of selectedTask!.subTasks" 
+            class="subtask-item"
+            (click)="openSubTaskModal(subTask, selectedTask!)">
+            <div class="subtask-header">
+              <span class="subtask-priority-badge" [ngClass]="getPriorityClass(subTask.priority)">
+                {{ getPriorityLabel(subTask.priority) }}
+              </span>
+              <span class="subtask-status-badge" [ngClass]="getStatusBadgeClass(subTask.status)">
+                {{ subTask.status }}
+              </span>
+            </div>
+            <h6 class="subtask-name">{{ subTask.name }}</h6>
+            <div class="subtask-footer">
+              <span *ngIf="subTask.responsavelName" class="subtask-responsible">
+                <i class="ft-user"></i> {{ subTask.responsavelName }}
+              </span>
+              <span class="subtask-prazo">
+                <i class="ft-clock"></i> {{ subTask.prazoEmDias }}d
+              </span>
+            </div>
+          </div>
+          <div *ngIf="!selectedTask!.subTasks || selectedTask!.subTasks.length === 0" class="text-center text-muted py-4">
+            <i class="ft-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+            <p class="mb-0 mt-2" style="font-size: 0.85rem;">Nenhuma subtarefa encontrada</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Tarefa Principal + Subtarefas (quando visualizando subtarefa) -->
+      <ng-container *ngIf="isViewingSubTask && parentTaskInView">
+        <div class="kanban-modal-sidebar-header">
+          <h6 class="kanban-modal-sidebar-title">
+            <i class="ft-link mr-1"></i>Tarefa Principal
+          </h6>
+        </div>
+        <div class="kanban-modal-sidebar-body">
+          <!-- Tarefa Principal -->
+          <div class="parent-task-info mb-3">
+            <div class="parent-task-info-body" (click)="backToParentTask()" title="Clique para ver a tarefa principal">
+              <div class="parent-task-info-badges">
+                <span class="kanban-priority-badge" [ngClass]="getPriorityClass(parentTaskInView.priority)">
+                  {{ getPriorityLabel(parentTaskInView.priority) }}
+                </span>
+                <span class="kanban-status-badge" [ngClass]="getStatusBadgeClass(parentTaskInView.status)">
+                  {{ parentTaskInView.status }}
+                </span>
+              </div>
+              <h6 class="parent-task-info-title">{{ parentTaskInView.name }}</h6>
+              <div class="parent-task-info-footer">
+                <span *ngIf="parentTaskInView.responsavelName">
+                  <i class="ft-user"></i> {{ parentTaskInView.responsavelName }}
+                </span>
+                <span>
+                  <i class="ft-clock"></i> {{ parentTaskInView.prazoEmDias }}d
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Subtarefas -->
+          <div class="subtasks-section">
+            <div class="subtasks-section-header">
+              <i class="ft-list mr-1"></i>
+              <span>Subtarefas</span>
+              <span class="badge badge-secondary ml-1">{{ parentTaskInView.subTasks?.length || 0 }}</span>
+            </div>
+            <div 
+              *ngFor="let subTask of parentTaskInView.subTasks" 
+              class="subtask-item"
+              [class.subtask-item-active]="subTask.id === selectedTask.id"
+              (click)="openSubTaskModal(subTask, parentTaskInView)">
+              <div class="subtask-header">
+                <span class="subtask-priority-badge" [ngClass]="getPriorityClass(subTask.priority)">
+                  {{ getPriorityLabel(subTask.priority) }}
+                </span>
+                <span class="subtask-status-badge" [ngClass]="getStatusBadgeClass(subTask.status)">
+                  {{ subTask.status }}
+                </span>
+              </div>
+              <h6 class="subtask-name">{{ subTask.name }}</h6>
+              <div class="subtask-footer">
+                <span *ngIf="subTask.responsavelName" class="subtask-responsible">
+                  <i class="ft-user"></i> {{ subTask.responsavelName }}
+                </span>
+                <span class="subtask-prazo">
+                  <i class="ft-clock"></i> {{ subTask.prazoEmDias }}d
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+      
+    </div>
+
+  </div>
 
     <!-- Modal Footer -->
     <div class="kanban-modal-footer">

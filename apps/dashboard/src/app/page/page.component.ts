@@ -142,6 +142,8 @@ export class PageComponent implements OnInit {
   openProject(project: ProjectDto): void {
     if (project.status === 'Draft') {
       this.router.navigate(['/projects', project.id, 'edit']);
+    } else if (project.status === 'Active') {
+      this.router.navigate(['/projects', project.id, 'board']);
     } else {
       this.router.navigate(['/projects', project.id]);
     }
