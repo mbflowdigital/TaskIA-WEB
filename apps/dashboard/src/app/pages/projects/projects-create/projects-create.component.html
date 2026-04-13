@@ -1416,17 +1416,16 @@
                   <div class="macro-tasks-list">
                     <div *ngFor="let task of generatedMacroTasks; let i = index"
                          class="macro-task-card"
+                         [ngClass]="getPriorityClass(task.priority)"
                          [class.deleting]="isDeletingTask.has(task.id)">
 
                       <!-- Header da tarefa -->
                       <div class="macro-task-header">
-                        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                          <span class="macro-order-badge">#{{ i + 1 }}</span>
-                          <span class="macro-priority-badge" [ngClass]="getPriorityClass(task.priority)">
-                            {{ getPriorityEmoji(task.priority) }} {{ task.priority }}
-                          </span>
-                          <span class="macro-task-name text-truncate fw-semibold">{{ task.name }}</span>
-                        </div>
+                        <span class="macro-order-badge">#{{ i + 1 }}</span>
+                        <span class="macro-task-name fw-semibold">{{ task.name }}</span>
+                        <span class="macro-priority-badge" [ngClass]="getPriorityClass(task.priority)">
+                          {{ task.priority }}
+                        </span>
                         <button type="button"
                                 class="btn-macro-delete"
                                 (click)="deleteMacroTask(task)"
