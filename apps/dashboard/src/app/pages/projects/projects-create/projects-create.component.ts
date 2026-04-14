@@ -183,6 +183,7 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   // Cache de imagens de perfil (userId -> ObjectURL)
   private profileImageCache = new Map<string, string>();
+  private loadingImages = new Set<string>();
 
   toggleReviewSection(key: string): void {
     this.reviewOpenSections[key] = !this.reviewOpenSections[key];
@@ -1254,21 +1255,30 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
     if (this.profileImageCache.has(userId)) {
       return this.profileImageCache.get(userId)!;
     }
+
+    // Evita disparar múltiplas requisições para o mesmo usuário
+    if (this.loadingImages.has(userId)) {
+      return '';
+    }
     
-    // Carrega a imagem como blob
+    // Marca como carregando e dispara a requisição
+    this.loadingImages.add(userId);
     this.usersApi.getProfileImageBlob(userId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (blob) => {
+          this.loadingImages.delete(userId);
           if (blob && blob.size > 0) {
             const url = URL.createObjectURL(blob);
             this.profileImageCache.set(userId, url);
-            // Força detecção de mudanças para atualizar a view
-            this.cdr.markForCheck();
+          } else {
+            this.profileImageCache.set(userId, '');
           }
+          this.cdr.markForCheck();
         },
         error: () => {
-          // Ignora erro - o fallback de iniciais será exibido
+          this.loadingImages.delete(userId);
+          this.profileImageCache.set(userId, '');
         }
       });
     
