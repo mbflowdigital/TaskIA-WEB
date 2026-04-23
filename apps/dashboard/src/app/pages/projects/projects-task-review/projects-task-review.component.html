@@ -1,0 +1,222 @@
+<div class="task-review-page">
+
+  <!-- Header -->
+  <div class="page-header mb-4">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <h1 class="mb-1">📋 Revisão de Tarefas</h1>
+        <p class="text-muted mb-0">{{ projectName }}</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" (click)="regenerateTasks()">
+          🔄 Regenerar
+        </button>
+        <button type="button" class="btn btn-primary" (click)="goToBoard()">
+          📊 Ir para o Board
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Carregando...</span>
+    </div>
+    <p class="text-muted mt-3">Carregando tarefas...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="loadError && !isLoading" class="alert alert-danger">
+    <strong>Erro:</strong> {{ loadError }}
+    <div class="mt-2">
+      <button type="button" class="btn btn-sm btn-outline-danger" (click)="loadProjectAndTasks()">
+        Tentar novamente
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!isLoading && !loadError" class="task-review-content">
+
+    <!-- Controls Bar -->
+    <div class="controls-bar mb-4">
+      <div class="row g-3 align-items-end">
+        <!-- View Mode -->
+        <div class="col-auto">
+          <label class="form-label fw-semibold">Visualização</label>
+          <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" id="view-macros" [checked]="viewMode === 'macros'" (change)="viewMode = 'macros'; onFilterChange()">
+            <label class="btn btn-outline-primary btn-sm" for="view-macros">Macros</label>
+            <input type="radio" class="btn-check" id="view-all" [checked]="viewMode === 'all'" (change)="viewMode = 'all'; onFilterChange()">
+            <label class="btn btn-outline-primary btn-sm" for="view-all">Todas</label>
+          </div>
+        </div>
+
+        <!-- Priority Filter -->
+        <div class="col-auto">
+          <label class="form-label fw-semibold">Prioridade</label>
+          <select class="form-select form-select-sm" [(ngModel)]="priorityFilter" (change)="onFilterChange()">
+            <option value="all">Todas</option>
+            <option *ngFor="let priority of availablePriorities" [value]="priority">{{ priority }}</option>
+          </select>
+        </div>
+
+        <!-- Responsible Filter -->
+        <div class="col-auto">
+          <label class="form-label fw-semibold">Responsável</label>
+          <select class="form-select form-select-sm" [(ngModel)]="responsibleFilter" (change)="onFilterChange()">
+            <option value="all">Todos</option>
+            <option *ngFor="let responsible of availableResponsibles" [value]="responsible">{{ responsible }}</option>
+          </select>
+        </div>
+
+        <!-- Search -->
+        <div class="col">
+          <label class="form-label fw-semibold">Buscar</label>
+          <input type="text" class="form-control form-control-sm" placeholder="Nome ou descrição..." [(ngModel)]="searchTerm" (input)="onSearchChange()">
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="col-auto">
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="selectAllTasks()" [disabled]="filteredTasks.length === 0">
+              Selecionar todas
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" (click)="deleteSelectedTasks()" [disabled]="selectedTasks.size === 0">
+              Deletar selecionadas ({{ selectedTasks.size }})
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tasks List -->
+    <div class="tasks-container">
+
+      <!-- Empty State -->
+      <div *ngIf="filteredTasks.length === 0" class="empty-state text-center py-5">
+        <div style="font-size: 3rem;">📭</div>
+        <h5 class="mt-3">Nenhuma tarefa encontrada</h5>
+        <p class="text-muted">Tente ajustar os filtros ou gerar novas tarefas.</p>
+        <button type="button" class="btn btn-primary" (click)="regenerateTasks()">
+          🔄 Regenerar tarefas
+        </button>
+      </div>
+
+      <!-- Tasks Grid -->
+      <div *ngIf="filteredTasks.length > 0" class="tasks-grid">
+        <div *ngFor="let task of filteredTasks; trackBy: trackByTaskId"
+             class="task-card"
+             [ngClass]="getPriorityClass(task.priority)"
+             [class.selected]="selectedTasks.has(task.id)"
+             [class.deleting]="isDeletingTask.has(task.id)"
+             [class.editing]="isEditingTask.has(task.id)">
+
+          <!-- Selection Checkbox -->
+          <div class="task-selection">
+            <input type="checkbox"
+                   [checked]="selectedTasks.has(task.id)"
+                   (change)="toggleTaskSelection(task.id)"
+                   [disabled]="isDeletingTask.has(task.id) || isEditingTask.has(task.id)">
+          </div>
+
+          <!-- Task Content -->
+          <div class="task-content" (click)="!isEditingTask.has(task.id) && toggleTaskSelection(task.id)">
+
+            <!-- Header -->
+            <div class="task-header">
+              <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                <span class="priority-indicator" [ngClass]="getPriorityClass(task.priority)">
+                  {{ getPriorityEmoji(task.priority) }}
+                </span>
+                <h6 class="task-name mb-0 text-truncate fw-semibold" *ngIf="!isEditingTask.has(task.id)">
+                  {{ task.name }}
+                </h6>
+                <input type="text" class="form-control form-control-sm" *ngIf="isEditingTask.has(task.id)" [(ngModel)]="editForm.name">
+              </div>
+
+              <div class="task-actions">
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        (click)="startEditTask(task); $event.stopPropagation()"
+                        [disabled]="isDeletingTask.has(task.id)"
+                        *ngIf="!isEditingTask.has(task.id)">
+                  ✏️
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-success"
+                        (click)="saveEditTask(); $event.stopPropagation()"
+                        *ngIf="isEditingTask.has(task.id)">
+                  ✓
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        (click)="cancelEditTask(); $event.stopPropagation()"
+                        *ngIf="isEditingTask.has(task.id)">
+                  ✕
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        (click)="deleteSelectedTasks(); $event.stopPropagation()"
+                        [disabled]="isDeletingTask.has(task.id)"
+                        *ngIf="!isEditingTask.has(task.id)">
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="task-description" *ngIf="!isEditingTask.has(task.id)">
+              <p class="mb-0 text-muted small" *ngIf="task.description">{{ task.description }}</p>
+              <p class="mb-0 text-muted small fst-italic" *ngIf="!task.description">Sem descrição</p>
+            </div>
+            <textarea class="form-control form-control-sm" rows="2" *ngIf="isEditingTask.has(task.id)" [(ngModel)]="editForm.description"></textarea>
+
+            <!-- Footer -->
+            <div class="task-footer">
+              <div class="task-meta">
+                <span class="meta-item" *ngIf="task.prazoEmDias">
+                  📅 {{ task.prazoEmDias }} dia{{ task.prazoEmDias !== 1 ? 's' : '' }}
+                </span>
+                <span class="meta-item" *ngIf="task.sugestaoResponsavelName">
+                  👤 {{ task.sugestaoResponsavelName }}
+                </span>
+                <span class="meta-item" *ngIf="getSubtasks(task).length > 0">
+                  📋 {{ getSubtasks(task).length }} subtarefa{{ getSubtasks(task).length !== 1 ? 's' : '' }}
+                </span>
+              </div>
+
+              <!-- Edit Priority -->
+              <div *ngIf="isEditingTask.has(task.id)" class="edit-priority">
+                <select class="form-select form-select-sm" [(ngModel)]="editForm.priority">
+                  <option value="Crítica">🔴 Crítica</option>
+                  <option value="Alta">🟠 Alta</option>
+                  <option value="Média">🟡 Média</option>
+                  <option value="Baixa">🟢 Baixa</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Subtasks (only in all view) -->
+          <div class="task-subtasks" *ngIf="viewMode === 'all' && getSubtasks(task).length > 0">
+            <div *ngFor="let subtask of getSubtasks(task)" class="subtask-item">
+              <span class="subtask-bullet">↳</span>
+              <span class="subtask-priority" [ngClass]="getPriorityClass(subtask.priority)">
+                {{ getPriorityEmoji(subtask.priority) }}
+              </span>
+              <span class="subtask-name">{{ subtask.name }}</span>
+              <span class="subtask-meta" *ngIf="subtask.prazoEmDias">({{ subtask.prazoEmDias }}d)</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
