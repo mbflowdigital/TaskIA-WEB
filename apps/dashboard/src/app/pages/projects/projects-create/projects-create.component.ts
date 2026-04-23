@@ -25,7 +25,7 @@ import { BoardApiService, BoardTaskDto } from '../../../shared/api/board-api.ser
 })
 export class ProjectsCreateComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-  private readonly leadershipRoles = ['Patrocinador(a) do Projeto', 'Diretor(a)', 'Gerente de Projeto', 'Coordenador', 'Supervisor'];
+   private readonly leadershipRoles = ['Patrocinador(a) do Projeto', 'Diretor(a)', 'Gerente de Projeto', 'Coordenador', 'Supervisor'];
 
   // Wizard
   currentStep = 1;
@@ -2128,7 +2128,9 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
           this.generatedMacroTasks = result.data
             .filter(t => !t.parentTaskId)
             .sort((a, b) => a.ordemNoBoard - b.ordemNoBoard);
-          this.taskReviewPhase = 1;
+
+          // Navigate to dedicated review screen instead of showing in wizard
+          this.router.navigate(['/projects', this.createdProjectId, 'task-review']);
         },
         error: () => {
           this.loadingGeneratedTasks = false;
@@ -2182,7 +2184,8 @@ export class ProjectsCreateComponent implements OnInit, OnDestroy {
 
   navigateToBoard(): void {
     this.authSession.clearOnboardingFlag();
-    this.router.navigate(['/projects', this.createdProjectId, 'board']);
+    // Navigate to task review instead of directly to board
+    this.router.navigate(['/projects', this.createdProjectId, 'task-review']);
   }
 
   private finishProjectCreation(): void {
