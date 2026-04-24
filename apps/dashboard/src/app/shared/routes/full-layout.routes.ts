@@ -56,6 +56,10 @@ export const Full_ROUTES: Routes = [
     loadComponent: () => import('../../pages/projects/projects-task-review/projects-task-review.component').then(m => m.ProjectsTaskReviewComponent)
   },
   {
+    path: 'projects/:id/board',
+    loadComponent: () => import('../../pages/projects/project-board/project-board.component').then(m => m.ProjectBoardComponent)
+  },
+  {
     path: 'projects/:id',
     loadComponent: () => import('../../pages/projects/project-detail/project-detail.component').then(m => m.ProjectDetailComponent)
   },

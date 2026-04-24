@@ -19,21 +19,11 @@
   </div>
 
   <!-- Loading State -->
-  <div *ngIf="isLoading" class="loading-state">
-    <div class="loading-content">
-      <div class="loading-spinner">
-        <div class="spinner-ring"></div>
-      </div>
-      <p class="loading-text">Carregando macros do projeto...</p>
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Carregando...</span>
     </div>
-    <div class="skeleton-grid">
-      <div class="skeleton-card" *ngFor="let i of [1,2,3,4,5,6]">
-        <div class="skeleton-bar"></div>
-        <div class="skeleton-line w-80"></div>
-        <div class="skeleton-line w-60"></div>
-        <div class="skeleton-line w-40"></div>
-      </div>
-    </div>
+    <p class="text-muted mt-3">Carregando tarefas...</p>
   </div>
 
   <!-- Error State -->
@@ -115,7 +105,7 @@
              [class.editing]="isEditingTask.has(task.id)">
 
           <!-- Priority Bar -->
-          <div class="task-priority-bar" [ngClass]="getPriorityClass(task.priority)"></div>
+          <div class="task-priority-bar" [ngClass]="getPriorityClass(task.priority)\"></div>
 
           <!-- Checkbox -->
           <label class="task-checkbox">
@@ -190,7 +180,7 @@
               ✕
             </button>
             <button type="button" class="action-btn delete" 
-              (click)="deleteSingleTask(task.id); $event.stopPropagation()"
+              (click)="toggleTaskSelection(task.id); $event.stopPropagation()"
               [disabled]="isDeletingTask.has(task.id)"
               *ngIf="!isEditingTask.has(task.id)"
               title="Deletar">
@@ -203,24 +193,6 @@
 
     </div>
 
-  </div>
-
-  <!-- Sticky Footer CTA -->
-  <div *ngIf="!isLoading && !loadError" class="review-footer">
-    <div class="footer-content">
-      <div class="footer-info">
-        <span class="footer-count">{{ macroTasks.length }}</span>
-        <span class="footer-label"> macro{{ macroTasks.length !== 1 ? 's' : '' }} pronta{{ macroTasks.length !== 1 ? 's' : '' }} para o board</span>
-      </div>
-      <div class="footer-actions">
-        <button type="button" class="btn-footer-secondary" (click)="regenerateTasks()">
-          ↻ Regenerar
-        </button>
-        <button type="button" class="btn-footer-primary" (click)="goToBoard()">
-          Aprovar e ir ao Board →
-        </button>
-      </div>
-    </div>
   </div>
 
 </div>
