@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -11,7 +12,7 @@ import { AuthSessionService } from '../../../shared/auth/auth-session.service';
 @Component({
   selector: 'app-projects-task-review',
   standalone: true,
-  imports: [CommonModule, RouterModule, NgbTooltipModule],
+  imports: [CommonModule, FormsModule, RouterModule, NgbTooltipModule],
   templateUrl: './projects-task-review.component.html',
   styleUrls: ['./projects-task-review.component.scss']
 })
@@ -71,7 +72,7 @@ export class ProjectsTaskReviewComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private loadProjectAndTasks(): void {
+  loadProjectAndTasks(): void {
     this.isLoading = true;
     this.loadError = undefined;
 
@@ -112,7 +113,7 @@ export class ProjectsTaskReviewComponent implements OnInit, OnDestroy {
   }
 
   get filteredTasks(): BoardTaskDto[] {
-    let tasks = this.viewMode === 'macros' ? this.macroTasks : this.allTasks;
+    let tasks = this.macroTasks;
 
     if (this.priorityFilter !== 'all') {
       tasks = tasks.filter(t => t.priority === this.priorityFilter);
@@ -192,23 +193,41 @@ export class ProjectsTaskReviewComponent implements OnInit, OnDestroy {
     this.selectedTasks.clear();
   }
 
+  deleteSingleTask(taskId: string): void {
+    this.isDeletingTask.add(taskId);
+    this.boardApi.delete(taskId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.isDeletingTask.delete(taskId);
+          this.allTasks = this.allTasks.filter(t => t.id !== taskId);
+          this.macroTasks = this.macroTasks.filter(t => t.id !== taskId);
+          this.selectedTasks.delete(taskId);
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.isDeletingTask.delete(taskId);
+        }
+      });
+  }
+
   deleteSelectedTasks(): void {
     if (this.selectedTasks.size === 0) return;
 
     const taskIds = Array.from(this.selectedTasks);
-    const deletePromises = taskIds.map(id => {
-      this.isDeletingTask.add(id);
-      return this.boardApi.delete(id).toPromise();
-    });
+    taskIds.forEach(id => this.isDeletingTask.add(id));
 
-    Promise.all(deletePromises)
+    Promise.all(taskIds.map(id => this.boardApi.delete(id).toPromise()))
       .then(() => {
-        // Reload tasks
-        this.loadProjectAndTasks();
+        taskIds.forEach(id => {
+          this.isDeletingTask.delete(id);
+          this.allTasks = this.allTasks.filter(t => t.id !== id);
+          this.macroTasks = this.macroTasks.filter(t => t.id !== id);
+        });
         this.selectedTasks.clear();
+        this.cdr.detectChanges();
       })
       .catch(() => {
-        // Handle error
         this.selectedTasks.clear();
         taskIds.forEach(id => this.isDeletingTask.delete(id));
       });
@@ -249,6 +268,10 @@ export class ProjectsTaskReviewComponent implements OnInit, OnDestroy {
 
   goToBoard(): void {
     this.router.navigate(['/projects', this.projectId, 'board']);
+  }
+
+  goToProjectDetail(): void {
+    this.router.navigate(['/projects', this.projectId]);
   }
 
   onFilterChange(): void {
