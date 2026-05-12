@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import { ApiResult } from 'app/shared/api/shared/api-result.types';
@@ -143,11 +143,23 @@ export class UsersApiService {
     return this.http
       .get(`${this.baseUrl}/api/Users/${userId}/profile-image`, {
         headers: this.getActorHeaders(),
-        responseType: 'blob'
+        responseType: 'blob',
+        observe: 'response'
       })
       .pipe(
-        catchError(() => {
-          // Retorna um blob vazio em caso de erro
+        map(response => {
+          if (response.status === 204 || !response.body) {
+            return new Blob();
+          }
+          return response.body;
+        }),
+        catchError((error) => {
+          // Silenciosamente retorna blob vazio para 404 e 204
+          // Isso evita logs de erro no console
+          if (error.status === 404 || error.status === 204) {
+            return of(new Blob());
+          }
+          // Para outros erros, também retorna blob vazio mas poderia logar
           return of(new Blob());
         })
       );

@@ -66,7 +66,7 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     birthDate: new UntypedFormControl('', [Validators.required]),
     role: new UntypedFormControl('USER'),
     companyId: new UntypedFormControl(''),
-    positionId: new UntypedFormControl('', [Validators.required])
+    positionId: new UntypedFormControl('')
   });
 
   constructor(
@@ -233,15 +233,12 @@ export class UsersCreateComponent implements OnInit, OnDestroy {
     const companyId = this.isAdmMaster
       ? (String(this.form.getRawValue().companyId ?? '').trim() || undefined)
       : this.admCompanyId;
-    const positionId = Number(this.form.getRawValue().positionId ?? 0);
+    
+    const positionIdRaw = this.form.getRawValue().positionId;
+    const positionId = positionIdRaw ? Number(positionIdRaw) : undefined;
+    
     // Send date as-is (yyyy-MM-dd) to avoid UTC timezone shifting
     const birthDate = birthDateRaw ? `${birthDateRaw}T00:00:00` : null;
-
-    if (!Number.isFinite(positionId) || positionId <= 0) {
-      this.isSubmitting = false;
-      this.submitError = 'Selecione um cargo válido.';
-      return;
-    }
 
     const role = String(this.form.getRawValue().role ?? 'USER').trim() || 'USER';
 

@@ -215,21 +215,23 @@
                           <div class="d-flex align-items-center">
                             <!-- Imagem de perfil do banco ou fallback com iniciais -->
                             <div class="position-relative mr-1" style="width: 32px; height: 32px;">
-                              <img
-                                *ngIf="getUserProfileImageUrl(user.id)"
-                                class="rounded-circle"
-                                [src]="getUserProfileImageUrl(user.id)"
-                                height="32"
-                                width="32"
-                                alt="user avatar"
-                                style="object-fit: cover;"
-                              />
-                              <div
-                                *ngIf="!getUserProfileImageUrl(user.id)"
-                                class="rounded-circle d-flex align-items-center justify-content-center"
-                                style="width: 32px; height: 32px; background-color: #e9ecef; color: #6c757d;">
-                                <i class="ft-user" style="font-size: 14px;"></i>
-                              </div>
+                              <ng-container *ngIf="profileImageCache.get(user.id) as profileUrl; else noImage">
+                                <img
+                                  class="rounded-circle"
+                                  [src]="profileUrl"
+                                  height="32"
+                                  width="32"
+                                  alt="user avatar"
+                                  style="object-fit: cover;"
+                                />
+                              </ng-container>
+                              <ng-template #noImage>
+                                <div
+                                  class="rounded-circle d-flex align-items-center justify-content-center"
+                                  style="width: 32px; height: 32px; background-color: #e9ecef; color: #6c757d;">
+                                  <i class="ft-user" style="font-size: 14px;"></i>
+                                </div>
+                              </ng-template>
                             </div>
                             <div class="cell-line-height" style="min-width: 0;">
                               <div class="line-height-1 mb-0 text-truncate" style="max-width: 260px;">

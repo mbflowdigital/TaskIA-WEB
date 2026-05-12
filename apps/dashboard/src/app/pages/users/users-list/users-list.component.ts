@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -13,12 +13,17 @@ import { AuthSessionService } from 'app/shared/auth/auth-session.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './users-list.component.html',
-  styleUrls: ['./users-list.component.scss']
+  styleUrls: ['./users-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UsersListComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
-  private profileImageCache = new Map<string, string>();
+  
+  // Tornar público para acesso direto no template (evita chamadas de método no change detection)
+  profileImageCache = new Map<string, string>();
+  
   private loadingImages = new Set<string>();
+  private loadImagesTimeout?: any;
 
   isLoading = false;
   loadError?: string;
@@ -74,8 +79,9 @@ export class UsersListComponent implements OnInit, OnDestroy {
   constructor(
     private readonly usersApi: UsersApiService,
     private readonly router: Router,
-    private readonly authSession: AuthSessionService
-  ) {}
+    private readonly authSession: AuthSessionService,
+    private readonly cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit(): void {
     const role = this.authSession.getRole().trim().toUpperCase();
@@ -89,6 +95,11 @@ export class UsersListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Limpar timeout pendente
+    if (this.loadImagesTimeout) {
+      clearTimeout(this.loadImagesTimeout);
+    }
+
     // Limpar URLs de objetos criados para evitar memory leak
     this.profileImageCache.forEach(url => {
       if (url.startsWith('blob:')) {
@@ -132,6 +143,8 @@ export class UsersListComponent implements OnInit, OnDestroy {
     const value = (event.target as HTMLSelectElement | null)?.value ?? '10';
     const parsed = typeof value === 'number' ? value : Number(value);
     this.limit = Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+    // Carregar imagens quando o limite mudar
+    this.loadProfileImages();
   }
 
   onFilterChange(): void {
@@ -216,46 +229,59 @@ export class UsersListComponent implements OnInit, OnDestroy {
   selectLimit(value: number): void {
     this.limit = value;
     this.limitDropdownOpen = false;
+    // Carregar imagens quando o limite mudar
+    this.loadProfileImages();
   }
 
   getSelectedLimitLabel(): string {
     return this.limit.toString();
   }
 
-  getUserProfileImageUrl(userId: string): string | null {
-    // Se já temos o resultado no cache (URL ou vazio), retornar
-    if (this.profileImageCache.has(userId)) {
-      const cached = this.profileImageCache.get(userId);
-      return cached || null;
+  private loadProfileImages(): void {
+    // Usar debounce para evitar múltiplas chamadas
+    if (this.loadImagesTimeout) {
+      clearTimeout(this.loadImagesTimeout);
     }
 
-    // Se já estamos carregando esta imagem, não disparar nova requisição
-    if (this.loadingImages.has(userId)) {
-      return null;
-    }
+    this.loadImagesTimeout = setTimeout(() => {
+      this.loadProfileImagesImmediate();
+    }, 100);
+  }
 
-    // Marcar como carregando e disparar requisição
-    this.loadingImages.add(userId);
+  private loadProfileImagesImmediate(): void {
+    // Carregar imagens apenas para os usuários visíveis
+    const visibleUserIds = this.visibleRows.map(u => u.id);
 
-    this.usersApi.getProfileImageBlob(userId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (blob) => {
-          this.loadingImages.delete(userId);
-          if (blob && blob.size > 0) {
-            const url = URL.createObjectURL(blob);
-            this.profileImageCache.set(userId, url);
-          } else {
+    visibleUserIds.forEach(userId => {
+      // Se já temos no cache ou já estamos carregando, pular
+      if (this.profileImageCache.has(userId) || this.loadingImages.has(userId)) {
+        return;
+      }
+
+      // Marcar como carregando
+      this.loadingImages.add(userId);
+
+      this.usersApi.getProfileImageBlob(userId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (blob) => {
+            this.loadingImages.delete(userId);
+            if (blob && blob.size > 0) {
+              const url = URL.createObjectURL(blob);
+              this.profileImageCache.set(userId, url);
+            } else {
+              this.profileImageCache.set(userId, '');
+            }
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.loadingImages.delete(userId);
+            // Marcar como tentado com string vazia para evitar novas tentativas
             this.profileImageCache.set(userId, '');
+            this.cdr.markForCheck();
           }
-        },
-        error: () => {
-          this.loadingImages.delete(userId);
-          this.profileImageCache.set(userId, '');
-        }
-      });
-
-    return null;
+        });
+    });
   }
 
   getUserInitials(name: string): string {
@@ -310,6 +336,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
           this.users = this.users.filter((u) => u.id !== user.id);
           this.applyFilter();
           this.deletingUserId = undefined;
+          this.cdr.markForCheck();
         },
         error: (err: unknown) => {
           this.actionError =
@@ -317,6 +344,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
               ? String((err as { message?: unknown }).message)
               : 'Erro inesperado ao apagar o usuário.';
           this.deletingUserId = undefined;
+          this.cdr.markForCheck();
         }
       });
   }
@@ -342,6 +370,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
           this.users = result.data;
           this.applyFilter();
           this.isLoading = false;
+          this.cdr.markForCheck();
         },
         error: (err: unknown) => {
           this.users = [];
@@ -351,6 +380,7 @@ export class UsersListComponent implements OnInit, OnDestroy {
               ? String((err as { message?: unknown }).message)
               : 'Erro inesperado ao carregar os usuários';
           this.isLoading = false;
+          this.cdr.markForCheck();
         }
       });
   }
@@ -382,6 +412,9 @@ export class UsersListComponent implements OnInit, OnDestroy {
       const haystack = `${u.id} ${u.name} ${u.email} ${u.phone ?? ''}`.toLowerCase();
       return haystack.includes(term);
     });
+
+    // Carregar imagens dos usuários visíveis
+    this.loadProfileImages();
   }
 }
 
